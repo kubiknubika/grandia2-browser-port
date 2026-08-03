@@ -1,1 +1,986 @@
-<canvas id="battle"></canvas><script>import {IPGauge} from "./src/entities/combat.ts"; const g = new IPGauge(10); console.log("ATB:", g.progress);</script>
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Grandia 2 Browser Port — Play / Debug / Replay Lab</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #111827;
+        color: #e5e7eb;
+      }
+
+      main {
+        max-width: 1320px;
+        margin: 0 auto;
+        padding: 28px 18px 40px;
+      }
+
+      h1, h2, h3 { margin-top: 0; }
+
+      .panel {
+        background: #1f2937;
+        border: 1px solid #374151;
+        border-radius: 12px;
+        padding: 16px;
+        margin-bottom: 16px;
+      }
+
+      .toolbar,
+      .controls,
+      .action-list,
+      .tab-row,
+      .menu-actions,
+      .inline-form {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        align-items: center;
+      }
+
+      button, select, input { font: inherit; }
+
+      button {
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        background: #2563eb;
+        color: white;
+        cursor: pointer;
+      }
+
+      button:hover { background: #1d4ed8; }
+
+      .secondary { background: #374151; }
+      .secondary:hover { background: #4b5563; }
+
+      .tab-row button[data-active='true'] { background: #0ea5e9; }
+
+      .menu-hero {
+        text-align: center;
+        padding: 36px 18px;
+        background-image:
+          linear-gradient(rgba(15, 23, 42, 0.58), rgba(15, 23, 42, 0.84)),
+          url('./assets/ui/menu-hero.svg');
+        background-size: cover;
+        background-position: center;
+      }
+
+      .menu-actions { justify-content: center; }
+
+      .menu-actions button {
+        min-width: 220px;
+        min-height: 56px;
+      }
+
+      .action-button {
+        text-align: left;
+        min-width: 220px;
+        background: #374151;
+      }
+
+      .action-button:hover { background: #4b5563; }
+      .action-button small { color: #cbd5e1; font-size: 12px; }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1.25fr 0.75fr;
+        gap: 16px;
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      .three-col {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+      }
+
+      .stat-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+
+      .stat-table th,
+      .stat-table td {
+        border-bottom: 1px solid #374151;
+        padding: 6px;
+        text-align: left;
+      }
+
+      .stat-table input,
+      select,
+      .inline-input {
+        width: 100%;
+        box-sizing: border-box;
+        border-radius: 8px;
+        border: 1px solid #4b5563;
+        background: #111827;
+        color: #e5e7eb;
+        padding: 6px 8px;
+      }
+
+      .inline-input { width: auto; }
+
+      pre {
+        white-space: pre-wrap;
+        margin: 0;
+      }
+
+      canvas {
+        width: 100%;
+        height: auto;
+        display: block;
+        background: #0f172a;
+        border-radius: 10px;
+      }
+
+      .muted { color: #9ca3af; }
+
+      .campaign-scene-body {
+        min-height: 260px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .campaign-kicker {
+        margin: 0 0 6px;
+        color: #93c5fd;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        font-size: 12px;
+      }
+
+      .campaign-scene-body p {
+        margin: 0;
+        line-height: 1.6;
+      }
+
+      .campaign-scene-body .scene-paragraph {
+        background: rgba(15, 23, 42, 0.5);
+        border: 1px solid rgba(71, 85, 105, 0.6);
+        border-radius: 12px;
+        padding: 12px;
+      }
+
+      .campaign-scene-body .scene-dialogue {
+        background: rgba(30, 41, 59, 0.85);
+        border-left: 4px solid #60a5fa;
+        border-radius: 12px;
+        padding: 12px 14px;
+      }
+
+      .campaign-scene-body .scene-speaker {
+        display: block;
+        margin-bottom: 6px;
+        color: #fcd34d;
+        font-weight: 700;
+      }
+
+      .campaign-scene-body .scene-note {
+        border-left-color: #f59e0b;
+      }
+
+      .campaign-scene-body .scene-result {
+        border-left-color: #34d399;
+      }
+
+      .campaign-meta-box {
+        background: #111827;
+        border: 1px solid #374151;
+        border-radius: 12px;
+        padding: 12px;
+      }
+
+      .campaign-world-box {
+        background: #111827;
+        border: 1px solid #374151;
+        border-radius: 12px;
+        padding: 12px;
+      }
+
+      .campaign-world-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 12px;
+      }
+
+      .campaign-world-actions button {
+        text-align: left;
+        min-width: 220px;
+      }
+
+      .tag-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .tag-list span {
+        display: inline-block;
+        border: 1px solid #475569;
+        border-radius: 999px;
+        padding: 4px 10px;
+        background: rgba(30, 41, 59, 0.8);
+        color: #cbd5e1;
+        font-size: 12px;
+      }
+
+      details.panel summary {
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      @media (max-width: 1100px) {
+        .grid, .two-col, .three-col { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section id="menu-screen" class="panel menu-hero">
+        <h1>Grandia 2 Browser Port</h1>
+        <p>
+          Играбельный combat prototype с ручным боем, AI-дебагом, обучаемым veteran AI,
+          экспортом battle log и replay lab.
+        </p>
+        <div class="menu-actions">
+          <button id="menu-open-play">Начать игру</button>
+          <button id="menu-open-campaign" class="secondary">Сюжетная кампания</button>
+          <button id="menu-open-debug" class="secondary">Открыть дебаг-меню</button>
+          <button id="menu-open-compare" class="secondary">Replay compare lab</button>
+        </div>
+      </section>
+
+      <section id="app-screen" hidden>
+        <div class="panel tab-row">
+          <button id="back-to-menu" class="secondary">← Главное меню</button>
+          <button id="tab-play" data-active="true">Игра</button>
+          <button id="tab-campaign" class="secondary" data-active="false">Кампания</button>
+          <button id="tab-debug" class="secondary" data-active="false">Дебаг-меню</button>
+          <button id="tab-compare" class="secondary" data-active="false">Replay compare</button>
+        </div>
+
+        <div class="panel toolbar">
+          <strong id="battle-label">Текущий бой</strong>
+          <button id="next-turn">Следующее событие</button>
+          <button id="auto-battle">Играть до паузы / конца боя</button>
+          <button id="export-log" class="secondary">Экспорт лога JSON</button>
+          <button id="reset-battle" class="secondary">Сбросить бой</button>
+        </div>
+
+        <div class="panel">
+          <h2>Поле боя и IP Gauge</h2>
+          <canvas id="battle-view" width="1000" height="540"></canvas>
+        </div>
+
+        <div class="grid">
+          <div>
+            <section id="play-section">
+              <div class="panel">
+                <h2>Игра: человек против AI</h2>
+                <div class="inline-form">
+                  <label>
+                    AI врага:
+                    <select id="play-enemy-ai">
+                      <option value="novice">Novice AI</option>
+                      <option value="veteran">Veteran AI</option>
+                    </select>
+                  </label>
+                  <button id="play-start">Перезапустить human battle</button>
+                  <button id="simulate" class="secondary">Balance snapshot</button>
+                </div>
+                <p class="muted">
+                  Когда герой доходит до COM, бой ставится на паузу и справа появляются кнопки доступных команд.
+                </p>
+              </div>
+
+              <div class="panel">
+                <h2>Ручная команда</h2>
+                <p id="command-status" class="muted">Ручной ввод не нужен.</p>
+                <div id="command-buttons" class="action-list"></div>
+              </div>
+            </section>
+
+            <section id="campaign-section" hidden>
+              <div class="panel">
+                <h2>Сюжетная кампания</h2>
+                <p class="muted">
+                  Полноценный линейный режим: сюжетные интерлюдии, катсцены, запуск story-битв,
+                  автоматический переход между главами, сохранение забега и честные заглушки там,
+                  где bespoke-сцена ещё не доведена до отдельного encounter-а.
+                </p>
+                <div class="controls">
+                  <button id="campaign-start-run">Новая кампания</button>
+                  <button id="campaign-resume-run" class="secondary">Продолжить сохранение</button>
+                  <button id="campaign-next-scene" class="secondary">Дальше</button>
+                  <button id="campaign-launch-battle">Начать сюжетный бой</button>
+                  <button id="campaign-continue-after-battle" class="secondary">Продолжить после боя</button>
+                  <button id="campaign-retry-beat" class="secondary">Повторить текущий бой</button>
+                  <button id="campaign-abandon-run" class="secondary">Сбросить текущий забег</button>
+                  <button id="campaign-save-state" class="secondary">Сохранить кампанию</button>
+                  <button id="campaign-load-state" class="secondary">Загрузить кампанию</button>
+                  <button id="campaign-reset-state" class="secondary">Очистить всё</button>
+                </div>
+              </div>
+
+              <div class="two-col">
+                <div class="panel">
+                  <p id="campaign-scene-kicker" class="campaign-kicker">Campaign scene</p>
+                  <h3 id="campaign-scene-title">Кампания не запущена</h3>
+                  <p id="campaign-scene-subtitle" class="muted">
+                    Нажми «Новая кампания», чтобы пройти все story beats подряд.
+                  </p>
+                  <div id="campaign-scene-body" class="campaign-scene-body"></div>
+                  <div class="campaign-meta-box" style="margin-top:12px;">
+                    <pre id="campaign-scene-meta"></pre>
+                  </div>
+                </div>
+
+                <div class="panel">
+                  <h3>Журнал похода</h3>
+                  <pre id="campaign-journal"></pre>
+                </div>
+              </div>
+
+              <div class="two-col">
+                <div class="panel">
+                  <h3>Маршрут и текущая локация</h3>
+                  <div class="campaign-world-box">
+                    <pre id="campaign-world-summary"></pre>
+                    <div id="campaign-location-tags" class="tag-list"></div>
+                    <div id="campaign-location-actions" class="campaign-world-actions"></div>
+                    <div id="campaign-exit-buttons" class="campaign-world-actions"></div>
+                  </div>
+                </div>
+                <div class="panel">
+                  <h3>Открытые области текущей главы</h3>
+                  <pre id="campaign-route-map"></pre>
+                </div>
+              </div>
+
+              <div class="two-col">
+                <div class="panel">
+                  <h3>Экипировка партии</h3>
+                  <pre id="campaign-equipment-summary"></pre>
+                  <div id="campaign-equipment-actions" class="campaign-world-actions"></div>
+                </div>
+                <div class="panel">
+                  <h3>Сюжетные world events</h3>
+                  <pre id="campaign-events-summary"></pre>
+                </div>
+              </div>
+
+              <div class="two-col">
+                <div class="panel">
+                  <h3>Рост партии: уровни, skill books, mana eggs</h3>
+                  <pre id="campaign-growth-summary"></pre>
+                  <div id="campaign-growth-actions" class="campaign-world-actions"></div>
+                </div>
+                <div class="panel">
+                  <h3>Quest flags и цели главы</h3>
+                  <pre id="campaign-quest-summary"></pre>
+                </div>
+              </div>
+
+              <div class="two-col">
+                <div class="panel">
+                  <h3>Аудит реализации сюжета</h3>
+                  <pre id="campaign-audit-summary"></pre>
+                </div>
+                <div class="panel">
+                  <h3>Что сделано / что осталось</h3>
+                  <pre id="campaign-audit-breakdown"></pre>
+                </div>
+              </div>
+
+              <div class="two-col">
+                <div class="panel">
+                  <h3>Оригинальный flow бита</h3>
+                  <pre id="campaign-original-flow-summary"></pre>
+                </div>
+                <div class="panel">
+                  <h3>Fidelity-задачи по оригиналу</h3>
+                  <pre id="campaign-fidelity-goals"></pre>
+                </div>
+              </div>
+
+              <div class="panel">
+                <h3>Bestiary coverage / enemy pass</h3>
+                <pre id="campaign-bestiary-summary"></pre>
+              </div>
+
+              <div class="two-col">
+                <div class="panel">
+                  <h3>Skill / magic handbook</h3>
+                  <pre id="campaign-skillbook-summary"></pre>
+                </div>
+                <div class="panel">
+                  <h3>Item / field menu compendium</h3>
+                  <pre id="campaign-item-summary"></pre>
+                </div>
+              </div>
+
+              <div class="two-col">
+                <div class="panel">
+                  <h3>Script / dialogue coverage</h3>
+                  <pre id="campaign-script-summary"></pre>
+                </div>
+                <div class="panel">
+                  <h3>Current beat dialogue density</h3>
+                  <pre id="campaign-dialogue-detail"></pre>
+                </div>
+              </div>
+
+              <details class="panel">
+                <summary>Песочница / ручная навигация по главам</summary>
+                <div class="inline-form" style="margin-top:12px;">
+                  <label>
+                    Arc:
+                    <select id="campaign-arc-select"></select>
+                  </label>
+                  <label>
+                    Beat:
+                    <select id="campaign-beat-select"></select>
+                  </label>
+                  <button id="campaign-prev-beat" class="secondary">← Previous beat</button>
+                  <button id="campaign-next-beat" class="secondary">Next beat →</button>
+                  <button id="campaign-apply-only" class="secondary">Apply beat setup</button>
+                  <button id="campaign-start-beat">Start beat battle</button>
+                  <button id="campaign-continue-flow" class="secondary">Continue flow</button>
+                  <button id="campaign-complete-next" class="secondary">Mark complete + next</button>
+                </div>
+                <pre id="campaign-info" style="margin-top:12px;"></pre>
+              </details>
+            </section>
+
+            <section id="debug-section" hidden>
+              <div class="panel">
+                <h2>Дебаг-меню: AI, обучение, винрейт</h2>
+                <div class="two-col">
+                  <div>
+                    <div class="inline-form">
+                      <label>
+                        AI игроков:
+                        <select id="debug-player-ai">
+                          <option value="novice">Novice AI</option>
+                          <option value="veteran">Veteran AI</option>
+                        </select>
+                      </label>
+                      <label>
+                        AI врага:
+                        <select id="debug-enemy-ai">
+                          <option value="novice">Novice AI</option>
+                          <option value="veteran">Veteran AI</option>
+                        </select>
+                      </label>
+                    </div>
+                    <div class="controls" style="margin-top:12px;">
+                      <button id="debug-start-battle">Запустить 1 AI-бой</button>
+                      <button id="debug-winrate" class="secondary">Посчитать винрейт</button>
+                      <button id="debug-load-artifact" class="secondary">Загрузить repo JSON</button>
+                      <button id="debug-import-artifact" class="secondary">Импорт local JSON</button>
+                      <input id="debug-import-artifact-input" type="file" accept="application/json,.json" hidden />
+                      <button id="debug-save-current" class="secondary">Скачать текущий JSON</button>
+                    </div>
+                  </div>
+                  <div>
+                    <div class="inline-form">
+                      <label>
+                        Стиль тренировки:
+                        <select id="debug-train-style">
+                          <option value="balanced">balanced</option>
+                          <option value="aggressive">aggressive</option>
+                          <option value="safe">safe</option>
+                          <option value="control">control</option>
+                        </select>
+                      </label>
+                      <label>
+                        Поколения:
+                        <input id="debug-generations" class="inline-input" type="number" min="1" value="6" />
+                      </label>
+                      <label>
+                        Популяция:
+                        <input id="debug-population" class="inline-input" type="number" min="4" value="10" />
+                      </label>
+                      <label>
+                        Симуляций/кандидат:
+                        <input id="debug-training-sims" class="inline-input" type="number" min="5" value="30" />
+                      </label>
+                      <label>
+                        Seed:
+                        <input id="debug-training-seed" class="inline-input" type="number" value="1337" />
+                      </label>
+                      <label>
+                        Sim count для винрейта:
+                        <input id="debug-eval-count" class="inline-input" type="number" min="10" value="120" />
+                      </label>
+                    </div>
+                    <div class="controls" style="margin-top:12px;">
+                      <button id="debug-train">Обучить veteran AI</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="panel">
+                <h3>Текущий veteran / баланс</h3>
+                <pre id="veteran-status"></pre>
+              </div>
+
+              <div class="panel">
+                <h3>Вывод дебага</h3>
+                <pre id="debug-output"></pre>
+              </div>
+
+              <div class="panel">
+                <h3>Replay viewer</h3>
+                <div class="controls">
+                  <button id="replay-load" class="secondary">Загрузить battle-log.json</button>
+                  <input id="replay-load-input" type="file" accept="application/json,.json" hidden />
+                  <button id="replay-prev" class="secondary">Шаг назад</button>
+                  <button id="replay-next" class="secondary">Шаг вперёд</button>
+                  <button id="replay-play" class="secondary">▶ Replay</button>
+                  <label>
+                    Скорость:
+                    <select id="replay-speed">
+                      <option value="900">0.5x</option>
+                      <option value="550" selected>1x</option>
+                      <option value="300">2x</option>
+                      <option value="160">4x</option>
+                    </select>
+                  </label>
+                  <button id="replay-close" class="secondary">Закрыть replay</button>
+                </div>
+                <div class="panel" style="margin-top:12px; padding:12px;">
+                  <label for="replay-slider">Timeline scrubber</label>
+                  <input id="replay-slider" type="range" min="0" max="0" value="0" style="width:100%;" />
+                </div>
+                <p id="replay-status" class="muted">Replay не загружен.</p>
+                <pre id="replay-info"></pre>
+              </div>
+            </section>
+
+            <section id="compare-section" hidden>
+              <div class="panel">
+                <h2>Replay compare lab</h2>
+                <div class="controls">
+                  <button id="compare-load-left" class="secondary">Загрузить left replay</button>
+                  <input id="compare-load-left-input" type="file" accept="application/json,.json" hidden />
+                  <button id="compare-load-right" class="secondary">Загрузить right replay</button>
+                  <input id="compare-load-right-input" type="file" accept="application/json,.json" hidden />
+                  <button id="compare-prev" class="secondary">Шаг назад</button>
+                  <button id="compare-next" class="secondary">Шаг вперёд</button>
+                  <button id="compare-play" class="secondary">▶ Compare autoplay</button>
+                  <label>
+                    Скорость:
+                    <select id="compare-speed">
+                      <option value="900">0.5x</option>
+                      <option value="550" selected>1x</option>
+                      <option value="300">2x</option>
+                      <option value="160">4x</option>
+                    </select>
+                  </label>
+                  <button id="compare-export-json" class="secondary">Экспорт diff JSON</button>
+                  <button id="compare-export-txt" class="secondary">Экспорт diff TXT</button>
+                  <button id="compare-clear" class="secondary">Очистить compare</button>
+                </div>
+                <div class="panel" style="margin-top:12px; padding:12px;">
+                  <label for="compare-slider">Compare scrubber</label>
+                  <input id="compare-slider" type="range" min="0" max="0" value="0" style="width:100%;" />
+                </div>
+                <p id="compare-status" class="muted">Загрузи два replay, чтобы сравнивать их по шагам.</p>
+              </div>
+
+              <div class="two-col">
+                <div class="panel">
+                  <h3>Left replay</h3>
+                  <canvas id="compare-canvas-left" width="1000" height="540"></canvas>
+                  <pre id="compare-left-info"></pre>
+                </div>
+                <div class="panel">
+                  <h3>Right replay</h3>
+                  <canvas id="compare-canvas-right" width="1000" height="540"></canvas>
+                  <pre id="compare-right-info"></pre>
+                </div>
+              </div>
+
+              <div class="panel">
+                <h3>Compare step diff</h3>
+                <pre id="compare-diff"></pre>
+              </div>
+
+              <div class="panel">
+                <h3>Compare decision summary</h3>
+                <pre id="compare-decision-stats"></pre>
+              </div>
+            </section>
+
+            <div class="panel">
+              <h2>Preset scenarios</h2>
+              <div class="inline-form">
+                <label>
+                  Сценарий:
+                  <select id="scenario-select">
+                    <option value="starter">Новичковый бой</option>
+                    <option value="control" selected>Контрольный бой</option>
+                    <option value="veteran-seed">Ветеранский контрольный seed</option>
+                    <option value="line-pressure">Line pressure lab</option>
+                    <option value="party-skirmish">Party skirmish 3v3</option>
+                    <option value="full-party">Full party 4v4</option>
+                    <option value="guardian-trial">Guardian trial</option>
+                    <option value="tongue-valmar">Tongue of Valmar</option>
+                    <option value="claws-valmar">Claws of Valmar</option>
+                    <option value="heart-valmar">Heart of Valmar</option>
+                    <option value="zera-finale">Zera / New Valmar finale</option>
+                    <option value="miniboss-minotaur">Mini-boss Durham Minotaur</option>
+                    <option value="miniboss-escort">Mini-boss escort</option>
+                  </select>
+                </label>
+                <label>
+                  Encounter template:
+                  <select id="encounter-template">
+                    <option value="duel2v2" selected>Duel 2v2</option>
+                    <option value="skirmish3v3">Skirmish 3v3</option>
+                    <option value="miniBossSolo">Mini-boss solo</option>
+                    <option value="miniBossEscort">Mini-boss escort</option>
+                    <option value="miniBossSwarm">Boss swarm test</option>
+                    <option value="fullParty4v4">Full party 4v4</option>
+                    <option value="guardianTrial">Guardian trial</option>
+                    <option value="tongueValmarBoss">Tongue of Valmar</option>
+                    <option value="clawsValmarBoss">Claws of Valmar</option>
+                    <option value="heartValmarBoss">Heart of Valmar</option>
+                    <option value="zeraFinale">Zera / New Valmar finale</option>
+                  </select>
+                </label>
+                <label>
+                  Battlefield theme:
+                  <select id="battlefield-theme">
+                    <option value="forest" selected>forest</option>
+                    <option value="cavern">cavern</option>
+                    <option value="ruins">ruins</option>
+                    <option value="volcano">volcano</option>
+                  </select>
+                </label>
+                <label>
+                  Opening advantage:
+                  <select id="opening-advantage">
+                    <option value="neutral" selected>neutral</option>
+                    <option value="players">players first</option>
+                    <option value="enemies">enemy ambush</option>
+                  </select>
+                </label>
+                <label>
+                  Battle seed:
+                  <input id="battle-seed" class="inline-input" type="number" value="1337" />
+                </label>
+                <label>
+                  Herb:
+                  <input id="inventory-herb" class="inline-input" type="number" min="0" value="3" />
+                </label>
+                <label>
+                  Antidote:
+                  <input id="inventory-antidote" class="inline-input" type="number" min="0" value="2" />
+                </label>
+                <label><input id="include-roan" type="checkbox" /> include Roan</label>
+                <label><input id="include-mareg" type="checkbox" /> include Mareg</label>
+                <label><input id="include-tio" type="checkbox" /> include Tio</label>
+                <label><input id="include-millenia" type="checkbox" /> include Millenia</label>
+                <label><input id="include-mottled-spider" type="checkbox" /> include Mottled Spider</label>
+                <label><input id="include-guardian" type="checkbox" /> include Guardian</label>
+                <button id="scenario-apply" class="secondary">Применить сценарий</button>
+              </div>
+              <div class="inline-form" style="margin-top:12px;">
+                <label>
+                  Seeded scenario browser:
+                  <select id="scenario-run-select">
+                    <option value="starter-1001">Starter #1001</option>
+                    <option value="control-1337" selected>Control #1337</option>
+                    <option value="control-2024">Control #2024</option>
+                    <option value="veteran-9001">Veteran #9001</option>
+                    <option value="line-4242">Line pressure #4242</option>
+                    <option value="party-5150">Party skirmish #5150</option>
+                    <option value="fullparty-8080">Full party #8080</option>
+                    <option value="guardian-8282">Guardian trial #8282</option>
+                    <option value="tongue-6262">Tongue of Valmar #6262</option>
+                    <option value="claws-6363">Claws of Valmar #6363</option>
+                    <option value="heart-6464">Heart of Valmar #6464</option>
+                    <option value="zera-6565">Zera finale #6565</option>
+                    <option value="boss-6161">Mini-boss #6161</option>
+                    <option value="boss-escort-7171">Mini-boss escort #7171</option>
+                  </select>
+                </label>
+                <button id="scenario-run-apply" class="secondary">Загрузить seed preset</button>
+              </div>
+              <p id="scenario-info" class="muted">Контрольный бой: текущая базовая конфигурация.</p>
+            </div>
+
+            <div class="panel">
+              <h2>Balance vector editor</h2>
+              <div class="three-col">
+                <label>enemyHp <input data-balance-field="enemyHp" type="number" step="0.0001" value="1.1555" /></label>
+                <label>enemyStr <input data-balance-field="enemyStr" type="number" step="0.0001" value="1.2313" /></label>
+                <label>enemyVit <input data-balance-field="enemyVit" type="number" step="0.0001" value="1.0799" /></label>
+                <label>enemyAgi <input data-balance-field="enemyAgi" type="number" step="0.0001" value="1.1" /></label>
+                <label>enemySpd <input data-balance-field="enemySpd" type="number" step="0.0001" value="1.0554" /></label>
+                <label>healPowerBase <input data-balance-field="healPowerBase" type="number" step="1" value="35" /></label>
+                <label>healCostMp <input data-balance-field="healCostMp" type="number" step="1" value="13" /></label>
+                <label>wingPower <input data-balance-field="wingPower" type="number" step="0.0001" value="0.9428" /></label>
+                <label>wingIpDamage <input data-balance-field="wingIpDamage" type="number" step="1" value="110" /></label>
+                <label>wingCostSp <input data-balance-field="wingCostSp" type="number" step="1" value="17" /></label>
+                <label>tenseikenPower <input data-balance-field="tenseikenPower" type="number" step="0.0001" value="1.1138" /></label>
+                <label>tenseikenIpDamage <input data-balance-field="tenseikenIpDamage" type="number" step="1" value="231" /></label>
+              </div>
+              <div class="controls" style="margin-top:12px;">
+                <button id="balance-apply" class="secondary">Применить balance vector</button>
+                <button id="balance-reset-defaults" class="secondary">Сбросить vector к дефолту</button>
+              </div>
+            </div>
+
+            <div class="panel">
+              <h2>Редактор статов бойцов</h2>
+              <p class="muted">
+                Эти параметры используются и в игре, и в дебаг-прогонах. Можно менять Ryudo, Elena и обоих монстров прямо в браузере.
+              </p>
+              <table class="stat-table">
+                <thead>
+                  <tr>
+                    <th>Unit</th>
+                    <th>HP</th>
+                    <th>SP start</th>
+                    <th>MP start</th>
+                    <th>STR</th>
+                    <th>VIT</th>
+                    <th>AGI</th>
+                    <th>SPD</th>
+                    <th>MAG</th>
+                    <th>MEN</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td>Ryudo</td>
+                    <td><input id="stat-ryudo-maxHp" type="number" value="340" /></td>
+                    <td><input id="stat-ryudo-startSp" type="number" value="34" /></td>
+                    <td><input id="stat-ryudo-startMp" type="number" value="18" /></td>
+                    <td><input id="stat-ryudo-str" type="number" value="40" /></td>
+                    <td><input id="stat-ryudo-vit" type="number" value="26" /></td>
+                    <td><input id="stat-ryudo-agi" type="number" value="26" /></td>
+                    <td><input id="stat-ryudo-spd" type="number" value="22" /></td>
+                    <td><input id="stat-ryudo-mag" type="number" value="18" /></td>
+                    <td><input id="stat-ryudo-men" type="number" value="18" /></td>
+                  </tr>
+                  <tr>
+                    <td>Elena</td>
+                    <td><input id="stat-elena-maxHp" type="number" value="300" /></td>
+                    <td><input id="stat-elena-startSp" type="number" value="18" /></td>
+                    <td><input id="stat-elena-startMp" type="number" value="42" /></td>
+                    <td><input id="stat-elena-str" type="number" value="28" /></td>
+                    <td><input id="stat-elena-vit" type="number" value="22" /></td>
+                    <td><input id="stat-elena-agi" type="number" value="23" /></td>
+                    <td><input id="stat-elena-spd" type="number" value="20" /></td>
+                    <td><input id="stat-elena-mag" type="number" value="34" /></td>
+                    <td><input id="stat-elena-men" type="number" value="31" /></td>
+                  </tr>
+                  <tr>
+                    <td>Roan</td>
+                    <td><input id="stat-roan-maxHp" type="number" value="275" /></td>
+                    <td><input id="stat-roan-startSp" type="number" value="22" /></td>
+                    <td><input id="stat-roan-startMp" type="number" value="30" /></td>
+                    <td><input id="stat-roan-str" type="number" value="24" /></td>
+                    <td><input id="stat-roan-vit" type="number" value="20" /></td>
+                    <td><input id="stat-roan-agi" type="number" value="25" /></td>
+                    <td><input id="stat-roan-spd" type="number" value="24" /></td>
+                    <td><input id="stat-roan-mag" type="number" value="28" /></td>
+                    <td><input id="stat-roan-men" type="number" value="26" /></td>
+                  </tr>
+                  <tr>
+                    <td>Mareg</td>
+                    <td><input id="stat-mareg-maxHp" type="number" value="390" /></td>
+                    <td><input id="stat-mareg-startSp" type="number" value="40" /></td>
+                    <td><input id="stat-mareg-startMp" type="number" value="0" /></td>
+                    <td><input id="stat-mareg-str" type="number" value="44" /></td>
+                    <td><input id="stat-mareg-vit" type="number" value="29" /></td>
+                    <td><input id="stat-mareg-agi" type="number" value="20" /></td>
+                    <td><input id="stat-mareg-spd" type="number" value="21" /></td>
+                    <td><input id="stat-mareg-mag" type="number" value="8" /></td>
+                    <td><input id="stat-mareg-men" type="number" value="20" /></td>
+                  </tr>
+                  <tr>
+                    <td>Tio</td>
+                    <td><input id="stat-tio-maxHp" type="number" value="280" /></td>
+                    <td><input id="stat-tio-startSp" type="number" value="24" /></td>
+                    <td><input id="stat-tio-startMp" type="number" value="28" /></td>
+                    <td><input id="stat-tio-str" type="number" value="26" /></td>
+                    <td><input id="stat-tio-vit" type="number" value="20" /></td>
+                    <td><input id="stat-tio-agi" type="number" value="30" /></td>
+                    <td><input id="stat-tio-spd" type="number" value="28" /></td>
+                    <td><input id="stat-tio-mag" type="number" value="30" /></td>
+                    <td><input id="stat-tio-men" type="number" value="24" /></td>
+                  </tr>
+                  <tr>
+                    <td>Millenia</td>
+                    <td><input id="stat-millenia-maxHp" type="number" value="290" /></td>
+                    <td><input id="stat-millenia-startSp" type="number" value="34" /></td>
+                    <td><input id="stat-millenia-startMp" type="number" value="24" /></td>
+                    <td><input id="stat-millenia-str" type="number" value="29" /></td>
+                    <td><input id="stat-millenia-vit" type="number" value="18" /></td>
+                    <td><input id="stat-millenia-agi" type="number" value="27" /></td>
+                    <td><input id="stat-millenia-spd" type="number" value="26" /></td>
+                    <td><input id="stat-millenia-mag" type="number" value="32" /></td>
+                    <td><input id="stat-millenia-men" type="number" value="20" /></td>
+                  </tr>
+                  <tr>
+                    <td>Troglodyte</td>
+                    <td><input id="stat-troglodyte-maxHp" type="number" value="320" /></td>
+                    <td><input id="stat-troglodyte-startSp" type="number" value="24" /></td>
+                    <td><input id="stat-troglodyte-startMp" type="number" value="0" /></td>
+                    <td><input id="stat-troglodyte-str" type="number" value="36" /></td>
+                    <td><input id="stat-troglodyte-vit" type="number" value="24" /></td>
+                    <td><input id="stat-troglodyte-agi" type="number" value="21" /></td>
+                    <td><input id="stat-troglodyte-spd" type="number" value="24" /></td>
+                    <td><input id="stat-troglodyte-mag" type="number" value="6" /></td>
+                    <td><input id="stat-troglodyte-men" type="number" value="12" /></td>
+                  </tr>
+                  <tr>
+                    <td>Wing Eye</td>
+                    <td><input id="stat-wingEye-maxHp" type="number" value="240" /></td>
+                    <td><input id="stat-wingEye-startSp" type="number" value="28" /></td>
+                    <td><input id="stat-wingEye-startMp" type="number" value="0" /></td>
+                    <td><input id="stat-wingEye-str" type="number" value="30" /></td>
+                    <td><input id="stat-wingEye-vit" type="number" value="18" /></td>
+                    <td><input id="stat-wingEye-agi" type="number" value="24" /></td>
+                    <td><input id="stat-wingEye-spd" type="number" value="28" /></td>
+                    <td><input id="stat-wingEye-mag" type="number" value="10" /></td>
+                    <td><input id="stat-wingEye-men" type="number" value="12" /></td>
+                  </tr>
+                  <tr>
+                    <td>Mottled Spider</td>
+                    <td><input id="stat-mottledSpider-maxHp" type="number" value="230" /></td>
+                    <td><input id="stat-mottledSpider-startSp" type="number" value="26" /></td>
+                    <td><input id="stat-mottledSpider-startMp" type="number" value="0" /></td>
+                    <td><input id="stat-mottledSpider-str" type="number" value="28" /></td>
+                    <td><input id="stat-mottledSpider-vit" type="number" value="17" /></td>
+                    <td><input id="stat-mottledSpider-agi" type="number" value="25" /></td>
+                    <td><input id="stat-mottledSpider-spd" type="number" value="29" /></td>
+                    <td><input id="stat-mottledSpider-mag" type="number" value="8" /></td>
+                    <td><input id="stat-mottledSpider-men" type="number" value="10" /></td>
+                  </tr>
+                  <tr>
+                    <td>Guardian</td>
+                    <td><input id="stat-guardian-maxHp" type="number" value="620" /></td>
+                    <td><input id="stat-guardian-startSp" type="number" value="48" /></td>
+                    <td><input id="stat-guardian-startMp" type="number" value="0" /></td>
+                    <td><input id="stat-guardian-str" type="number" value="32" /></td>
+                    <td><input id="stat-guardian-vit" type="number" value="28" /></td>
+                    <td><input id="stat-guardian-agi" type="number" value="22" /></td>
+                    <td><input id="stat-guardian-spd" type="number" value="18" /></td>
+                    <td><input id="stat-guardian-mag" type="number" value="26" /></td>
+                    <td><input id="stat-guardian-men" type="number" value="20" /></td>
+                  </tr>
+                  <tr>
+                    <td>Durham Minotaur</td>
+                    <td><input id="stat-durhamMinotaur-maxHp" type="number" value="820" /></td>
+                    <td><input id="stat-durhamMinotaur-startSp" type="number" value="52" /></td>
+                    <td><input id="stat-durhamMinotaur-startMp" type="number" value="0" /></td>
+                    <td><input id="stat-durhamMinotaur-str" type="number" value="46" /></td>
+                    <td><input id="stat-durhamMinotaur-vit" type="number" value="30" /></td>
+                    <td><input id="stat-durhamMinotaur-agi" type="number" value="20" /></td>
+                    <td><input id="stat-durhamMinotaur-spd" type="number" value="22" /></td>
+                    <td><input id="stat-durhamMinotaur-mag" type="number" value="6" /></td>
+                    <td><input id="stat-durhamMinotaur-men" type="number" value="16" /></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <div class="panel">
+              <h2>Сводка</h2>
+              <pre id="summary">Battle in progress.</pre>
+            </div>
+
+            <div class="panel">
+              <h2>Состояние боя</h2>
+              <pre id="status"></pre>
+            </div>
+
+            <div class="panel">
+              <h2>Последние события</h2>
+              <pre id="log"></pre>
+            </div>
+
+            <div class="panel">
+              <h2>Фильтры решений</h2>
+              <div class="inline-form">
+                <label>
+                  Action:
+                  <select id="decision-filter-action">
+                    <option value="all" selected>all</option>
+                  </select>
+                </label>
+                <label>
+                  Controller:
+                  <select id="decision-filter-controller">
+                    <option value="all" selected>all</option>
+                    <option value="manual">manual</option>
+                    <option value="novice-ai">novice-ai</option>
+                    <option value="veteran-ai">veteran-ai</option>
+                  </select>
+                </label>
+                <label>
+                  Danger:
+                  <select id="decision-filter-danger">
+                    <option value="all" selected>all</option>
+                    <option value="healthy">healthy</option>
+                    <option value="bruised">bruised</option>
+                    <option value="danger">danger</option>
+                    <option value="critical">critical</option>
+                    <option value="lowhp">danger + critical</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+
+            <div class="panel">
+              <h2>Последние решения AI / игрока</h2>
+              <pre id="decisions"></pre>
+            </div>
+
+            <div class="panel">
+              <h2>Decision heatmap / статистика</h2>
+              <pre id="decision-stats"></pre>
+            </div>
+
+            <div class="panel">
+              <h2>Graphs</h2>
+              <canvas id="metrics-graph" width="640" height="220"></canvas>
+              <div style="height:12px;"></div>
+              <canvas id="action-graph" width="640" height="280"></canvas>
+              <pre id="graph-info"></pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <p class="muted">
+        Для локального запуска подними из корня репозитория статический сервер,
+        например <code>python3 -m http.server</code>, затем открой
+        <code>http://localhost:8000/index.html</code>. Для CLI-инструментов по балансу смотри README.
+      </p>
+    </main>
+
+    <script type="module" src="./src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="sky-battle-cavern" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#08111f"/>
+      <stop offset="60%" stop-color="#1f2937"/>
+      <stop offset="100%" stop-color="#2b3443"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky-battle-cavern)"/>
+  <ellipse cx="1260" cy="180" rx="170" ry="110" fill="rgba(147,197,253,0.22)"/>
+  <path d="M0 640 Q180 520 340 590 T700 570 T1100 610 T1600 540 V900 H0 Z" fill="rgba(15,23,42,0.35)"/>
+  <path d="M0 720 Q220 600 420 670 T860 650 T1280 700 T1600 640 V900 H0 Z" fill="rgba(2,6,23,0.48)"/>
+  <g fill="rgba(148,163,184,0.15)"><path d="M0 140 L140 0 L320 110 L520 0 L710 150 L930 0 L1160 145 L1390 0 L1600 160 V0 H0 Z"/><path d="M150 900 L250 640 L340 900 Z"/><path d="M860 900 L980 620 L1090 900 Z"/></g>
+</svg>

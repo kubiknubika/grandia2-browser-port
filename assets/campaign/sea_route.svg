@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="sky-campaign-sea_route" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0f3460"/>
+      <stop offset="60%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#0c4a6e"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky-campaign-sea_route)"/>
+  <ellipse cx="1260" cy="180" rx="170" ry="110" fill="rgba(186,230,253,0.22)"/>
+  <path d="M0 640 Q180 520 340 590 T700 570 T1100 610 T1600 540 V900 H0 Z" fill="rgba(15,23,42,0.35)"/>
+  <path d="M0 720 Q220 600 420 670 T860 650 T1280 700 T1600 640 V900 H0 Z" fill="rgba(2,6,23,0.48)"/>
+  <g fill="rgba(248,250,252,0.14)"><path d="M0 650 Q120 620 240 650 T480 650 T720 650 T960 650 T1200 650 T1440 650 T1600 650 V900 H0 Z"/><path d="M1260 500 L1380 420 L1480 520 Z"/></g>
+</svg>
