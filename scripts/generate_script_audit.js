@@ -1,7 +1,16 @@
 import { writeFileSync } from 'node:fs';
 import { buildCampaignScriptAuditSnapshot } from '../src/campaign_content.js';
+import { NPC_DIALOGUES } from '../src/npc_dialogue.js';
 
 const snapshot = buildCampaignScriptAuditSnapshot();
+const npcDialogues = NPC_DIALOGUES;
+const npcPages = npcDialogues.reduce((sum, entry) => sum + (entry.pages?.length ?? 0), 0);
+const npcDialogueBlocks = npcDialogues.reduce((sum, entry) => sum + (entry.pages ?? []).filter((page) => page.speaker).length, 0);
+const byLocation = new Map();
+for (const entry of npcDialogues) {
+  if (!byLocation.has(entry.locationId)) byLocation.set(entry.locationId, []);
+  byLocation.get(entry.locationId).push(entry);
+}
 
 const lines = [
   '# SCRIPT_AUDIT',
@@ -13,6 +22,9 @@ const lines = [
   `- Dialogue pages: **${snapshot.totalDialoguePages}**`,
   `- Narration pages: **${snapshot.totalNarrationPages}**`,
   `- Result pages: **${snapshot.totalResultPages}**`,
+  `- Optional NPC dialogues: **${npcDialogues.length}**`,
+  `- NPC dialogue pages: **${npcPages}**`,
+  `- NPC dialogue blocks: **${npcDialogueBlocks}**`,
   '',
   '## Beat-by-beat density',
   '',
@@ -27,11 +39,18 @@ const lines = [
     `- Total pages: ${entry.totalPages}`,
     '',
   ]),
+  '## Optional NPC dialogue layer',
+  '',
+  ...[...byLocation.entries()].flatMap(([locationId, entries]) => [
+    `### ${locationId}`,
+    ...entries.map((entry) => `- ${entry.label} (${entry.pages?.length ?? 0} стр., ${(entry.pages ?? []).filter((page) => page.speaker).length} реплик)`),
+    '',
+  ]),
   '## Вывод',
   '',
   '- Beat script layer заметно плотнее, чем раньше: у каждого бита теперь есть не только базовый intro/result, но и дополнительный character banter layer.',
-  '- Это улучшает story readability, но всё ещё не означает полный 1:1 перенос всего оригинального сценария Grandia II.',
-  '- Следующий рост script-покрытия — это NPC optional dialogue, extra room conversations и дальнейшее приближение к полному original script.',
+  '- Отдельный optional NPC dialogue слой закрывает разговоры в комнатах, городах и данжах: room-specific side talk больше не отсутствует.',
+  '- Это всё ещё не полный 1:1 перенос всего оригинального сценария Grandia II, но script/dialogue coverage теперь включает и необязательные ветки.',
   '',
 ];
 

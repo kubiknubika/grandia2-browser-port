@@ -571,7 +571,7 @@ export const ACTION_LIBRARY = {
     targeting: 'all-allies',
     chargeMultiplier: 1.22,
     powerBase: 88,
-    cureStatuses: ['poison', 'sleep', 'moveBlock', 'magicBlock'],
+    cureStatuses: ['poison', 'sleep', 'moveBlock', 'magicBlock', 'confusion', 'paralysis'],
     costSp: 90,
     animationSeconds: 1.0,
   },
@@ -755,7 +755,7 @@ export const ACTION_LIBRARY = {
     targeting: 'all-allies',
     chargeMultiplier: 1.2,
     powerBase: 54,
-    cureStatuses: ['poison', 'sleep', 'moveBlock', 'magicBlock'],
+    cureStatuses: ['poison', 'sleep', 'moveBlock', 'magicBlock', 'confusion', 'paralysis'],
     statShifts: [{ stat: 'act', amount: 1, turns: 2, target: 'ally' }],
     costSp: 36,
     animationSeconds: 0.96,
@@ -990,7 +990,7 @@ export const ACTION_LIBRARY = {
     commandType: 'magic',
     targeting: 'single-ally',
     chargeMultiplier: 1.14,
-    cureStatuses: ['poison', 'sleep', 'moveBlock', 'magicBlock'],
+    cureStatuses: ['poison', 'sleep', 'moveBlock', 'magicBlock', 'confusion', 'paralysis'],
     costMp: 12,
     animationSeconds: 0.72,
   },
@@ -1151,6 +1151,634 @@ export const ACTION_LIBRARY = {
     costMp: 40,
     animationSeconds: 1.0,
   },
+  boom: {
+    id: 'boom',
+    label: 'BOOM!',
+    kind: 'magic',
+    commandType: 'magic',
+    targeting: 'all-enemies',
+    chargeMultiplier: 1.2,
+    spellPower: 1.0,
+    spellBase: 18,
+    ipDamage: 70,
+    costMp: 22,
+    element: 'fire',
+    animationSeconds: 0.9,
+  },
+  baBoom: {
+    id: 'baBoom',
+    label: 'BA-BOOM!',
+    kind: 'magic',
+    commandType: 'magic',
+    targeting: 'all-enemies',
+    chargeMultiplier: 1.14,
+    spellPower: 1.32,
+    spellBase: 30,
+    ipDamage: 92,
+    costMp: 46,
+    element: 'fire',
+    animationSeconds: 1.1,
+  },
+  meteorStrike: {
+    id: 'meteorStrike',
+    label: 'Meteor Strike',
+    kind: 'magic',
+    commandType: 'magic',
+    targeting: 'single',
+    chargeMultiplier: 1.32,
+    spellPower: 1.5,
+    spellBase: 40,
+    ipDamage: 120,
+    costMp: 48,
+    element: 'fire',
+    animationSeconds: 1.0,
+  },
+  gadZap: {
+    id: 'gadZap',
+    label: 'GadZap!',
+    kind: 'magic',
+    commandType: 'magic',
+    targeting: 'single',
+    chargeMultiplier: 1.3,
+    spellPower: 1.3,
+    spellBase: 30,
+    ipDamage: 100,
+    costMp: 38,
+    element: 'lightning',
+    animationSeconds: 0.95,
+  },
+  poizn: {
+    id: 'poizn',
+    label: 'Poizn',
+    kind: 'magic',
+    commandType: 'magic',
+    targeting: 'all-enemies',
+    chargeMultiplier: 1.22,
+    spellPower: 0.3,
+    spellBase: 2,
+    ipDamage: 16,
+    costMp: 10,
+    statusEffects: [{ name: 'poison', turns: 2, chance: 0.6 }],
+    animationSeconds: 0.8,
+  },
+  craze: {
+    id: 'craze',
+    label: 'Craze',
+    kind: 'magic',
+    commandType: 'magic',
+    targeting: 'single',
+    chargeMultiplier: 1.24,
+    spellPower: 0.25,
+    spellBase: 2,
+    ipDamage: 18,
+    costMp: 12,
+    statusEffects: [{ name: 'confusion', turns: 2, chance: 0.8 }],
+    animationSeconds: 0.82,
+  },
+  paralysisWave: {
+    id: 'paralysisWave',
+    label: 'Paralysis Wave',
+    kind: 'magic',
+    commandType: 'move',
+    targeting: 'single',
+    chargeMultiplier: 1.3,
+    spellPower: 0.34,
+    spellBase: 4,
+    ipDamage: 22,
+    costSp: 16,
+    statusEffects: [{ name: 'paralysis', turns: 2, chance: 0.7 }],
+    animationSeconds: 0.78,
+  },
+  halvah: {
+    id: 'halvah',
+    label: 'Halvah',
+    kind: 'magic',
+    commandType: 'magic',
+    targeting: 'single-ally',
+    chargeMultiplier: 1.16,
+    powerBase: 10,
+    costMp: 14,
+    cureStatuses: ['poison', 'sleep', 'moveBlock', 'magicBlock', 'confusion', 'paralysis'],
+    animationSeconds: 0.78,
+  },
+  scarletPotion: {
+    id: 'scarletPotion',
+    label: 'Scarlet Potion',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'scarletPotion',
+    healBase: 150,
+  },
+  purifyingHerb: {
+    id: 'purifyingHerb',
+    label: 'Purifying Herb',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'purifyingHerb',
+    healBase: 22,
+    cureStatuses: ['poison'],
+  },
+  poffNut: {
+    id: 'poffNut',
+    label: 'Poff Nut',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'poffNut',
+    healBase: 35,
+  },
+  seedOfLife: {
+    id: 'seedOfLife',
+    label: 'Seed of Life',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'seedOfLife',
+    healBase: 70,
+  },
+  seedOfPsyche: {
+    id: 'seedOfPsyche',
+    label: 'Seed of Psyche',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'seedOfPsyche',
+    restoreSp: 24,
+  },
+  seedOfMagic: {
+    id: 'seedOfMagic',
+    label: 'Seed of Magic',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'seedOfMagic',
+    restoreMp: 16,
+  },
+  manaCrystal: {
+    id: 'manaCrystal',
+    label: 'Mana Crystal',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'manaCrystal',
+    restoreMp: 26,
+  },
+  caterpillarSoup: {
+    id: 'caterpillarSoup',
+    label: 'Caterpillar Soup',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'all-allies',
+    instant: true,
+    inventoryKey: 'caterpillarSoup',
+    healBase: 55,
+    cureStatuses: ['poison'],
+  },
+  paralysisSalve: {
+    id: 'paralysisSalve',
+    label: 'Paralysis Salve',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'paralysisSalve',
+    cureStatuses: ['moveBlock'],
+  },
+  firebomb: {
+    id: 'firebomb',
+    label: 'Firebomb',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'single',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'firebomb',
+    spellPower: 1.12,
+    spellBase: 14,
+    ipDamage: 34,
+    element: 'fire',
+  },
+  mogayBomb: {
+    id: 'mogayBomb',
+    label: 'Mogay Bomb',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-enemies',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'mogayBomb',
+    spellPower: 0.82,
+    spellBase: 8,
+    ipDamage: 24,
+    element: 'fire',
+  },
+  handGrenade: {
+    id: 'handGrenade',
+    label: 'Hand Grenade',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-enemies',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'handGrenade',
+    spellPower: 0.96,
+    spellBase: 12,
+    ipDamage: 28,
+    element: 'fire',
+  },
+  meteorScroll: {
+    id: 'meteorScroll',
+    label: 'Meteor Scroll',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-enemies',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'meteorScroll',
+    spellPower: 1.26,
+    spellBase: 22,
+    ipDamage: 42,
+    element: 'fire',
+  },
+  whirlwindScroll: {
+    id: 'whirlwindScroll',
+    label: 'Whirlwind Scroll',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-enemies',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'whirlwindScroll',
+    spellPower: 1.06,
+    spellBase: 14,
+    ipDamage: 36,
+  },
+  scrollOfAlheal: {
+    id: 'scrollOfAlheal',
+    label: 'Scroll of Alheal',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-allies',
+    instant: true,
+    inventoryKey: 'scrollOfAlheal',
+    healBase: 90,
+  },
+
+  healingFruit: {
+    id: 'healingFruit',
+    label: 'Healing Fruit',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'healingFruit',
+    healBase: 100,
+  },
+  potionOfAzure: {
+    id: 'potionOfAzure',
+    label: 'Potion of Azure',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'all-allies',
+    instant: true,
+    inventoryKey: 'potionOfAzure',
+    healBase: 120,
+  },
+  tortesReedpipe: {
+    id: 'tortesReedpipe',
+    label: 'Torte\'s Reedpipe',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'tortesReedpipe',
+    cureStatuses: ['sleep'],
+  },
+  smellingSalts: {
+    id: 'smellingSalts',
+    label: 'Smelling Salts',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'smellingSalts',
+    cureStatuses: ['sleep', 'paralysis'],
+  },
+  blessingScroll: {
+    id: 'blessingScroll',
+    label: 'Blessing Scroll',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'blessingScroll',
+    cureStatuses: ['poison', 'sleep', 'moveBlock', 'magicBlock', 'confusion', 'paralysis'],
+  },
+  vaccine: {
+    id: 'vaccine',
+    label: 'Vaccine',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'vaccine',
+    cureStatuses: ['poison'],
+  },
+  holyAshes: {
+    id: 'holyAshes',
+    label: 'Holy Ashes',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'holyAshes',
+    revive: true,
+    reviveRatio: 0.3,
+  },
+  myriadPowerNut: {
+    id: 'myriadPowerNut',
+    label: 'Myriad Power Nut',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'myriadPowerNut',
+    restoreSp: 22,
+  },
+  patienceNut: {
+    id: 'patienceNut',
+    label: 'Patience Nut',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'patienceNut',
+    healBase: 30,
+  },
+  swiftnessNut: {
+    id: 'swiftnessNut',
+    label: 'Swiftness Nut',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'swiftnessNut',
+    restoreSp: 16,
+  },
+  slowpokeNut: {
+    id: 'slowpokeNut',
+    label: 'Slowpoke Nut',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'slowpokeNut',
+    healBase: 18,
+  },
+  dynamite: {
+    id: 'dynamite',
+    label: 'Dynamite',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-enemies',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'dynamite',
+    spellPower: 1.1,
+    spellBase: 12,
+    ipDamage: 34,
+    element: 'fire',
+  },
+  hyperMogayBomb: {
+    id: 'hyperMogayBomb',
+    label: 'Hyper Mogay Bomb',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-enemies',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'hyperMogayBomb',
+    spellPower: 1.2,
+    spellBase: 16,
+    ipDamage: 38,
+    element: 'fire',
+  },
+  superMogayBomb: {
+    id: 'superMogayBomb',
+    label: 'Super Mogay Bomb',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-enemies',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'superMogayBomb',
+    spellPower: 1.32,
+    spellBase: 20,
+    ipDamage: 44,
+    element: 'fire',
+  },
+  redGoblinToad: {
+    id: 'redGoblinToad',
+    label: 'Red Goblin Toad',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-enemies',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'redGoblinToad',
+    spellPower: 0.9,
+    spellBase: 10,
+    ipDamage: 30,
+    element: 'fire',
+  },
+  sandmanWhiskers: {
+    id: 'sandmanWhiskers',
+    label: 'Sandman Whiskers',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'sandmanWhiskers',
+    restoreSp: 24,
+  },
+  spiderweb: {
+    id: 'spiderweb',
+    label: 'Spiderweb',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'single',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'spiderweb',
+    spellPower: 0.15,
+    spellBase: 0,
+    ipDamage: 10,
+    statusEffects: [{ name: 'moveBlock', turns: 2, chance: 0.9 }],
+  },
+  toadOil: {
+    id: 'toadOil',
+    label: 'Toad Oil',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'toadOil',
+    restoreMp: 14,
+  },
+  magicalMedicine: {
+    id: 'magicalMedicine',
+    label: 'Magical Medicine',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'all-allies',
+    instant: true,
+    inventoryKey: 'magicalMedicine',
+    healBase: 110,
+  },
+  goldenPotion: {
+    id: 'goldenPotion',
+    label: 'Golden Potion',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'all-allies',
+    instant: true,
+    inventoryKey: 'goldenPotion',
+    healBase: 150,
+  },
+  heroElixir: {
+    id: 'heroElixir',
+    label: 'Hero\'s Elixir',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'heroElixir',
+    healBase: 260,
+    cureStatuses: ['poison', 'sleep', 'moveBlock', 'magicBlock', 'confusion', 'paralysis'],
+  },
+  demonAsh: {
+    id: 'demonAsh',
+    label: 'Demon Ash',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'single',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'demonAsh',
+    spellPower: 0.95,
+    spellBase: 10,
+    ipDamage: 26,
+  },
+  redBirdStone: {
+    id: 'redBirdStone',
+    label: 'Red Bird Stone',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'single',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'redBirdStone',
+    spellPower: 1.0,
+    spellBase: 12,
+    ipDamage: 30,
+    element: 'fire',
+  },
+  icefangStone: {
+    id: 'icefangStone',
+    label: 'Icefang Stone',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'single',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'icefangStone',
+    spellPower: 1.05,
+    spellBase: 12,
+    ipDamage: 28,
+  },
+  electrumStone: {
+    id: 'electrumStone',
+    label: 'Electrum Stone',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'single',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'electrumStone',
+    spellPower: 1.05,
+    spellBase: 14,
+    ipDamage: 30,
+    element: 'lightning',
+  },
+  galeStone: {
+    id: 'galeStone',
+    label: 'Gale Stone',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-enemies',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'galeStone',
+    spellPower: 0.95,
+    spellBase: 12,
+    ipDamage: 30,
+  },
+  flameStone: {
+    id: 'flameStone',
+    label: 'Flame Stone',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'single',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'flameStone',
+    spellPower: 1.05,
+    spellBase: 14,
+    ipDamage: 30,
+    element: 'fire',
+  },
+  quakeStone: {
+    id: 'quakeStone',
+    label: 'Quake Stone',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-enemies',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'quakeStone',
+    spellPower: 1.0,
+    spellBase: 14,
+    ipDamage: 32,
+  },
+  sympathyNut: {
+    id: 'sympathyNut',
+    label: 'Sympathy Nut',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'sympathyNut',
+    healBase: 45,
+  },
+  seedOfRunning: {
+    id: 'seedOfRunning',
+    label: 'Seed of Running',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'seedOfRunning',
+    restoreSp: 12,
+  },
 };
 
 export class IPGaugeTimeline {
@@ -1265,16 +1893,39 @@ function getScaleForTeam(balance, team) {
   return mergeScale({}, teamScale);
 }
 
-function getActionDefinition(battle, actionId) {
+function scaleActionDefinitionForLevel(definition, level) {
+  const lv = Math.max(1, Math.min(5, Number(level) || 1));
+  if (lv <= 1) {
+    return definition;
+  }
+  const powerFactor = 1 + (lv - 1) * 0.15;
+  const chargeFactor = 1 + (lv - 1) * 0.06;
+  const ipFactor = 1 + (lv - 1) * 0.12;
+  return {
+    ...definition,
+    ...(definition.power != null ? { power: Math.round(definition.power * powerFactor * 1000) / 1000 } : {}),
+    ...(definition.spellPower != null ? { spellPower: Math.round(definition.spellPower * powerFactor * 1000) / 1000 } : {}),
+    ...(definition.powerBase != null ? { powerBase: Math.round(definition.powerBase + (lv - 1) * 4) } : {}),
+    ...(definition.spellBase != null ? { spellBase: Math.round(definition.spellBase + (lv - 1) * 3) } : {}),
+    ...(definition.ipDamage != null ? { ipDamage: Math.round(definition.ipDamage * ipFactor) } : {}),
+    ...(definition.chargeMultiplier != null ? { chargeMultiplier: Math.round(definition.chargeMultiplier * chargeFactor * 1000) / 1000 } : {}),
+    level: lv,
+  };
+}
+
+function getActionDefinition(battle, actionId, fighter = null) {
   const base = ACTION_LIBRARY[actionId];
   if (!base) {
     throw new Error(`Unknown action definition: ${actionId}`);
   }
 
-  return {
+  const merged = {
     ...base,
     ...(battle.balance?.actionOverrides?.[actionId] ?? {}),
   };
+
+  const level = fighter?.actionLevels?.[actionId] ?? 1;
+  return scaleActionDefinitionForLevel(merged, level);
 }
 
 export function getBattleStat(fighter, stat) {
@@ -1479,6 +2130,25 @@ function processTurnStartStatuses(battle, fighter) {
 
   fighter.bossReactionCooldown = Math.max(0, (fighter.bossReactionCooldown ?? 0) - 1);
 
+  if ((fighter.statuses.paralysis ?? 0) > 0) {
+    fighter.statuses.paralysis = Math.max(0, fighter.statuses.paralysis - 1);
+    if (battle.rng() < 0.5) {
+      finishTurn(fighter);
+      return {
+        stopTurn: true,
+        text: `${fighter.name} is paralyzed and cannot move!`,
+      };
+    }
+    notes.push(`${fighter.name} shakes off paralysis`);
+  }
+
+  if ((fighter.statuses.confusion ?? 0) > 0) {
+    fighter.statuses.confusion = Math.max(0, fighter.statuses.confusion - 1);
+    if (fighter.statuses.confusion === 0) {
+      notes.push(`${fighter.name} regains its senses`);
+    }
+  }
+
   const expired = [];
   for (const key of ['moveBlock', 'magicBlock']) {
     if ((fighter.statuses[key] ?? 0) > 0) {
@@ -1658,7 +2328,7 @@ function chooseBestLineAttackForTargets(attackerPosition, targets, definition) {
 }
 
 function chooseBestLineAttack(battle, fighter, actionId) {
-  const definition = getActionDefinition(battle, actionId);
+  const definition = getActionDefinition(battle, actionId, fighter);
   const opponents = livingOpponents(battle, fighter);
   return chooseBestLineAttackForTargets(fighter.position, opponents, definition);
 }
@@ -1670,7 +2340,7 @@ function maxProjectedLineHits(battle, defendingTeam, overrides = []) {
   });
 
   const attackers = listLiving(defendingTeam === battle.players ? battle.enemies : battle.players)
-    .filter((fighter) => fighter.loadout.lineMove && fighter.sp >= getActionDefinition(battle, fighter.loadout.lineMove).costSp);
+    .filter((fighter) => fighter.loadout.lineMove && fighter.sp >= getActionDefinition(battle, fighter.loadout.lineMove, fighter).costSp);
 
   if (attackers.length === 0) {
     return 0;
@@ -1678,7 +2348,7 @@ function maxProjectedLineHits(battle, defendingTeam, overrides = []) {
 
   let best = 0;
   for (const attacker of attackers) {
-    const definition = getActionDefinition(battle, attacker.loadout.lineMove);
+    const definition = getActionDefinition(battle, attacker.loadout.lineMove, attacker);
     const line = chooseBestLineAttackForTargets(attacker.position, targets, definition);
     best = Math.max(best, line?.hits.length ?? 0);
   }
@@ -1719,7 +2389,7 @@ function createCombatant(config, balance) {
     debuffs: { atk: 0, def: 0, act: 0, mov: 0 },
     buffTimers: { atk: 0, def: 0, act: 0, mov: 0 },
     debuffTimers: { atk: 0, def: 0, act: 0, mov: 0 },
-    statuses: { sleep: 0, moveBlock: 0, magicBlock: 0, poison: 0 },
+    statuses: { sleep: 0, moveBlock: 0, magicBlock: 0, poison: 0, confusion: 0, paralysis: 0 },
     inventory: config.inventory ? { ...config.inventory } : undefined,
     preTurnResolved: false,
     bossPhaseIndex: 0,
@@ -1728,6 +2398,7 @@ function createCombatant(config, balance) {
     position: clonePoint(config.position),
     home: clonePoint(config.position),
     radius: config.radius ?? 18,
+    actionLevels: { ...(config.actionLevels ?? {}) },
     get isAlive() {
       return this.hp > 0;
     },
@@ -1782,12 +2453,12 @@ export const PRESETS = {
     loadout: {
       cancelMove: 'impactBomb',
       healMagic: 'heal',
-      healMagics: ['healer', 'healerPlus', 'alhealer', 'cure', 'refresh', 'dropletsOfLife', 'resurrect'],
+      healMagics: ['healer', 'healerPlus', 'alhealer', 'cure', 'refresh', 'halvah', 'dropletsOfLife', 'resurrect'],
       offensiveMagic: 'burn',
       offensiveMagics: ['burnflame', 'burnstrike', 'whiteApocalypse', 'quake'],
       supportMagics: ['wow', 'speedy', 'diggin', 'runner', 'fiora'],
       debuffMagics: ['stram', 'cold', 'gravity', 'defLoss'],
-      statusMoves: ['nightmareBall', 'snooze'],
+      statusMoves: ['nightmareBall', 'snooze', 'craze', 'poizn'],
     },
   },
   tio: {
@@ -1815,7 +2486,7 @@ export const PRESETS = {
       singleMoves: ['fastDanceWhirl'],
       aoeMoves: ['tornado'],
       offensiveMagic: 'zap',
-      offensiveMagics: ['crackle', 'crackling', 'zapAll', 'dragonZap'],
+      offensiveMagics: ['crackle', 'crackling', 'zapAll', 'dragonZap', 'boom'],
       supportMagics: ['speedy', 'whisperToStars', 'runner'],
       debuffMagics: ['gravity', 'defLoss'],
       statusMoves: ['spellbindDust', 'freeze'],
@@ -1845,7 +2516,7 @@ export const PRESETS = {
       singleMoves: ['arrowShot', 'heelCrush', 'starvingTongue', 'grudgingClaws'],
       aoeMove: 'fallenWings',
       offensiveMagic: 'burn',
-      offensiveMagics: ['burnflame', 'zap', 'zapAll', 'hellburner'],
+      offensiveMagics: ['burnflame', 'zap', 'zapAll', 'hellburner', 'gadZap', 'baBoom', 'meteorStrike'],
       debuffMagics: ['stram', 'cold', 'gravity'],
       statusMoves: ['nightmareBall', 'spellbindingEye'],
     },
@@ -1878,7 +2549,7 @@ export const PRESETS = {
       offensiveMagics: ['icePrison', 'crackle'],
       supportMagics: ['wow', 'speedy', 'vitalityMarch', 'runner'],
       debuffMagics: ['stram', 'defLoss'],
-      statusMoves: ['nightmareBall', 'freeze'],
+      statusMoves: ['nightmareBall', 'freeze', 'craze', 'poizn'],
     },
   },
   mareg: {
@@ -2595,7 +3266,7 @@ export const PRESETS = {
     color: '#a855f7',
     resistances: { fire: 1.15, lightning: 1 },
     statusResistances: { sleep: 0.55, moveBlock: 1, magicBlock: 0.9, poison: 0.2 },
-    loadout: { statusMoves: ['nightmareBall', 'snooze'], debuffMagics: ['cold', 'defLoss'] },
+    loadout: { statusMoves: ['nightmareBall', 'snooze', 'craze', 'poizn'], debuffMagics: ['cold', 'defLoss'] },
   },
   hammerhead: {
     id: 'hammerhead',
@@ -2828,7 +3499,7 @@ export const PRESETS = {
     radius: 24,
     resistances: { fire: 0.95, lightning: 0.95 },
     statusResistances: { sleep: 0.55, moveBlock: 0.8, magicBlock: 0.8, poison: 0.75 },
-    loadout: { singleMoves: ['dragonRise', 'trueDragonRise'], supportMagics: ['wow'] },
+    loadout: { singleMoves: ['dragonRise', 'trueDragonRise'], supportMagics: ['wow'], statusMoves: ['paralysisWave'] },
   },
   evilManeuver: {
     id: 'evil-maneuver',
@@ -2986,6 +3657,896 @@ export const PRESETS = {
     statusResistances: { sleep: 0.8, moveBlock: 1, magicBlock: 0.9, poison: 0.1 },
     loadout: { statusMoves: ['poisonSpit', 'spellbindDust'] },
   },
+  sandman: {
+    id: 'sandman',
+    name: 'Sandman',
+    team: 'enemies',
+    role: 'sand-harasser',
+    maxHp: 360,
+    maxSp: 100,
+    maxMp: 22,
+    startSp: 22,
+    startMp: 14,
+    str: 26,
+    vit: 18,
+    agi: 25,
+    spd: 24,
+    mag: 16,
+    men: 14,
+    color: '#eab308',
+    resistances: { fire: 1.05, lightning: 0.95 },
+    statusResistances: { sleep: 0.45, moveBlock: 1, magicBlock: 1, poison: 0.8 },
+    loadout: { statusMoves: ['snooze', 'nightmareBall'], debuffMagics: ['cold'] },
+  },
+  pitViper: {
+    id: 'pit-viper',
+    name: 'Pit Viper',
+    team: 'enemies',
+    role: 'poison-striker',
+    maxHp: 640,
+    maxSp: 110,
+    maxMp: 0,
+    startSp: 28,
+    startMp: 0,
+    str: 38,
+    vit: 22,
+    agi: 26,
+    spd: 26,
+    mag: 8,
+    men: 14,
+    color: '#65a30d',
+    resistances: { fire: 1.1, lightning: 0.95 },
+    statusResistances: { sleep: 0.8, moveBlock: 1, magicBlock: 1, poison: 0.12 },
+    loadout: { statusMoves: ['poisonSpit'], singleMoves: ['beastFangCut'], lineMove: 'wingSlice' },
+  },
+  scalyWarrior: {
+    id: 'scaly-warrior',
+    name: 'Scaly Warrior',
+    team: 'enemies',
+    role: 'scaled-vanguard',
+    maxHp: 900,
+    maxSp: 120,
+    maxMp: 0,
+    startSp: 34,
+    startMp: 0,
+    str: 42,
+    vit: 30,
+    agi: 24,
+    spd: 22,
+    mag: 8,
+    men: 18,
+    color: '#94a3b8',
+    radius: 22,
+    resistances: { fire: 1.05, lightning: 0.9 },
+    statusResistances: { sleep: 0.7, moveBlock: 0.85, magicBlock: 0.95, poison: 0.5 },
+    loadout: { cancelMove: 'beastFangCut', singleMoves: ['critical', 'beastKingSmash'] },
+  },
+  skullSnail: {
+    id: 'skull-snail',
+    name: 'Skull Snail',
+    team: 'enemies',
+    role: 'shell-tank',
+    maxHp: 1100,
+    maxSp: 110,
+    maxMp: 0,
+    startSp: 24,
+    startMp: 0,
+    str: 30,
+    vit: 34,
+    agi: 14,
+    spd: 14,
+    mag: 12,
+    men: 22,
+    color: '#cbd5e1',
+    radius: 24,
+    resistances: { fire: 1.15, lightning: 1 },
+    statusResistances: { sleep: 0.85, moveBlock: 0.7, magicBlock: 0.9, poison: 0.3 },
+    loadout: { statusMoves: ['webTrap', 'poisonSpit'], supportMagics: ['diggin'] },
+  },
+  twinOgre: {
+    id: 'twin-ogre',
+    name: 'Twin Ogre',
+    team: 'enemies',
+    role: 'twin-bruiser',
+    maxHp: 800,
+    maxSp: 110,
+    maxMp: 0,
+    startSp: 30,
+    startMp: 0,
+    str: 40,
+    vit: 26,
+    agi: 22,
+    spd: 20,
+    mag: 6,
+    men: 12,
+    color: '#f87171',
+    radius: 22,
+    resistances: { fire: 0.95, lightning: 1.05 },
+    statusResistances: { sleep: 0.8, moveBlock: 0.85, magicBlock: 1, poison: 0.75 },
+    loadout: { singleMoves: ['critical', 'beastKingSmash'], lineMove: 'tornadoHorn' },
+  },
+  warpWarrior: {
+    id: 'warp-warrior',
+    name: 'Warp Warrior',
+    team: 'enemies',
+    role: 'warp-slasher',
+    maxHp: 780,
+    maxSp: 120,
+    maxMp: 0,
+    startSp: 36,
+    startMp: 0,
+    str: 38,
+    vit: 24,
+    agi: 30,
+    spd: 30,
+    mag: 10,
+    men: 16,
+    color: '#a78bfa',
+    radius: 22,
+    resistances: { fire: 1, lightning: 0.9 },
+    statusResistances: { sleep: 0.6, moveBlock: 0.8, magicBlock: 0.85, poison: 0.6 },
+    loadout: { cancelMove: 'beastFangCut', singleMoves: ['fastDanceWhirl', 'critical'] },
+  },
+  veinBrain: {
+    id: 'vein-brain',
+    name: 'Vein Brain',
+    team: 'enemies',
+    role: 'vein-caster',
+    maxHp: 850,
+    maxSp: 120,
+    maxMp: 44,
+    startSp: 24,
+    startMp: 26,
+    str: 20,
+    vit: 22,
+    agi: 20,
+    spd: 22,
+    mag: 30,
+    men: 24,
+    color: '#f472b6',
+    radius: 24,
+    resistances: { fire: 1, lightning: 0.95 },
+    statusResistances: { sleep: 0.6, moveBlock: 0.85, magicBlock: 0.7, poison: 0.4 },
+    loadout: { offensiveMagics: ['cold', 'zap', 'crackle'], healMagics: ['healer'], statusMoves: ['spellbindDust'] },
+  },
+  starMirage: {
+    id: 'star-mirage',
+    name: 'Star Mirage',
+    team: 'enemies',
+    role: 'star-flier',
+    maxHp: 780,
+    maxSp: 110,
+    maxMp: 30,
+    startSp: 26,
+    startMp: 18,
+    str: 24,
+    vit: 20,
+    agi: 28,
+    spd: 30,
+    mag: 30,
+    men: 22,
+    color: '#facc15',
+    radius: 22,
+    resistances: { fire: 1.1, lightning: 0.8 },
+    statusResistances: { sleep: 0.7, moveBlock: 0.9, magicBlock: 0.85, poison: 0.7 },
+    loadout: { lineMove: 'wingSlice', offensiveMagics: ['zap', 'zapAll', 'crackle'], statusMoves: ['snooze'] },
+  },
+  tarantula: {
+    id: 'tarantula',
+    name: 'Tarantula',
+    team: 'enemies',
+    role: 'venom-brute',
+    maxHp: 1050,
+    maxSp: 120,
+    maxMp: 0,
+    startSp: 30,
+    startMp: 0,
+    str: 38,
+    vit: 28,
+    agi: 22,
+    spd: 22,
+    mag: 10,
+    men: 16,
+    color: '#3f6212',
+    radius: 24,
+    resistances: { fire: 1.2, lightning: 1 },
+    statusResistances: { sleep: 0.75, moveBlock: 0.8, magicBlock: 1, poison: 0.08 },
+    loadout: { statusMoves: ['poisonSpit', 'webTrap'], singleMoves: ['beastFangCut'] },
+  },
+  valmarFly: {
+    id: 'valmar-fly',
+    name: 'Valmar Fly',
+    team: 'enemies',
+    role: 'organic-flier',
+    maxHp: 1150,
+    maxSp: 130,
+    maxMp: 20,
+    startSp: 28,
+    startMp: 10,
+    str: 30,
+    vit: 24,
+    agi: 30,
+    spd: 30,
+    mag: 16,
+    men: 18,
+    color: '#ec4899',
+    radius: 22,
+    resistances: { fire: 0.95, lightning: 0.85 },
+    statusResistances: { sleep: 0.6, moveBlock: 0.85, magicBlock: 0.9, poison: 0.25 },
+    loadout: { lineMove: 'wingSlice', aoeMove: 'fallenWings', statusMoves: ['webTrap', 'poisonSpit'] },
+  },
+  valmarYoung: {
+    id: 'valmar-young',
+    name: 'Valmar Young',
+    team: 'enemies',
+    role: 'valmar-youngling',
+    maxHp: 1450,
+    maxSp: 160,
+    maxMp: 44,
+    startSp: 44,
+    startMp: 24,
+    str: 34,
+    vit: 28,
+    agi: 26,
+    spd: 26,
+    mag: 28,
+    men: 24,
+    color: '#d946ef',
+    radius: 26,
+    resistances: { fire: 0.95, lightning: 0.9 },
+    statusResistances: { sleep: 0.45, moveBlock: 0.75, magicBlock: 0.65, poison: 0.2 },
+    loadout: { aoeMove: 'destructionRay', offensiveMagics: ['quake', 'zapAll'], statusMoves: ['spellbindDust', 'snooze'] },
+    bossPatterns: [
+      ['critical', 'destructionRay', 'snooze'],
+      ['quake', 'spellbindDust', 'critical'],
+    ],
+    bossPhases: [
+      {
+        threshold: 0.5,
+        message: 'The Valmar Young sheds its shell and rages with newborn chaos!',
+        buffs: { atk: 1, act: 1 },
+        grants: { offensiveMagic: 'zapAll' },
+      },
+    ],
+  },
+  yeti: {
+    id: 'yeti',
+    name: 'Yeti',
+    team: 'enemies',
+    role: 'ice-bruiser',
+    maxHp: 1350,
+    maxSp: 130,
+    maxMp: 26,
+    startSp: 34,
+    startMp: 14,
+    str: 42,
+    vit: 30,
+    agi: 20,
+    spd: 18,
+    mag: 16,
+    men: 20,
+    color: '#e0f2fe',
+    radius: 26,
+    resistances: { fire: 1.25, lightning: 0.95 },
+    statusResistances: { sleep: 0.7, moveBlock: 0.75, magicBlock: 0.85, poison: 0.7 },
+    loadout: { singleMoves: ['beastKingSmash', 'critical'], statusMoves: ['freeze'], debuffMagics: ['cold'], lineMove: 'tornadoHorn' },
+  },
+  dodo: {
+    id: 'dodo',
+    name: 'Dodo',
+    team: 'enemies',
+    role: 'early-flier',
+    maxHp: 190,
+    maxSp: 80,
+    maxMp: 0,
+    startSp: 18,
+    startMp: 0,
+    str: 24,
+    vit: 14,
+    agi: 24,
+    spd: 27,
+    mag: 6,
+    men: 10,
+    color: '#fbbf24',
+    resistances: { fire: 1.05, lightning: 0.9 },
+    statusResistances: { sleep: 0.7, moveBlock: 0.9, magicBlock: 1, poison: 0.8, confusion: 0.8, paralysis: 0.85 },
+    loadout: { lineMove: 'wingSlice', singleMoves: ['critical'] },
+  },
+  bigFoot: {
+    id: 'big-foot',
+    name: 'Big Foot',
+    team: 'enemies',
+    role: 'snow-bruiser',
+    maxHp: 520,
+    maxSp: 100,
+    maxMp: 0,
+    startSp: 24,
+    startMp: 0,
+    str: 34,
+    vit: 22,
+    agi: 20,
+    spd: 20,
+    mag: 8,
+    men: 12,
+    color: '#cbd5e1',
+    radius: 22,
+    resistances: { fire: 1.2, lightning: 0.95 },
+    statusResistances: { sleep: 0.75, moveBlock: 0.8, magicBlock: 1, poison: 0.75, confusion: 0.8, paralysis: 0.8 },
+    loadout: { singleMoves: ['critical', 'beastFangCut'], lineMove: 'tornadoHorn' },
+  },
+  chameleon: {
+    id: 'chameleon',
+    name: 'Chameleon',
+    team: 'enemies',
+    role: 'camouflage-harasser',
+    maxHp: 300,
+    maxSp: 90,
+    maxMp: 0,
+    startSp: 24,
+    startMp: 0,
+    str: 28,
+    vit: 18,
+    agi: 26,
+    spd: 26,
+    mag: 8,
+    men: 12,
+    color: '#84cc16',
+    resistances: { fire: 1.05, lightning: 0.95 },
+    statusResistances: { sleep: 0.7, moveBlock: 0.85, magicBlock: 0.9, poison: 0.4, confusion: 0.7, paralysis: 0.7 },
+    loadout: { statusMoves: ['poisonSpit', 'webTrap'], debuffMagics: ['cold'], lineMove: 'wingSlice' },
+  },
+  dragonoid: {
+    id: 'dragonoid',
+    name: 'Dragonoid',
+    team: 'enemies',
+    role: 'drake-vanguard',
+    maxHp: 480,
+    maxSp: 100,
+    maxMp: 22,
+    startSp: 26,
+    startMp: 10,
+    str: 36,
+    vit: 22,
+    agi: 22,
+    spd: 22,
+    mag: 16,
+    men: 14,
+    color: '#f87171',
+    radius: 22,
+    resistances: { fire: 0.7, lightning: 1.05 },
+    statusResistances: { sleep: 0.7, moveBlock: 0.85, magicBlock: 0.9, poison: 0.6, confusion: 0.75, paralysis: 0.8 },
+    loadout: { offensiveMagic: 'burn', singleMoves: ['critical', 'beastFangCut'], lineMove: 'wingSlice' },
+  },
+  flameToad: {
+    id: 'flame-toad',
+    name: 'Flame Toad',
+    team: 'enemies',
+    role: 'ember-harasser',
+    maxHp: 450,
+    maxSp: 100,
+    maxMp: 24,
+    startSp: 24,
+    startMp: 12,
+    str: 30,
+    vit: 20,
+    agi: 24,
+    spd: 24,
+    mag: 18,
+    men: 14,
+    color: '#f97316',
+    resistances: { fire: 0.6, lightning: 1.05 },
+    statusResistances: { sleep: 0.8, moveBlock: 0.9, magicBlock: 0.9, poison: 0.7, confusion: 0.8, paralysis: 0.8 },
+    loadout: { offensiveMagics: ['burn', 'burnflame'], statusMoves: ['freeze'], singleMoves: ['critical'] },
+  },
+  clayBird: {
+    id: 'clay-bird',
+    name: 'Clay Bird',
+    team: 'enemies',
+    role: 'clay-flier',
+    maxHp: 900,
+    maxSp: 110,
+    maxMp: 0,
+    startSp: 30,
+    startMp: 0,
+    str: 36,
+    vit: 24,
+    agi: 28,
+    spd: 28,
+    mag: 10,
+    men: 16,
+    color: '#d6d3d1',
+    radius: 22,
+    resistances: { fire: 1.05, lightning: 0.9 },
+    statusResistances: { sleep: 0.7, moveBlock: 0.85, magicBlock: 0.9, poison: 0.6, confusion: 0.7, paralysis: 0.75 },
+    loadout: { lineMove: 'wingSlice', aoeMove: 'fallenWings', singleMoves: ['critical'] },
+  },
+  crimsonClaw: {
+    id: 'crimson-claw',
+    name: 'Crimson Claw',
+    team: 'enemies',
+    role: 'reef-striker',
+    maxHp: 560,
+    maxSp: 100,
+    maxMp: 0,
+    startSp: 30,
+    startMp: 0,
+    str: 36,
+    vit: 20,
+    agi: 28,
+    spd: 28,
+    mag: 8,
+    men: 12,
+    color: '#ef4444',
+    radius: 22,
+    resistances: { fire: 0.95, lightning: 1.05 },
+    statusResistances: { sleep: 0.75, moveBlock: 0.85, magicBlock: 1, poison: 0.6, confusion: 0.7, paralysis: 0.7 },
+    loadout: { cancelMove: 'beastFangCut', singleMoves: ['critical', 'fastDanceWhirl'] },
+  },
+  desertDiver: {
+    id: 'desert-diver',
+    name: 'Desert Diver',
+    team: 'enemies',
+    role: 'rift-diver',
+    maxHp: 760,
+    maxSp: 110,
+    maxMp: 0,
+    startSp: 28,
+    startMp: 0,
+    str: 38,
+    vit: 24,
+    agi: 26,
+    spd: 26,
+    mag: 10,
+    men: 14,
+    color: '#f59e0b',
+    radius: 22,
+    resistances: { fire: 1.1, lightning: 0.95 },
+    statusResistances: { sleep: 0.75, moveBlock: 0.85, magicBlock: 0.9, poison: 0.5, confusion: 0.75, paralysis: 0.8 },
+    loadout: { lineMove: 'tornadoHorn', singleMoves: ['beastFangCut', 'critical'] },
+  },
+  brainBat: {
+    id: 'brain-bat',
+    name: 'Brain Bat',
+    team: 'enemies',
+    role: 'mind-flier',
+    maxHp: 700,
+    maxSp: 110,
+    maxMp: 36,
+    startSp: 22,
+    startMp: 22,
+    str: 22,
+    vit: 20,
+    agi: 28,
+    spd: 30,
+    mag: 26,
+    men: 20,
+    color: '#a78bfa',
+    radius: 20,
+    resistances: { fire: 1, lightning: 0.9 },
+    statusResistances: { sleep: 0.5, moveBlock: 0.8, magicBlock: 0.75, poison: 0.5, confusion: 0.5, paralysis: 0.6 },
+    loadout: { statusMoves: ['snooze', 'nightmareBall', 'paralysisWave'], offensiveMagics: ['crackle', 'zap'], debuffMagics: ['cold'] },
+  },
+  dinoFreezer: {
+    id: 'dino-freezer',
+    name: 'Dino Freezer',
+    team: 'enemies',
+    role: 'ice-tank',
+    maxHp: 980,
+    maxSp: 120,
+    maxMp: 26,
+    startSp: 30,
+    startMp: 12,
+    str: 40,
+    vit: 30,
+    agi: 18,
+    spd: 18,
+    mag: 16,
+    men: 18,
+    color: '#bae6fd',
+    radius: 26,
+    resistances: { fire: 1.25, lightning: 0.95 },
+    statusResistances: { sleep: 0.7, moveBlock: 0.75, magicBlock: 0.85, poison: 0.6, confusion: 0.7, paralysis: 0.7 },
+    loadout: { statusMoves: ['freeze'], debuffMagics: ['cold'], singleMoves: ['beastKingSmash', 'critical'] },
+  },
+  venomousLarva: {
+    id: 'venomous-larva',
+    name: 'Venomous Larva',
+    team: 'enemies',
+    role: 'venom-crawler',
+    maxHp: 880,
+    maxSp: 110,
+    maxMp: 0,
+    startSp: 28,
+    startMp: 0,
+    str: 34,
+    vit: 26,
+    agi: 20,
+    spd: 20,
+    mag: 10,
+    men: 14,
+    color: '#4d7c0f',
+    radius: 24,
+    resistances: { fire: 1.2, lightning: 1 },
+    statusResistances: { sleep: 0.8, moveBlock: 0.75, magicBlock: 1, poison: 0.08, confusion: 0.7, paralysis: 0.7 },
+    loadout: { statusMoves: ['poisonSpit', 'webTrap'], singleMoves: ['beastFangCut'] },
+  },
+  devil: {
+    id: 'devil',
+    name: 'Devil',
+    team: 'enemies',
+    role: 'special-elite',
+    maxHp: 1500,
+    maxSp: 140,
+    maxMp: 34,
+    startSp: 44,
+    startMp: 18,
+    str: 40,
+    vit: 28,
+    agi: 28,
+    spd: 28,
+    mag: 26,
+    men: 22,
+    color: '#7c3aed',
+    radius: 26,
+    resistances: { fire: 0.8, lightning: 0.9 },
+    statusResistances: { sleep: 0.4, moveBlock: 0.7, magicBlock: 0.65, poison: 0.4, confusion: 0.5, paralysis: 0.55 },
+    loadout: { offensiveMagics: ['burnflame', 'hellburner'], singleMoves: ['critical', 'beastKingSmash'], statusMoves: ['spellbindDust', 'craze'] },
+    bossPatterns: [
+      ['critical', 'hellburner', 'craze'],
+      ['burnflame', 'beastKingSmash', 'spellbindDust'],
+    ],
+  },
+  snowLeopard: {
+    id: 'snow-leopard',
+    name: 'Snow Leopard',
+    team: 'enemies',
+    role: 'special-stalker',
+    maxHp: 1300,
+    maxSp: 130,
+    maxMp: 0,
+    startSp: 40,
+    startMp: 0,
+    str: 42,
+    vit: 26,
+    agi: 32,
+    spd: 32,
+    mag: 10,
+    men: 16,
+    color: '#e0f2fe',
+    radius: 24,
+    resistances: { fire: 1.2, lightning: 0.9 },
+    statusResistances: { sleep: 0.6, moveBlock: 0.8, magicBlock: 0.9, poison: 0.6, confusion: 0.6, paralysis: 0.6 },
+    loadout: { cancelMove: 'beastFangCut', singleMoves: ['fastDanceWhirl', 'critical'], statusMoves: ['freeze'] },
+    bossPatterns: [
+      ['critical', 'fastDanceWhirl', 'freeze'],
+      ['beastFangCut', 'critical', 'fastDanceWhirl'],
+    ],
+  },
+  emeraldBird: {
+    id: 'emerald-bird',
+    name: 'Emerald Bird',
+    team: 'enemies',
+    role: 'storm-flier',
+    maxHp: 1100,
+    maxSp: 120,
+    maxMp: 30,
+    startSp: 32,
+    startMp: 16,
+    str: 32,
+    vit: 22,
+    agi: 30,
+    spd: 32,
+    mag: 28,
+    men: 20,
+    color: '#34d399',
+    radius: 22,
+    resistances: { fire: 1.1, lightning: 0.75 },
+    statusResistances: { sleep: 0.6, moveBlock: 0.85, magicBlock: 0.8, poison: 0.6, confusion: 0.6, paralysis: 0.65 },
+    loadout: { lineMove: 'wingSlice', offensiveMagics: ['howlnado', 'zapAll'], aoeMove: 'fallenWings' },
+  },
+  ancientWarrior: {
+    id: 'ancient-warrior',
+    name: 'Ancient Warrior',
+    team: 'enemies',
+    role: 'ancient-vanguard',
+    maxHp: 1200,
+    maxSp: 130,
+    maxMp: 0,
+    startSp: 38,
+    startMp: 0,
+    str: 42,
+    vit: 32,
+    agi: 22,
+    spd: 20,
+    mag: 10,
+    men: 20,
+    color: '#94a3b8',
+    radius: 24,
+    resistances: { fire: 1, lightning: 0.95 },
+    statusResistances: { sleep: 0.5, moveBlock: 0.75, magicBlock: 0.9, poison: 0.5, confusion: 0.6, paralysis: 0.6 },
+    loadout: { cancelMove: 'beastFangCut', singleMoves: ['beastKingSmash', 'critical'], lineMove: 'tornadoHorn' },
+    bossPatterns: [
+      ['critical', 'beastFangCut', 'tornadoHorn'],
+      ['beastKingSmash', 'critical', 'beastFangCut'],
+    ],
+  },
+  deathDoberman: {
+    id: 'death-doberman',
+    name: 'Death Doberman',
+    team: 'enemies',
+    role: 'death-hound',
+    maxHp: 1000,
+    maxSp: 120,
+    maxMp: 0,
+    startSp: 36,
+    startMp: 0,
+    str: 40,
+    vit: 24,
+    agi: 30,
+    spd: 30,
+    mag: 10,
+    men: 14,
+    color: '#57534e',
+    radius: 22,
+    resistances: { fire: 1, lightning: 0.95 },
+    statusResistances: { sleep: 0.6, moveBlock: 0.85, magicBlock: 1, poison: 0.6, confusion: 0.6, paralysis: 0.6 },
+    loadout: { cancelMove: 'beastFangCut', singleMoves: ['critical', 'fastDanceWhirl'] },
+  },
+  eyeOfValmar: {
+    id: 'eye-of-valmar',
+    name: 'Eye of Valmar',
+    team: 'enemies',
+    role: 'gravity-eye',
+    maxHp: 1400,
+    maxSp: 160,
+    maxMp: 60,
+    startSp: 52,
+    startMp: 34,
+    str: 28,
+    vit: 26,
+    agi: 26,
+    spd: 24,
+    mag: 34,
+    men: 26,
+    color: '#f472b6',
+    radius: 26,
+    resistances: { fire: 0.95, lightning: 0.85 },
+    statusResistances: { sleep: 0.25, moveBlock: 0.6, magicBlock: 0.55, poison: 0.3, confusion: 0.4, paralysis: 0.4 },
+    loadout: { aoeMove: 'destructionRay', offensiveMagics: ['tremor', 'quake'], debuffMagics: ['gravity', 'defLoss'], statusMoves: ['snooze'] },
+    bossPatterns: [
+      ['critical', 'tremor', 'gravity'],
+      ['quake', 'snooze', 'destructionRay'],
+    ],
+    bossPhases: [
+      {
+        threshold: 0.55,
+        message: 'The Eye of Valmar opens wide and drags the whole field into its gravity well!',
+        buffs: { act: 1, atk: 1 },
+        grants: { aoeMove: 'destructionRay' },
+      },
+    ],
+  },
+  crimsonTails: {
+    id: 'crimson-tails',
+    name: 'Crimson Tails',
+    team: 'enemies',
+    role: 'twin-reef-boss',
+    maxHp: 1300,
+    maxSp: 160,
+    maxMp: 0,
+    startSp: 50,
+    startMp: 0,
+    str: 42,
+    vit: 26,
+    agi: 30,
+    spd: 30,
+    mag: 12,
+    men: 18,
+    color: '#f43f5e',
+    radius: 24,
+    resistances: { fire: 0.9, lightning: 1 },
+    statusResistances: { sleep: 0.3, moveBlock: 0.7, magicBlock: 0.85, poison: 0.4, confusion: 0.5, paralysis: 0.5 },
+    loadout: { cancelMove: 'beastFangCut', singleMoves: ['fastDanceWhirl', 'beastKingSmash'], lineMove: 'tornadoHorn' },
+    bossPatterns: [
+      ['critical', 'fastDanceWhirl', 'tornadoHorn'],
+      ['beastFangCut', 'critical', 'beastKingSmash'],
+    ],
+    bossPhases: [
+      {
+        threshold: 0.5,
+        message: 'The twin tails split apart and strike from two sides at once!',
+        buffs: { act: 1, spd: 1 },
+      },
+    ],
+  },
+  nagaQueens: {
+    id: 'naga-queens',
+    name: 'Naga Queens',
+    team: 'enemies',
+    role: 'rift-queen',
+    maxHp: 1700,
+    maxSp: 180,
+    maxMp: 60,
+    startSp: 58,
+    startMp: 34,
+    str: 38,
+    vit: 30,
+    agi: 26,
+    spd: 24,
+    mag: 34,
+    men: 28,
+    color: '#0ea5e9',
+    radius: 28,
+    resistances: { fire: 0.95, lightning: 0.8 },
+    statusResistances: { sleep: 0.2, moveBlock: 0.6, magicBlock: 0.5, poison: 0.3, confusion: 0.4, paralysis: 0.35 },
+    loadout: { aoeMove: 'destructionRay', offensiveMagics: ['zapAll', 'quake', 'gadZap'], statusMoves: ['spellbindDust', 'snooze'] },
+    bossPatterns: [
+      ['critical', 'zapAll', 'spellbindDust'],
+      ['quake', 'gadZap', 'destructionRay'],
+    ],
+    bossPhases: [
+      {
+        threshold: 0.6,
+        message: 'The Naga Queens merge their crowns and unleash a storm of royal lightning!',
+        buffs: { atk: 1, act: 1 },
+        grants: { offensiveMagic: 'gadZap' },
+      },
+      {
+        threshold: 0.3,
+        message: 'The queens shed their last husks and bare the full fury of Demon\'s Law!',
+        buffs: { atk: 1, act: 1 },
+        summons: [{ presetKey: 'wingEye', position: { x: 790, y: 120 }, name: 'Naga Bit' }],
+      },
+    ],
+  },
+  dualFists: {
+    id: 'dual-fists',
+    name: 'Dual Fists',
+    team: 'enemies',
+    role: 'twin-fist',
+    maxHp: 1600,
+    maxSp: 170,
+    maxMp: 0,
+    startSp: 56,
+    startMp: 0,
+    str: 46,
+    vit: 30,
+    agi: 28,
+    spd: 26,
+    mag: 10,
+    men: 20,
+    color: '#f97316',
+    radius: 26,
+    resistances: { fire: 1, lightning: 0.95 },
+    statusResistances: { sleep: 0.3, moveBlock: 0.65, magicBlock: 0.9, poison: 0.4, confusion: 0.5, paralysis: 0.45 },
+    loadout: { cancelMove: 'beastFangCut', singleMoves: ['beastKingSmash', 'fastDanceWhirl', 'critical'], lineMove: 'tornadoHorn' },
+    bossPatterns: [
+      ['critical', 'beastKingSmash', 'tornadoHorn'],
+      ['fastDanceWhirl', 'beastFangCut', 'critical'],
+    ],
+    bossPhases: [
+      {
+        threshold: 0.5,
+        message: 'The Dual Fists enter a synchronized barrage and strike as one body!',
+        buffs: { atk: 1, act: 1 },
+      },
+    ],
+  },
+  birthplaceGuardian: {
+    id: 'birthplace-guardian',
+    name: 'Birthplace Guardian',
+    team: 'enemies',
+    role: 'archive-guardian',
+    maxHp: 1500,
+    maxSp: 170,
+    maxMp: 50,
+    startSp: 54,
+    startMp: 28,
+    str: 40,
+    vit: 32,
+    agi: 24,
+    spd: 22,
+    mag: 30,
+    men: 28,
+    color: '#93c5fd',
+    radius: 26,
+    resistances: { fire: 1.05, lightning: 0.8 },
+    statusResistances: { sleep: 0.25, moveBlock: 0.6, magicBlock: 0.5, poison: 0.3, confusion: 0.4, paralysis: 0.4 },
+    loadout: { aoeMove: 'killerVoltage', offensiveMagics: ['burnflame', 'quake'], statusMoves: ['spellbindDust'] },
+    bossPatterns: [
+      ['critical', 'killerVoltage', 'spellbindDust'],
+      ['burnflame', 'quake', 'critical'],
+    ],
+    bossPhases: [
+      {
+        threshold: 0.55,
+        message: 'The Birthplace Guardian hardens its shell and seals the archive against intruders!',
+        buffs: { def: 1, act: 1 },
+      },
+    ],
+  },
+  eggGuardian: {
+    id: 'egg-guardian',
+    name: 'Egg Guardian',
+    team: 'enemies',
+    role: 'final-warden',
+    maxHp: 1900,
+    maxSp: 200,
+    maxMp: 70,
+    startSp: 64,
+    startMp: 38,
+    str: 40,
+    vit: 34,
+    agi: 26,
+    spd: 24,
+    mag: 36,
+    men: 30,
+    color: '#f8fafc',
+    radius: 30,
+    resistances: { fire: 0.9, lightning: 0.9 },
+    statusResistances: { sleep: 0.15, moveBlock: 0.5, magicBlock: 0.4, poison: 0.15, confusion: 0.3, paralysis: 0.3 },
+    loadout: { aoeMove: 'destructionRay', offensiveMagics: ['hellburner', 'zapAll'], statusMoves: ['spellbindDust', 'snooze'], healMagics: ['healer'] },
+    bossPatterns: [
+      ['critical', 'destructionRay', 'spellbindDust'],
+      ['hellburner', 'critical', 'snooze'],
+      ['zapAll', 'destructionRay', 'critical'],
+    ],
+    bossPhases: [
+      {
+        threshold: 0.66,
+        message: 'The Egg Guardian cracks open and spills living bits across the chamber!',
+        buffs: { atk: 1, act: 1 },
+        summons: [{ presetKey: 'wingEye', position: { x: 790, y: 120 }, name: 'Guardian Bit' }, { presetKey: 'mottledSpider', position: { x: 790, y: 280 }, name: 'Spider Bit' }],
+      },
+      {
+        threshold: 0.33,
+        message: 'The guardian discards its shell entirely and fights with raw divine fury!',
+        buffs: { atk: 2, act: 1 },
+        grants: { offensiveMagic: 'hellburner' },
+      },
+    ],
+  },
+  finalValmar: {
+    id: 'final-valmar',
+    name: 'Final Valmar',
+    team: 'enemies',
+    role: 'apex-god',
+    maxHp: 2600,
+    maxSp: 240,
+    maxMp: 80,
+    startSp: 80,
+    startMp: 44,
+    str: 44,
+    vit: 38,
+    agi: 28,
+    spd: 26,
+    mag: 40,
+    men: 34,
+    color: '#d946ef',
+    radius: 34,
+    resistances: { fire: 0.9, lightning: 0.85 },
+    statusResistances: { sleep: 0.05, moveBlock: 0.4, magicBlock: 0.3, poison: 0.05, confusion: 0.2, paralysis: 0.2 },
+    loadout: { aoeMove: 'destructionRay', offensiveMagics: ['baBoom', 'gadZap', 'meteorStrike'], statusMoves: ['spellbindDust', 'snooze'], debuffMagics: ['defLoss'] },
+    bossPatterns: [
+      ['critical', 'destructionRay', 'baBoom'],
+      ['meteorStrike', 'critical', 'spellbindDust'],
+      ['gadZap', 'destructionRay', 'critical'],
+    ],
+    bossPhases: [
+      {
+        threshold: 0.66,
+        message: 'Valmar\u2019s heart beats once and the sky itself splits open with false divinity!',
+        buffs: { atk: 1, act: 1 },
+        summons: [{ presetKey: 'innerShadowRyudo', position: { x: 780, y: 120 }, name: 'False Image' }],
+      },
+      {
+        threshold: 0.33,
+        message: 'The last mask tears away: Valmar rises as the god of the new darkness!',
+        buffs: { atk: 2, act: 2 },
+        grants: { offensiveMagic: 'meteorStrike' },
+      },
+    ],
+  },
 };
 
 function defaultPlayersEncounter() {
@@ -3118,7 +4679,7 @@ export function createDefaultBattle(options = {}) {
 }
 
 function buildAction(battle, actor, actionId, target = null, point = null) {
-  const definition = getActionDefinition(battle, actionId);
+  const definition = getActionDefinition(battle, actionId, actor);
   return {
     id: actionId,
     definition,
@@ -3127,6 +4688,24 @@ function buildAction(battle, actor, actionId, target = null, point = null) {
     targetPoint: point ? clonePoint(point) : target ? clonePoint(target.position) : null,
     chosenAt: actor.ip,
   };
+}
+
+function buildConfusedAction(battle, fighter) {
+  const living = allCombatants(battle).filter((unit) => unit.isAlive && unit.id !== fighter.id);
+  if (living.length === 0) {
+    return null;
+  }
+  const target = living[Math.floor(battle.rng() * living.length)];
+  const actionId = battle.rng() < 0.5 ? 'combo' : 'critical';
+  return buildAction(battle, fighter, actionId, target);
+}
+
+function retargetConfusableOpponent(battle, actor, targetId) {
+  const direct = allCombatants(battle).find((fighter) => fighter.isAlive && fighter.id === targetId);
+  if (direct && ((actor.statuses?.confusion ?? 0) > 0 || direct.team !== actor.team)) {
+    return direct;
+  }
+  return retargetSingleOpponent(battle, actor, targetId);
 }
 
 function sameActionSignature(left, right) {
@@ -3155,7 +4734,7 @@ export function getAvailableActions(battle, fighter) {
 
   if (!moveBlocked) {
     for (const moveId of aoeMoveIds(fighter)) {
-      const definition = getActionDefinition(battle, moveId);
+      const definition = getActionDefinition(battle, moveId, fighter);
       if (opponents.length > 0 && canPayActionCost(fighter, definition)) {
         actions.push(buildAction(battle, fighter, moveId));
       }
@@ -3169,7 +4748,7 @@ export function getAvailableActions(battle, fighter) {
 
   if (!moveBlocked) {
     for (const moveId of cancelMoveIds(fighter)) {
-      const definition = getActionDefinition(battle, moveId);
+      const definition = getActionDefinition(battle, moveId, fighter);
       if (!canPayActionCost(fighter, definition)) {
         continue;
       }
@@ -3179,7 +4758,7 @@ export function getAvailableActions(battle, fighter) {
     }
 
     for (const moveId of singleMoveIds(fighter)) {
-      const definition = getActionDefinition(battle, moveId);
+      const definition = getActionDefinition(battle, moveId, fighter);
       if (!canPayActionCost(fighter, definition)) {
         continue;
       }
@@ -3189,7 +4768,7 @@ export function getAvailableActions(battle, fighter) {
     }
 
     for (const moveId of statusMoveIds(fighter)) {
-      const definition = getActionDefinition(battle, moveId);
+      const definition = getActionDefinition(battle, moveId, fighter);
       if (!canPayActionCost(fighter, definition)) {
         continue;
       }
@@ -3199,7 +4778,7 @@ export function getAvailableActions(battle, fighter) {
     }
 
     for (const moveId of lineMoveIds(fighter)) {
-      const definition = getActionDefinition(battle, moveId);
+      const definition = getActionDefinition(battle, moveId, fighter);
       if (!canPayActionCost(fighter, definition)) {
         continue;
       }
@@ -3243,7 +4822,7 @@ export function getAvailableActions(battle, fighter) {
 
     if (Array.isArray(fighter.loadout.supportMagics)) {
       for (const spellId of fighter.loadout.supportMagics) {
-        const definition = getActionDefinition(battle, spellId);
+        const definition = getActionDefinition(battle, spellId, fighter);
         if (!canPayActionCost(fighter, definition)) {
           continue;
         }
@@ -3259,7 +4838,7 @@ export function getAvailableActions(battle, fighter) {
 
     if (Array.isArray(fighter.loadout.debuffMagics)) {
       for (const spellId of fighter.loadout.debuffMagics) {
-        const definition = getActionDefinition(battle, spellId);
+        const definition = getActionDefinition(battle, spellId, fighter);
         if (!canPayActionCost(fighter, definition)) {
           continue;
         }
@@ -3293,6 +4872,18 @@ export function getAvailableActions(battle, fighter) {
     for (const definition of itemActions) {
       const count = battle.inventory?.[definition.inventoryKey] ?? 0;
       if (count <= 0) {
+        continue;
+      }
+      if (definition.offensive) {
+        if (definition.targeting === 'all-enemies') {
+          if (opponents.length > 0) {
+            actions.push(buildAction(battle, fighter, definition.id));
+          }
+        } else {
+          for (const opponent of opponents) {
+            actions.push(buildAction(battle, fighter, definition.id, opponent));
+          }
+        }
         continue;
       }
       if (definition.targeting === 'all-allies') {
@@ -3453,6 +5044,11 @@ export function analyzeActionChoice(battle, fighter, action) {
     targetCount = 1;
     statusNames = action.definition.cureStatuses ?? [];
     itemCureScore = statusNames.reduce((score, name) => score + ((target.statuses?.[name] ?? 0) > 0 ? 1 : 0), 0) + (action.definition.revive && !target.isAlive ? 2 : 0);
+  } else if (action.definition.commandType === 'item' && action.definition.offensive) {
+    const targetList = action.definition.targeting === 'all-enemies' ? opponents : (target ? [target] : []);
+    targetCount = targetList.length;
+    totalEstimatedDamage = targetList.reduce((sum, opponent) => sum + Math.max(1, Math.round(fighter.mag * (action.definition.spellPower ?? 0.9) - opponent.men * 0.35 + (action.definition.spellBase ?? 0))), 0);
+    totalTargetMaxHp = targetList.reduce((sum, opponent) => sum + opponent.maxHp, 0);
   } else if (action.definition.commandType === 'item' && target) {
     targetCount = 1;
     healAmount = Math.min(target.maxHp - target.hp, action.definition.healBase ?? 0);
@@ -4855,6 +6451,14 @@ function chooseActionForFighter(battle, fighter) {
     return null;
   }
 
+  if ((fighter.statuses?.confusion ?? 0) > 0) {
+    const confused = buildConfusedAction(battle, fighter);
+    if (confused) {
+      recordDecision(battle, fighter, 'confused', actions, confused);
+      return confused;
+    }
+  }
+
   const controller = resolveTeamController(battle, fighter);
   const controllerLabel = describeController(controller, fighter.team === 'players' ? 'player-ai' : 'enemy-ai');
 
@@ -4957,6 +6561,10 @@ function applyHitEffects(battle, attacker, target, definition, baseDamage) {
     target.statuses.sleep = 0;
   }
 
+  if (damage > 0 && (target.statuses.confusion ?? 0) > 0) {
+    target.statuses.confusion = 0;
+  }
+
   gainSp(target, target.guard?.type === 'endure' ? 5 : 3);
   gainSp(attacker, definition.spGainOnHit ?? 0);
 
@@ -4997,7 +6605,7 @@ function applyHitEffects(battle, attacker, target, definition, baseDamage) {
 
 function resolveCombo(battle, actor, action) {
   const definition = action.definition;
-  let target = retargetSingleOpponent(battle, actor, action.targetId);
+  let target = retargetConfusableOpponent(battle, actor, action.targetId);
 
   if (!target) {
     finishTurn(actor);
@@ -5068,7 +6676,7 @@ function resolveCombo(battle, actor, action) {
 
 function resolveCriticalLikeAction(battle, actor, action) {
   const definition = action.definition;
-  const target = retargetSingleOpponent(battle, actor, action.targetId);
+  const target = retargetConfusableOpponent(battle, actor, action.targetId);
 
   if (!target) {
     finishTurn(actor);
@@ -5452,9 +7060,13 @@ function resolveHeal(battle, actor, action) {
 
 function resolveItemAction(battle, actor, action) {
   const definition = action.definition;
-  const targets = definition.targeting === 'all-allies'
-    ? battleTeam(battle, actor).filter((fighter) => fighter.isAlive)
-    : [retargetSingleAlly(battle, actor, action.targetId, { includeDowned: Boolean(definition.revive), preferDowned: Boolean(definition.revive) })].filter(Boolean);
+  const targets = definition.offensive
+    ? (definition.targeting === 'all-enemies'
+      ? livingOpponents(battle, actor)
+      : [retargetSingleOpponent(battle, actor, action.targetId)].filter(Boolean))
+    : definition.targeting === 'all-allies'
+      ? battleTeam(battle, actor).filter((fighter) => fighter.isAlive)
+      : [retargetSingleAlly(battle, actor, action.targetId, { includeDowned: Boolean(definition.revive), preferDowned: Boolean(definition.revive) })].filter(Boolean);
 
   if (targets.length === 0) {
     finishTurn(actor);
@@ -5484,6 +7096,15 @@ function resolveItemAction(battle, actor, action) {
     let revived = false;
     let restoredSp = 0;
     let restoredMp = 0;
+    let damage = 0;
+    if (definition.offensive) {
+      damage = calcMagicDamage(actor, target, definition.spellPower ?? 0.9, definition.spellBase ?? 0, battle.rng, definition.element ?? null);
+      const result = applyHitEffects(battle, actor, target, definition, damage);
+      damage = result.damage;
+      if (target.hp <= 0) {
+        markDown(target);
+      }
+    }
     if (!target.isAlive && definition.revive) {
       const hp = Math.max(1, Math.round(target.maxHp * (definition.reviveRatio ?? 0.35)));
       target.hp = Math.min(target.maxHp, hp);
@@ -5509,14 +7130,15 @@ function resolveItemAction(battle, actor, action) {
         cured.push(status);
       }
     }
-    impacts.push({ targetId: target.id, heal: healed, revived, restoreSp: restoredSp, restoreMp: restoredMp, statuses: cured });
+    impacts.push({ targetId: target.id, heal: healed, revived, restoreSp: restoredSp, restoreMp: restoredMp, statuses: cured, damage, defeated: !target.isAlive });
   }
 
   finishTurn(actor);
   const impactText = impacts.map((impact) => {
-    const target = battleTeam(battle, actor).find((fighter) => fighter.id === impact.targetId);
+    const target = allCombatants(battle).find((fighter) => fighter.id === impact.targetId);
     const parts = [];
     if (impact.revived) parts.push('revive');
+    if ((impact.damage ?? 0) > 0) parts.push(`${impact.damage}${impact.defeated ? ' (KO)' : ''}`);
     if ((impact.heal ?? 0) > 0) parts.push(`heal ${impact.heal}`);
     if ((impact.restoreSp ?? 0) > 0) parts.push(`SP +${impact.restoreSp}`);
     if ((impact.restoreMp ?? 0) > 0) parts.push(`MP +${impact.restoreMp}`);

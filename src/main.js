@@ -74,6 +74,30 @@ import {
   buildBestiaryGroupSnapshot,
 } from './bestiary_data.js';
 import {
+  NPC_DIALOGUES,
+  npcDialoguesForLocation,
+} from './npc_dialogue.js';
+import {
+  MANA_EGGS,
+} from './mana_eggs.js';
+import {
+  valuablesList,
+} from './valuables.js';
+import {
+  mapEventTypeToSfx,
+  sound,
+} from './audio.js';
+import {
+  EGG_LEVEL_COSTS,
+  isMagicLevelable,
+  isMoveLevelable,
+  magicLevelCosts,
+  moveLevelCosts,
+} from './action_levels.js';
+import {
+  dropEntriesForPresetKey,
+} from './drop_data.js';
+import {
   ALL_ART_PATHS,
   battlefieldArtPath,
   campaignBackdropPathForLocation,
@@ -98,6 +122,13 @@ const UNIT_POSITIONS = {
   clawsValmar: { x: 730, y: 210 },
   heartValmar: { x: 730, y: 210 },
   zeraAvatar: { x: 730, y: 210 },
+  eyeOfValmar: { x: 730, y: 210 },
+  crimsonTails: { x: 730, y: 210 },
+  nagaQueens: { x: 730, y: 210 },
+  dualFists: { x: 730, y: 210 },
+  birthplaceGuardian: { x: 730, y: 210 },
+  eggGuardian: { x: 730, y: 210 },
+  finalValmar: { x: 730, y: 210 },
 };
 const STAT_FIELDS = ['maxHp', 'startSp', 'startMp', 'str', 'vit', 'agi', 'spd', 'mag', 'men'];
 
@@ -220,7 +251,7 @@ function handbookGroupLabelForAction(definition) {
     return 'Other';
   }
   if (definition.commandType === 'item') {
-    return 'Items';
+    return definition.offensive ? 'Offensive items' : 'Items';
   }
   if (definition.commandType === 'defense' || definition.commandType === 'basic') {
     return 'Core';
@@ -299,6 +330,18 @@ function createEmptyCampaignRun() {
     growthUnlockIds: [],
     activeLocationSceneId: null,
     seenLocationSceneIds: [],
+    seenNpcDialogueIds: [],
+    actionLevels: {},
+    eggLoadout: {
+      ryudo: null,
+      elena: 'holy_egg',
+      tio: null,
+      roan: null,
+      mareg: null,
+      millenia: 'chaos_egg',
+    },
+    eggLevels: {},
+    ownedEggIds: [],
     roster: createDefaultCampaignRoster(),
     equipmentLoadout: createDefaultEquipmentLoadout(),
     journal: [],
@@ -391,6 +434,48 @@ const ENCOUNTER_TEMPLATES = {
     description: 'Финальный scripted encounter против Зеры и поздней тьмы.',
     players: ['ryudo', 'elena', 'millenia'],
     enemies: ['zeraAvatar'],
+  },
+  eyeOfValmarBoss: {
+    label: 'Eye of Valmar',
+    description: 'Сюжетный босс Aira\'s Space: гравитационное око Вальмара.',
+    players: ['ryudo', 'elena', 'roan', 'mareg'],
+    enemies: ['eyeOfValmar'],
+  },
+  crimsonTailsBoss: {
+    label: 'Crimson Tails',
+    description: 'Двойной босс рифа Сесиль: две хвостовые сестры-охотницы.',
+    players: ['ryudo', 'elena', 'roan', 'mareg'],
+    enemies: ['crimsonTails'],
+  },
+  nagaQueensBoss: {
+    label: 'Naga Queens',
+    description: 'Королевы-наги из Demon\'s Law: молния, земля и ложная святость.',
+    players: ['ryudo', 'elena', 'mareg', 'tio'],
+    enemies: ['nagaQueens'],
+  },
+  dualFistsBoss: {
+    label: 'Dual Fists',
+    description: 'Суб-босс Birthplace: два кулака древнего стража.',
+    players: ['ryudo', 'elena', 'roan', 'tio'],
+    enemies: ['dualFists'],
+  },
+  birthplaceGuardianBoss: {
+    label: 'Birthplace Guardians',
+    description: 'Древние стражи Истока богов: пара архивных стражей.',
+    players: ['ryudo', 'elena', 'roan', 'tio'],
+    enemies: ['birthplaceGuardian', 'birthplaceGuardian'],
+  },
+  eggGuardianBoss: {
+    label: 'Egg Guardian',
+    description: 'Финальный страж Нового Вальмара с выводком битов.',
+    players: ['ryudo', 'elena', 'millenia'],
+    enemies: ['eggGuardian'],
+  },
+  finalValmarBoss: {
+    label: 'Final Valmar',
+    description: 'Полноценный финальный Вальмар: три фазы и ложные формы.',
+    players: ['ryudo', 'elena', 'millenia'],
+    enemies: ['finalValmar'],
   },
 };
 
@@ -642,6 +727,132 @@ const SCENARIO_PRESETS = {
       zeraAvatar: { maxHp: 880, startSp: 64, startMp: 0, str: 36, vit: 30, agi: 27, spd: 22, mag: 32, men: 24 },
     },
   },
+  'eye-of-valmar': {
+    label: 'Eye of Valmar',
+    description: 'Гравитационное око Вальмара из Aira\'s Space.',
+    encounterTemplate: 'eyeOfValmarBoss',
+    battlefieldTheme: 'cavern',
+    playEnemyAi: 'veteran',
+    debugPlayerAi: 'veteran',
+    debugEnemyAi: 'veteran',
+    trainingStyle: 'control',
+    battleSeed: 6767,
+    debugTrainingSeed: 6767,
+    debugEvalCount: 140,
+    enabledUnits: { tio: false, millenia: false, mottledSpider: false, guardian: false },
+    unitOverrides: {
+      ...createDefaultUnitFormState(),
+      eyeOfValmar: { maxHp: 1400, startSp: 52, startMp: 34, str: 28, vit: 26, agi: 26, spd: 24, mag: 34, men: 26 },
+    },
+  },
+  'crimson-tails': {
+    label: 'Crimson Tails',
+    description: 'Двойной босс рифа Сесиль.',
+    encounterTemplate: 'crimsonTailsBoss',
+    battlefieldTheme: 'forest',
+    playEnemyAi: 'veteran',
+    debugPlayerAi: 'veteran',
+    debugEnemyAi: 'veteran',
+    trainingStyle: 'control',
+    battleSeed: 6868,
+    debugTrainingSeed: 6868,
+    debugEvalCount: 140,
+    enabledUnits: { tio: false, millenia: false, mottledSpider: false, guardian: false },
+    unitOverrides: {
+      ...createDefaultUnitFormState(),
+      crimsonTails: { maxHp: 1300, startSp: 50, startMp: 0, str: 42, vit: 26, agi: 30, spd: 30, mag: 12, men: 18 },
+    },
+  },
+  'naga-queens': {
+    label: 'Naga Queens',
+    description: 'Королевы-наги из Demon\'s Law.',
+    encounterTemplate: 'nagaQueensBoss',
+    battlefieldTheme: 'ruins',
+    playEnemyAi: 'veteran',
+    debugPlayerAi: 'veteran',
+    debugEnemyAi: 'veteran',
+    trainingStyle: 'control',
+    battleSeed: 6969,
+    debugTrainingSeed: 6969,
+    debugEvalCount: 160,
+    enabledUnits: { tio: true, millenia: false, mottledSpider: false, guardian: false },
+    unitOverrides: {
+      ...createDefaultUnitFormState(),
+      nagaQueens: { maxHp: 1700, startSp: 58, startMp: 34, str: 38, vit: 30, agi: 26, spd: 24, mag: 34, men: 28 },
+    },
+  },
+  'dual-fists': {
+    label: 'Dual Fists',
+    description: 'Два кулака древнего стража Birthplace.',
+    encounterTemplate: 'dualFistsBoss',
+    battlefieldTheme: 'ruins',
+    playEnemyAi: 'veteran',
+    debugPlayerAi: 'veteran',
+    debugEnemyAi: 'veteran',
+    trainingStyle: 'control',
+    battleSeed: 7070,
+    debugTrainingSeed: 7070,
+    debugEvalCount: 140,
+    enabledUnits: { tio: true, millenia: false, mottledSpider: false, guardian: false },
+    unitOverrides: {
+      ...createDefaultUnitFormState(),
+      dualFists: { maxHp: 1600, startSp: 56, startMp: 0, str: 46, vit: 30, agi: 28, spd: 26, mag: 10, men: 20 },
+    },
+  },
+  'birthplace-guardians': {
+    label: 'Birthplace Guardians',
+    description: 'Пара архивных стражей Истока богов.',
+    encounterTemplate: 'birthplaceGuardianBoss',
+    battlefieldTheme: 'ruins',
+    playEnemyAi: 'veteran',
+    debugPlayerAi: 'veteran',
+    debugEnemyAi: 'veteran',
+    trainingStyle: 'control',
+    battleSeed: 7171,
+    debugTrainingSeed: 7171,
+    debugEvalCount: 140,
+    enabledUnits: { tio: true, millenia: false, mottledSpider: false, guardian: false },
+    unitOverrides: {
+      ...createDefaultUnitFormState(),
+      birthplaceGuardian: { maxHp: 1500, startSp: 54, startMp: 28, str: 40, vit: 32, agi: 24, spd: 22, mag: 30, men: 28 },
+    },
+  },
+  'egg-guardian': {
+    label: 'Egg Guardian',
+    description: 'Финальный страж Нового Вальмара.',
+    encounterTemplate: 'eggGuardianBoss',
+    battlefieldTheme: 'volcano',
+    playEnemyAi: 'veteran',
+    debugPlayerAi: 'veteran',
+    debugEnemyAi: 'veteran',
+    trainingStyle: 'control',
+    battleSeed: 7272,
+    debugTrainingSeed: 7272,
+    debugEvalCount: 160,
+    enabledUnits: { tio: false, millenia: true, mottledSpider: false, guardian: false },
+    unitOverrides: {
+      ...createDefaultUnitFormState(),
+      eggGuardian: { maxHp: 1900, startSp: 64, startMp: 38, str: 40, vit: 34, agi: 26, spd: 24, mag: 36, men: 30 },
+    },
+  },
+  'final-valmar': {
+    label: 'Final Valmar',
+    description: 'Полноценный финальный бог: три фазы и ложные формы.',
+    encounterTemplate: 'finalValmarBoss',
+    battlefieldTheme: 'volcano',
+    playEnemyAi: 'veteran',
+    debugPlayerAi: 'veteran',
+    debugEnemyAi: 'veteran',
+    trainingStyle: 'control',
+    battleSeed: 7373,
+    debugTrainingSeed: 7373,
+    debugEvalCount: 160,
+    enabledUnits: { tio: false, millenia: true, mottledSpider: false, guardian: false },
+    unitOverrides: {
+      ...createDefaultUnitFormState(),
+      finalValmar: { maxHp: 2600, startSp: 80, startMp: 44, str: 44, vit: 38, agi: 28, spd: 26, mag: 40, men: 34 },
+    },
+  },
 };
 
 const SCENARIO_RUN_LIBRARY = [
@@ -659,6 +870,13 @@ const SCENARIO_RUN_LIBRARY = [
   { id: 'claws-6363', label: 'Claws of Valmar #6363', scenario: 'claws-valmar', battleSeed: 6363, note: 'Быстрый заводской boss под арку Тио.' },
   { id: 'heart-6464', label: 'Heart of Valmar #6464', scenario: 'heart-valmar', battleSeed: 6464, note: 'Поздний сюжетный boss Дня Тьмы.' },
   { id: 'zera-6565', label: 'Zera finale #6565', scenario: 'zera-finale', battleSeed: 6565, note: 'Финальный сюжетный бой против Зеры.' },
+  { id: 'eye-6767', label: 'Eye of Valmar #6767', scenario: 'eye-of-valmar', battleSeed: 6767, note: 'Гравитационное око Вальмара.' },
+  { id: 'crimson-6868', label: 'Crimson Tails #6868', scenario: 'crimson-tails', battleSeed: 6868, note: 'Двойной босс рифа Сесиль.' },
+  { id: 'naga-6969', label: 'Naga Queens #6969', scenario: 'naga-queens', battleSeed: 6969, note: 'Королевы-наги Demon\'s Law.' },
+  { id: 'fists-7070', label: 'Dual Fists #7070', scenario: 'dual-fists', battleSeed: 7070, note: 'Кулаки древнего стража.' },
+  { id: 'guardians-7171', label: 'Birthplace Guardians #7171', scenario: 'birthplace-guardians', battleSeed: 7171, note: 'Пара архивных стражей.' },
+  { id: 'egg-7272', label: 'Egg Guardian #7272', scenario: 'egg-guardian', battleSeed: 7272, note: 'Страж с битами.' },
+  { id: 'valmar-7373', label: 'Final Valmar #7373', scenario: 'final-valmar', battleSeed: 7373, note: 'Полноценный финальный Вальмар.' },
 ];
 
 function resolveScenarioSource(key) {
@@ -710,9 +928,36 @@ function applyScenarioSource(source) {
   }
 }
 
+const SETTINGS_STORAGE_KEY = 'grandia2-settings';
+
+const DEFAULT_SETTINGS = {
+  defaultPlayEnemyAi: 'novice',
+  defaultBattlefieldTheme: 'forest',
+  showCommandHints: true,
+  replaySpeedMs: 550,
+  soundEnabled: true,
+  musicEnabled: true,
+};
+
+function loadPersistedSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    return { ...DEFAULT_SETTINGS, ...(raw ? JSON.parse(raw) : {}) };
+  } catch (error) {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+function savePersistedSettings() {
+  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state.settings ?? DEFAULT_SETTINGS));
+}
+
 const state = {
   appScreen: 'menu',
   activeTab: 'play',
+  menuCursor: 0,
+  settings: loadPersistedSettings(),
+  menuParityScreen: 'status',
   battle: null,
   replay: null,
   replayAutoplayTimer: null,
@@ -756,6 +1001,7 @@ const state = {
     danger: 'all',
   },
   lastMetrics: null,
+  sfxOutcomeFor: null,
   canvasHotspots: [],
   navigationKeys: {},
   campaignAvatar: null,
@@ -782,10 +1028,31 @@ const elements = {
   tabCampaign: document.querySelector('#tab-campaign'),
   tabDebug: document.querySelector('#tab-debug'),
   tabCompare: document.querySelector('#tab-compare'),
+  tabParity: document.querySelector('#tab-parity'),
   playSection: document.querySelector('#play-section'),
   campaignSection: document.querySelector('#campaign-section'),
   debugSection: document.querySelector('#debug-section'),
   compareSection: document.querySelector('#compare-section'),
+  paritySection: document.querySelector('#menu-parity-section'),
+  menuOpenParity: document.querySelector('#menu-open-parity'),
+  menuDesc: document.querySelector('#menu-desc'),
+  menuDescText: document.querySelector('#menu-desc-text'),
+  mpStatus: document.querySelector('#mp-status'),
+  mpSkills: document.querySelector('#mp-skills'),
+  mpEggs: document.querySelector('#mp-eggs'),
+  mpItems: document.querySelector('#mp-items'),
+  mpBestiary: document.querySelector('#mp-bestiary'),
+  mpValuables: document.querySelector('#mp-valuables'),
+  mpConfig: document.querySelector('#mp-config'),
+  mpOutput: document.querySelector('#mp-output'),
+  mpImages: document.querySelector('#mp-images'),
+  mpConfigAi: document.querySelector('#mp-config-ai'),
+  mpConfigTheme: document.querySelector('#mp-config-theme'),
+  mpConfigHints: document.querySelector('#mp-config-hints'),
+  mpConfigSpeed: document.querySelector('#mp-config-speed'),
+  mpConfigSound: document.querySelector('#mp-config-sound'),
+  mpConfigMusic: document.querySelector('#mp-config-music'),
+  mpConfigSave: document.querySelector('#mp-config-save'),
   battleLabel: document.querySelector('#battle-label'),
   status: document.querySelector('#status'),
   summary: document.querySelector('#summary'),
@@ -919,6 +1186,16 @@ const elements = {
   compareCanvasRight: document.querySelector('#compare-canvas-right'),
   canvas: document.querySelector('#battle-view'),
 };
+
+const MP_SCREENS = [
+  { key: 'status', label: 'Статус / герой', button: 'mpStatus' },
+  { key: 'skills', label: 'Навыки и магия', button: 'mpSkills' },
+  { key: 'eggs', label: 'Mana Eggs', button: 'mpEggs' },
+  { key: 'items', label: 'Предметы и снаряжение', button: 'mpItems' },
+  { key: 'valuables', label: 'Ключевые предметы', button: 'mpValuables' },
+  { key: 'bestiary', label: 'Энциклопедия врагов', button: 'mpBestiary' },
+  { key: 'config', label: 'Настройки', button: 'mpConfig' },
+];
 
 const context = elements.canvas.getContext('2d');
 const compareContextLeft = elements.compareCanvasLeft.getContext('2d');
@@ -1066,6 +1343,10 @@ const WORLD_LOCATION_EVENTS = {
   cyrum_kingdom_south: [
     { id: 'cyrum-front-maps', label: 'Осмотреть карты фронта', text: 'На южном фронте даже карты выглядят как список отсроченных потерь. Здесь поздний Цайрум окончательно перестаёт быть просто столицей.' },
   ],
+  raul_hills_special: [
+    { id: 'special-stage-altar', label: 'Осмотреть алтарь башни', text: 'На вершине башни лабиринта — алтарь, хранящий защитное яйцо феи. Вокруг — следы древнего ритуала.', rewards: { experience: 40, skillCoins: 8, magicCoins: 10 } },
+    { id: 'special-stage-echo', label: 'Прислушаться к эху развалин', text: 'Эхо повторяет шаги давно ушедших искателей сокровищ. Где-то здесь спрятан запас старой экспедиции.', rewards: { experience: 30, gold: 150 } },
+  ],
   birthplace_of_the_gods: [
     { id: 'ancient-echo', label: 'Исследовать древние надписи', text: 'Древние надписи в Истоке богов говорят не о благочестии, а о технологиях, катастрофе и переписанной истории.', setFlags: ['flag_birthplace_truth'], rewards: { experience: 24, skillCoins: 4, magicCoins: 8, setFlags: ['flag_birthplace_truth'] } },
     { id: 'origin-reversal', label: 'Осмотреть центральный зал', text: 'Чем глубже партия идёт, тем яснее становится: мир Grandia II держался не на истине, а на удобной версии прошлого.' },
@@ -1079,68 +1360,214 @@ const WORLD_LOCATION_EVENTS = {
 };
 
 const WORLD_LOCATION_TREASURES = {
+  carbo_village: [
+
+    { id: 'carbo-garden-cache', label: 'Садовая грядка', description: 'Кто-то припрятал запас в корнях старого дерева.', rewards: { gold: 20, poffNut: 1 } },
+  
+  ],
   black_forest: [
+
     { id: 'black-forest-cache', label: 'Корни у тропы', description: 'Старая сумка, брошенная кем-то в спешке.', rewards: { gold: 30, medicinalHerb: 1 } },
+  
   ],
   garmia_tower: [
+
     { id: 'garmia-reliquary', label: 'Разбитый реликварий', description: 'Осколки святыни и немного полезных припасов.', rewards: { gold: 45, antidote: 1, eyeDrops: 1 } },
+  
   ],
   inor_mountains: [
+
     { id: 'inor-cliff-chest', label: 'Сундук на уступе', description: 'Тайник у опасного горного прохода.', rewards: { gold: 55, medicinalHerb: 1, antidote: 1 } },
+  
+  ],
+  agear_town: [
+
+    { id: 'agear-ruin-cache', label: 'Развалины на окраине', description: 'Осколки арсенала, уцелевшие после налёта.', rewards: { gold: 25, firebomb: 1 } },
+  
   ],
   durham_cave_entrance: [
+
     { id: 'durham-rock-cache', label: 'Тайник за валуном', description: 'Пещерный схрон возле старого рычага.', rewards: { gold: 70, medicinalHerb: 2 } },
+    { id: 'durham-torte-cache', label: 'Дудочка в грязи', description: 'Кто-то обронил дудочку, которая умеет будить даже самых крепких сонь.', rewards: { tortesReedpipe: 1, gold: 20 } },
+  
   ],
-  baked_plains: [
-    { id: 'baked-smoke-cache', label: 'Сундук у паровых трещин', description: 'Потрёпанный сундук среди горячих камней.', rewards: { gold: 65, antidote: 1 } },
+  durham_cave_depths: [
+
+    { id: 'durham-mist-egg', label: 'Туманное яйцо', description: 'Воздушное яйцо маны, оставленное тварями пещеры: ветер, вода и мороз.', requiresFlags: ['flag_durham_roan_found'], rewards: { eggIds: ['mist_egg'] } },
+  
   ],
-  liligue_cave: [
-    { id: 'liligue-ruin-cache', label: 'Тайник руин', description: 'Спрятанный сундук у храмовой стены.', rewards: { gold: 90, medicinalHerb: 1, antidote: 1 } },
-  ],
-  lumir_forest: [
-    { id: 'lumir-snow-cache', label: 'Снежный тайник', description: 'Запорошенный ящик под елью.', rewards: { gold: 75, medicinalHerb: 1 } },
-  ],
-  mysterious_fissure: [
-    { id: 'fissure-deep-cache', label: 'Светящийся сундук', description: 'Схрон у спиральной платформы.', rewards: { gold: 95, antidote: 2, lumirFlower: 1 } },
-  ],
-  st_heim_mountains: [
-    { id: 'stheim-climb-cache', label: 'Сундук у водопада', description: 'Спрятан прямо у опасного горного перехода.', rewards: { gold: 110, medicinalHerb: 1, antidote: 1 } },
-  ],
-  raul_hills: [
-    { id: 'raul-ruin-cache', label: 'Развалины с припасами', description: 'Кто-то оставил в руинах ценный запас.', rewards: { gold: 120, medicinalHerb: 2 } },
-  ],
-  cyrum_secret_passage: [
-    { id: 'cyrum-secret-cache', label: 'Тайник замка', description: 'Спрятан у старой лестницы в проходе.', rewards: { gold: 130, medicinalHerb: 1, antidote: 1, moveBlessing: 1 } },
-  ],
-  underground_plant: [
-    { id: 'plant-terminal-cache', label: 'Контейнер у терминала', description: 'Ящик с техно-лутом и припасами.', rewards: { gold: 150, antidote: 2 } },
+  fissure_depths: [
+
+    { id: 'fissure-gravity-egg', label: 'Яйцо гравитации', description: 'Землистое яйцо маны из глубин разлома: огонь, земля и взрывы.', rewards: { eggIds: ['gravity_egg'] } },
+  
   ],
   ceceile_reef: [
+
+    { id: 'reef-soul-egg', label: 'Яйцо души', description: 'Мудрое яйцо маны, выброшенное прибоем: ветер, вода и молнии.', rewards: { eggIds: ['soul_egg'] } },
+  ,
     { id: 'reef-shell-cache', label: 'Сундук в кораллах', description: 'Тайник на рифе у кромки воды.', rewards: { gold: 120, medicinalHerb: 2 } },
+  
   ],
-  grail_mountain: [
-    { id: 'grail-memory-cache', label: 'Тайник на склоне', description: 'Старый сундук у грязевого пути.', rewards: { gold: 155, medicinalHerb: 1, antidote: 1 } },
+  raul_hills: [
+
+    { id: 'raul-fairy-egg', label: 'Яйцо феи', description: 'Защитное яйцо маны с вершины башни лабиринта: исцеление и поддержка.', rewards: { eggIds: ['fairy_egg'] } },
+  ,
+    { id: 'raul-star-cache', label: 'Звёздная расселина', description: 'Ящик, оставленный старыми охотниками за сокровищами.', rewards: { gold: 60, mogayBomb: 1 } },
+  ,
+    { id: 'raul-ruin-cache', label: 'Развалины с припасами', description: 'Кто-то оставил в руинах ценный запас.', rewards: { gold: 120, medicinalHerb: 2 } },
+  
   ],
-  great_rift: [
-    { id: 'rift-wind-cache', label: 'Сундук у обрыва', description: 'Добраться трудно, но награда того стоит.', rewards: { gold: 170, medicinalHerb: 2, antidote: 1 } },
-  ],
-  valmar_body: [
-    { id: 'valmar-flesh-cache', label: 'Странный биотайник', description: 'Слишком органичный сундук внутри тела Вальмара.', rewards: { gold: 190, medicinalHerb: 2, antidote: 2, panacea: 1 } },
-  ],
-  valmars_moon: [
-    { id: 'moon-core-cache', label: 'Лунный контейнер', description: 'Схрон у розовых колонн.', rewards: { gold: 220, medicinalHerb: 2, antidote: 2, healingHerb: 1, magicBlessing: 1 } },
+  demons_law: [
+
+    { id: 'demons-law-star-egg', label: 'Звёздное яйцо', description: 'Ультимативное яйцо маны из контрольного зала: молнии и взрывы.', rewards: { eggIds: ['star_egg'] } },
+  ,
+    { id: 'demons-law-stone-cache', label: 'Алтарь стихий', description: 'Три камня, собранные древними мастерами для управления механизмами.', rewards: { flameStone: 1, galeStone: 1, quakeStone: 1 } },
+  
   ],
   birthplace_of_the_gods: [
+
+    { id: 'birthplace-dragon-egg', label: 'Яйцо дракона', description: 'Наступательное яйцо маны из алтаря Истока богов: вся боевая магия.', rewards: { eggIds: ['dragon_egg'] } },
+  ,
     { id: 'birthplace-archive-cache', label: 'Древний архивный сундук', description: 'Редкий тайник из старого мира.', rewards: { gold: 260, medicinalHerb: 2, antidote: 2, equipmentIds: ['millenia-witch-ribbon'] } },
+  
+  ],
+  baked_plains: [
+
+    { id: 'baked-smoke-cache', label: 'Сундук у паровых трещин', description: 'Потрёпанный сундук среди горячих камней.', rewards: { gold: 65, antidote: 1 } },
+    { id: 'baked-sandman-sack', label: 'Мешок песчаного духа', description: 'То, что песчаный дух не успел унести с собой.', rewards: { gold: 30, seedOfPsyche: 1 } },
+  
+  ],
+  liligue_cave: [
+
+    { id: 'liligue-ruin-cache', label: 'Тайник руин', description: 'Спрятанный сундук у храмовой стены.', rewards: { gold: 90, medicinalHerb: 1, antidote: 1 } },
+    { id: 'liligue-reflection-cache', label: 'Зеркальная ниша', description: 'Древняя шкатулка с ювелирным кольцом.', rewards: { gold: 40, equipmentIds: ['roan-reflection-ring'] } },
+    { id: 'liligue-flamberge-cache', label: 'Огненный тайник', description: 'Клинок, который ещё помнит жар древних печей Лилига.', rewards: { gold: 30, equipmentIds: ['ryudo-flamberge'] } },
+  
+  ],
+  mirumu_shed: [
+
+    { id: 'mirumu-shed-cache', label: 'Полка в сарае', description: 'Запас того, кто собирался спускаться в разлом.', rewards: { eyeDrops: 1, paralysisSalve: 1 } },
+  
+  ],
+  st_heim_library: [
+
+    { id: 'stheim-lost-tome-cache', label: 'Потерянный том', description: 'Книга, которую библиотекарь «потерял» — с закладкой из свитка.', rewards: { scrollOfAlheal: 1, magicCoins: 4 } },
+  
+  ],
+  lumir_forest: [
+
+    { id: 'lumir-snow-cache', label: 'Снежный тайник', description: 'Запорошенный ящик под елью.', rewards: { gold: 75, medicinalHerb: 1 } },
+  
+  ],
+  mysterious_fissure: [
+
+    { id: 'fissure-deep-cache', label: 'Светящийся сундук', description: 'Схрон у спиральной платформы.', rewards: { gold: 95, antidote: 2, lumirFlower: 1 } },
+  
+  ],
+  st_heim_mountains: [
+
+    { id: 'stheim-climb-cache', label: 'Сундук у водопада', description: 'Спрятан прямо у опасного горного перехода.', rewards: { gold: 110, medicinalHerb: 1, antidote: 1 } },
+  
+  ],
+  cyrum_secret_passage: [
+
+    { id: 'cyrum-secret-cache', label: 'Тайник замка', description: 'Спрятан у старой лестницы в проходе.', rewards: { gold: 130, medicinalHerb: 1, antidote: 1, moveBlessing: 1 } },
+  
+  ],
+  underground_plant: [
+
+    { id: 'plant-terminal-cache', label: 'Контейнер у терминала', description: 'Ящик с техно-лутом и припасами.', rewards: { gold: 150, antidote: 2 } },
+  
+  ],
+  grail_mountain: [
+
+    { id: 'grail-memory-cache', label: 'Тайник на склоне', description: 'Старый сундук у грязевого пути.', rewards: { gold: 155, medicinalHerb: 1, antidote: 1 } },
+  
+  ],
+  great_rift: [
+
+    { id: 'rift-wind-cache', label: 'Сундук у обрыва', description: 'Добраться трудно, но награда того стоит.', rewards: { gold: 170, medicinalHerb: 2, antidote: 1 } },
+  
+  ],
+  valmar_body: [
+
+    { id: 'valmar-flesh-cache', label: 'Странный биотайник', description: 'Слишком органичный сундук внутри тела Вальмара.', rewards: { gold: 190, medicinalHerb: 2, antidote: 2, panacea: 1 } },
+    { id: 'valmar-vein-cache', label: 'Пульсирующая железа', description: 'Внутри плоти застряли припасы прежней экспедиции.', rewards: { gold: 60, caterpillarSoup: 1, manaCrystal: 1 } },
+  
+  ],
+  cyrum_kingdom_south: [
+
+    { id: 'cyrum-front-cache', label: 'Фронтовой схрон', description: 'Боезапас, спрятанный защитниками линии.', rewards: { scarletPotion: 1, handGrenade: 1 } },
+  
+  ],
+  valmars_moon: [
+
+    { id: 'moon-core-cache', label: 'Лунный контейнер', description: 'Схрон у розовых колонн.', rewards: { gold: 220, medicinalHerb: 2, antidote: 2, healingHerb: 1, magicBlessing: 1 } },
+  
   ],
   new_valmar: [
+
     { id: 'new-valmar-core-cache', label: 'Сердцевинный тайник', description: 'Награда у последнего рывка.', rewards: { gold: 320, medicinalHerb: 3, antidote: 2, yomisElixir: 1, healingIncense: 1, equipmentIds: ['ryudo-geohound-mail'] } },
+  ,
+    { id: 'new-valmar-hero-cache', label: 'Ларец героя', description: 'Запас, спрятанный для тех, кто дойдёт до самого сердца тьмы.', rewards: { heroElixir: 1, goldenPotion: 1 } },
+  
+  ],
+  cyrum_kingdom: [
+    { id: 'cyrum-castle-cache', label: 'Кладовая замка', description: 'Запас замковой стражи, забытый при спешной смене караула.', rewards: { gold: 90, scarletPotion: 1 } },
+  ],
+  garlan_tombs: [
+    { id: 'garlan-tombs-cache', label: 'Дар у могил', description: 'Кто-то оставил припасы у старых надгробий в память о погибших.', rewards: { gold: 60, sympathyNut: 1 } },
+  ],
+  nanan_village: [
+    { id: 'nanan-north-cache', label: 'Северный тайник', description: 'Схрон охотников клана на краю деревни.', rewards: { gold: 80, swiftnessNut: 1 } },
+  ],
+  st_heim_forbidden_room: [
+    { id: 'forbidden-room-cache', label: 'Сундук запретной комнаты', description: 'То, что церковь прятала за запретными дверями.', rewards: { gold: 160, blessingScroll: 1, holyAshes: 1 } },
+  ],
+  plateau_of_memories: [
+    { id: 'plateau-cache', label: 'Памятный сундук', description: 'Сундук, оставленный у плато теми, кто пришёл раньше.', rewards: { gold: 130, healingFruit: 1 } },
+  ],
+  aira_space: [
+    { id: 'aira-cache', label: 'Ларец снов', description: 'Предмет, выпавший из мира грёз Аиры.', rewards: { gold: 110, eyeDrops: 2, lumirFlower: 1 } },
+  ],
+  valmars_womb: [
+    { id: 'womb-cache', label: 'Пульсирующий ларец', description: 'Схрон на границе чрева Луны.', rewards: { gold: 200, magicalMedicine: 1 } },
+  ],
+  underground_control_room: [
+    { id: 'control-room-cache', label: 'Контрольный сейф', description: 'Ящик с техно-лутом главного зала завода.', rewards: { gold: 140, electrumStone: 1, manaCrystal: 1 } },
+  ],
+  liligue_temple_ruins: [
+    { id: 'temple-ruins-cache', label: 'Руинный алтарь', description: 'Приношение, оставленное древним храмом под Лилигом.', rewards: { gold: 100, icefangStone: 1 } },
+  ],
+  garmia_tower_top: [
+    { id: 'garmia-top-cache', label: 'Верхняя сокровищница', description: 'Тайник на руинах верхней площадки башни.', rewards: { gold: 80, hyperMogayBomb: 1 } },
+  ],
+  garden_of_dream: [
+    { id: 'dream-garden-cache', label: 'Цветок сада грёз', description: 'Необычный цветок, который светится изнутри.', rewards: { lumirFlower: 2, gold: 40 } },
+  ],
+  boat_50_50: [
+    { id: 'boat-cache', label: 'Матросский сундук', description: 'Любимый тайник капитана Бакалы.', rewards: { gold: 120, magicalMedicine: 1 } },
+  ],
+  ghoss_forest_west: [
+    { id: 'ghoss-west-cache', label: 'Лесной тайник', description: 'Схрон в корнях старого дерева.', rewards: { gold: 90, slowpokeNut: 1 } },
+  ],
+  ghoss_forest_east: [
+    { id: 'ghoss-east-cache', label: 'Восточный схрон', description: 'Запас, спрятанный у выхода к Разлому.', rewards: { gold: 100, galeStone: 1 } },
+  ],
+  new_valmar_room_of_chaos: [
+    { id: 'chaos-room-cache', label: 'Ларец лжи', description: 'Сундук, который, кажется, притворяется сундуком.', rewards: { gold: 150, quakeStone: 1 } },
+  ],
+  new_valmar_core: [
+
+    { id: 'core-meteor-cache', label: 'Архивный терминал ядра', description: 'Последний ящик снабжения перед финальной развязкой.', rewards: { meteorScroll: 1, yomisElixir: 1 } },
+  
   ],
 };
 
 const WORLD_TRAVEL_ENCOUNTERS = {
   black_forest: [
     { id: 'enc-black-forest-spiders', label: 'Засада Crag Snake в Black Forest', description: 'Змея из каменных корней и паучий охотник перехватывают первый мрачный маршрут от Карбо к Гармии.', enemyKeys: ['cragSnake', 'mottledSpider'], theme: 'forest', openingAdvantage: 'enemies', rewards: { gold: 35, experience: 14, skillCoins: 4, magicCoins: 3, medicinalHerb: 1, antidote: 0 } },
+    { id: 'enc-black-forest-dodo', label: 'Додо на тропе', description: 'Глупая, но быстрая птица додо клюёт всё, что шевелится, в тёмном лесу.', enemyKeys: ['dodo', 'cragSnake'], theme: 'forest', openingAdvantage: 'neutral', rewards: { gold: 28, experience: 12, skillCoins: 3, magicCoins: 2, poffNut: 1 } },
   ],
   inor_mountains: [
     { id: 'enc-inor-snakes', label: 'Горная стая Inor Mountains', description: 'Crag Snake и Gargoyle держат узкую горную дорогу под постоянной угрозой срыва.', enemyKeys: ['cragSnake', 'gargoyle'], theme: 'cavern', openingAdvantage: 'neutral', rewards: { gold: 45, experience: 18, skillCoins: 5, magicCoins: 3, medicinalHerb: 1, antidote: 1 } },
@@ -1150,45 +1577,71 @@ const WORLD_TRAVEL_ENCOUNTERS = {
   ],
   baked_plains: [
     { id: 'enc-baked-plain-heat', label: 'Жара Baked Plains', description: 'Giant Mantis и Crag Snake используют раскалённые равнины как идеальную засаду.', enemyKeys: ['giantMantis', 'cragSnake'], theme: 'volcano', openingAdvantage: 'neutral', rewards: { gold: 55, experience: 20, skillCoins: 5, magicCoins: 4, medicinalHerb: 1, antidote: 0 } },
+    { id: 'enc-baked-sandmen', label: 'Песчаные духи', description: 'Sandman крадётся по горячим трещинам и усыпляет путников перед ударом.', enemyKeys: ['sandman', 'giantMantis'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 60, experience: 24, skillCoins: 6, magicCoins: 4, seedOfPsyche: 1, paralysisSalve: 1 } },
   ],
   liligue_cave: [
     { id: 'enc-liligue-corruption', label: 'Порча под Лилигом', description: 'Gargoyle, Ghoul и Giant Mantis уже выглядят как настоящая испорченная экосистема руин под городом.', enemyKeys: ['gargoyle', 'ghoul', 'giantMantis'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 75, experience: 28, skillCoins: 7, magicCoins: 5, medicinalHerb: 1, antidote: 1, eyeDrops: 1 } },
   ],
   lumir_forest: [
     { id: 'enc-lumir-ambush', label: 'Стычка в снегу', description: 'Huge Caterpillar и Giant Crab делают снежный лес более похожим на оригинальную северную фауну Grandia II.', enemyKeys: ['hugeCaterpillar', 'giantCrab'], theme: 'forest', openingAdvantage: 'enemies', rewards: { gold: 70, experience: 24, skillCoins: 6, magicCoins: 5, medicinalHerb: 1, antidote: 1, lumirFlower: 1 } },
+    { id: 'enc-lumir-bigfoot', label: 'Следы Бигфута', description: 'Огромный снежный зверь выходит из чащи и отбрасывает путников в сугробы.', enemyKeys: ['bigFoot', 'hugeCaterpillar'], theme: 'forest', openingAdvantage: 'enemies', rewards: { gold: 80, experience: 30, skillCoins: 7, magicCoins: 5, woundSalve: 1, lumirFlower: 1 } },
   ],
   mysterious_fissure: [
     { id: 'enc-fissure-depth', label: 'Твари разлома', description: 'Hammerhead, Giant Crab и Hell Hound делают разлом более тяжёлым и разнородным по тону.', enemyKeys: ['hammerhead', 'giantCrab', 'hellHound'], theme: 'cavern', openingAdvantage: 'neutral', rewards: { gold: 85, experience: 32, skillCoins: 8, magicCoins: 6, medicinalHerb: 1, antidote: 2, moveBlessing: 1 } },
+    { id: 'enc-fissure-ogres', label: 'Близнецы-огры', description: 'Twin Ogre держат нижний ярус разлома и отбрасывают чужаков к стенам.', enemyKeys: ['twinOgre', 'hammerhead'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 95, experience: 38, skillCoins: 9, magicCoins: 7, handGrenade: 1, woundSalve: 1 } },
   ],
   st_heim_mountains: [
     { id: 'enc-stheim-climb', label: 'Горная стычка', description: 'Giant Mantis, Hammerhead и Huge Caterpillar превращают путь к святому городу в более узнаваемую late-midgame climb pressure.', enemyKeys: ['giantMantis', 'hammerhead', 'hugeCaterpillar'], theme: 'cavern', openingAdvantage: 'neutral', rewards: { gold: 90, experience: 36, skillCoins: 9, magicCoins: 6, medicinalHerb: 1, antidote: 1, eyeDrops: 1 } },
+    { id: 'enc-stheim-snails', label: 'Черепа у святой тропы', description: 'Skull Snail и Twin Ogre преграждают паломнический подъём к папскому государству.', enemyKeys: ['skullSnail', 'twinOgre'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 105, experience: 42, skillCoins: 10, magicCoins: 8, poffNut: 1, seedOfLife: 1 } },
   ],
   raul_hills: [
     { id: 'enc-raul-ruins', label: 'Развалины Raul Hills', description: 'Land Cougar и Giga Mantis делают развалины более похожими на опасный дикий фронтир, а не на generic encounter-зону.', enemyKeys: ['landCougar', 'gigaMantis'], theme: 'ruins', openingAdvantage: 'players', rewards: { gold: 100, experience: 40, skillCoins: 10, magicCoins: 7, medicinalHerb: 2, antidote: 1, blueberry: 1 } },
+    { id: 'enc-raul-ogres', label: 'Руинные стражи холмов', description: 'Twin Ogre и Land Cougar стерегут башни лабиринта Raul Hills.', enemyKeys: ['twinOgre', 'landCougar'], theme: 'ruins', openingAdvantage: 'neutral', rewards: { gold: 115, experience: 44, skillCoins: 11, magicCoins: 8, mogayBomb: 1, seedOfPsyche: 1 } },
+    { id: 'enc-raul-dragonoid', label: 'Дракониды развалин', description: 'Dragonoid выдыхает пламя из-за рухнувших колонн, прикрываясь отрядами ящеров.', enemyKeys: ['dragonoid', 'twinOgre'], theme: 'ruins', openingAdvantage: 'neutral', rewards: { gold: 110, experience: 42, skillCoins: 10, magicCoins: 8, firebomb: 1, seedOfLife: 1 } },
+  ],
+  raul_hills_special: [
+    { id: 'enc-special-snow-leopard', label: 'Снежный барс башни', description: 'Snow Leopard стережёт вершину башни лабиринта Раул Хиллс.', enemyKeys: ['snowLeopard'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 180, experience: 70, skillCoins: 16, magicCoins: 12, paralysisSalve: 1, manaCrystal: 1 } },
+    { id: 'enc-special-devil', label: 'Демон развалин', description: 'Devil хозяйничает в глубинах скрытой части лабиринта.', enemyKeys: ['devil', 'snowLeopard'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 220, experience: 84, skillCoins: 18, magicCoins: 14, demonAsh: 1, scarletPotion: 1 } },
+    { id: 'enc-special-dragon-knight', label: 'Драконий рыцарь башни', description: 'Dragon Knight и Devil охраняют нижние ярусы скрытого лабиринта.', enemyKeys: ['dragonKnight', 'devil'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 240, experience: 88, skillCoins: 18, magicCoins: 14, dragonZap: 0, manaCrystal: 1 } },
   ],
   cyrum_secret_passage: [
     { id: 'enc-cyrum-secret', label: 'Охрана тайного прохода', description: 'В скрытом проходе остаются враждебные защитные группы.', enemyKeys: ['guardian', 'wingEye'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 125, experience: 46, skillCoins: 11, magicCoins: 8, medicinalHerb: 1, antidote: 1 } },
+    { id: 'enc-cyrum-camo-squad', label: 'Камуфляжный патруль', description: 'Chameleon и Dragonoid охраняют рычаги тайного прохода.', enemyKeys: ['chameleon', 'dragonoid'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 130, experience: 48, skillCoins: 11, magicCoins: 8, purifyingHerb: 1, firebomb: 1 } },
   ],
   underground_plant: [
     { id: 'enc-plant-sentries', label: 'Сентри underground plant', description: 'Механический комплекс выпускает новую волну защитников.', enemyKeys: ['guardian', 'mottledSpider'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 140, experience: 52, skillCoins: 12, magicCoins: 9, medicinalHerb: 1, antidote: 2 } },
+    { id: 'enc-plant-warp', label: 'Варп-патруль завода', description: 'Warp Warrior и Vein Brain охраняют глубинные узлы комплекса.', enemyKeys: ['warpWarrior', 'veinBrain'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 150, experience: 56, skillCoins: 13, magicCoins: 10, manaCrystal: 1, magicBlessing: 1 } },
+    { id: 'enc-plant-dragonoid', label: 'Огненный дозор завода', description: 'Dragonoid и Warp Warrior встречают нарушителей у терминалов.', enemyKeys: ['dragonoid', 'warpWarrior'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 155, experience: 58, skillCoins: 13, magicCoins: 10, firebomb: 1, manaCrystal: 1 } },
   ],
   ceceile_reef: [
     { id: 'enc-reef-claws', label: 'Стычка на рифе', description: 'Giant Crab, Salamadile и Fenny Bird лучше держат морской и прибрежный тон маршрута к Гарлану.', enemyKeys: ['giantCrab', 'salamadile', 'fennyBird'], theme: 'forest', openingAdvantage: 'neutral', rewards: { gold: 120, experience: 48, skillCoins: 11, magicCoins: 8, medicinalHerb: 2, antidote: 1, lumirFlower: 1 } },
+    { id: 'enc-reef-scaly', label: 'Чешуйчатые воины рифа', description: 'Scaly Warrior и Giant Crab встречают прибывающих на риф путников.', enemyKeys: ['scalyWarrior', 'giantCrab'], theme: 'forest', openingAdvantage: 'neutral', rewards: { gold: 135, experience: 52, skillCoins: 12, magicCoins: 9, woundSalve: 1, scarletPotion: 1 } },
+    { id: 'enc-reef-claws-boss', label: 'Красные когти рифа', description: 'Crimson Claw и Flame Toad охраняют подходы к гнезду рифовых охотников.', enemyKeys: ['crimsonClaw', 'flameToad'], theme: 'forest', openingAdvantage: 'enemies', rewards: { gold: 145, experience: 56, skillCoins: 13, magicCoins: 9, handGrenade: 1, firebomb: 1 } },
   ],
   grail_mountain: [
     { id: 'enc-grail-slope', label: 'Путь по Grail Mountain', description: 'Hell Hound, Man-Eating Tree и Fenny Bird дают подъёму к Мелфису более оригинально-опасный характер.', enemyKeys: ['hellHound', 'manEatingTree', 'fennyBird'], theme: 'ruins', openingAdvantage: 'neutral', rewards: { gold: 130, experience: 54, skillCoins: 12, magicCoins: 9, medicinalHerb: 2, antidote: 1, moveBlessing: 1 } },
+    { id: 'enc-grail-vipers', label: 'Ядовитые тропы Грайла', description: 'Pit Viper и Hell Hound контролируют грязевые склоны над святилищем.', enemyKeys: ['pitViper', 'hellHound'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 140, experience: 58, skillCoins: 13, magicCoins: 9, purifyingHerb: 1, antidote: 2 } },
+    { id: 'enc-grail-clay', label: 'Глиняные стражи склона', description: 'Clay Bird и Flame Toad кружат над подъёмом к святилищу.', enemyKeys: ['clayBird', 'flameToad'], theme: 'ruins', openingAdvantage: 'neutral', rewards: { gold: 150, experience: 60, skillCoins: 14, magicCoins: 10, mogayBomb: 1, scarletPotion: 1 } },
   ],
   great_rift: [
     { id: 'enc-rift-prowl', label: 'Хищники Великого Разлома', description: 'Giga Mantis и Fenny Bird помогают Разлому ощущаться последним диким краем мира перед Demons Law.', enemyKeys: ['gigaMantis', 'fennyBird'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 160, experience: 60, skillCoins: 14, magicCoins: 10, medicinalHerb: 2, antidote: 2, healingHerb: 1 } },
+    { id: 'enc-rift-diver', label: 'Песчаные ныряльщики разлома', description: 'Desert Diver выныривает из горячих трещин и тащит путников вглубь шторма.', enemyKeys: ['desertDiver', 'gigaMantis'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 175, experience: 66, skillCoins: 15, magicCoins: 11, mogayBomb: 1, paralysisSalve: 1 } },
   ],
   valmar_body: [
     { id: 'enc-valmar-body', label: 'Живые ткани Вальмара', description: 'Immune Cell и Valmar Moth лучше передают органический внутренний бестиарий этого late-midgame данжа.', enemyKeys: ['immuneCell', 'valmarMoth', 'valmarMoth'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 180, experience: 68, skillCoins: 15, magicCoins: 11, medicinalHerb: 2, antidote: 2, panacea: 1 } },
+    { id: 'enc-body-hunt', label: 'Охотники живой плоти', description: 'Tarantula и Immune Cell выходят на охоту в венах тела Вальмара.', enemyKeys: ['tarantula', 'immuneCell'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 200, experience: 74, skillCoins: 16, magicCoins: 12, purifyingHerb: 1, caterpillarSoup: 1 } },
+    { id: 'enc-body-bats', label: 'Рой мозговых летунов', description: 'Brain Bat и Venomous Larva защищают живые коридоры тела Вальмара.', enemyKeys: ['brainBat', 'venomousLarva'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 205, experience: 76, skillCoins: 16, magicCoins: 12, eyeDrops: 1, caterpillarSoup: 1 } },
+    { id: 'enc-body-freezer', label: 'Ледяной динозавр', description: 'Dino Freezer замораживает вены и преграждает путь своим ледяным дыханием.', enemyKeys: ['dinoFreezer', 'brainBat'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 215, experience: 80, skillCoins: 17, magicCoins: 13, paralysisSalve: 1, scarletPotion: 1 } },
   ],
   valmars_moon: [
     { id: 'enc-moon-guard', label: 'Стражи Луны', description: 'Nyarmot, Salamadile и Evil Maneuver лучше соответствуют экосистеме Луны Вальмара и позднему давлению маршрута.', enemyKeys: ['nyarmot', 'salamadile', 'evilManeuver'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 210, experience: 74, skillCoins: 16, magicCoins: 12, medicinalHerb: 2, antidote: 2, yomisElixir: 1 } },
+    { id: 'enc-moon-young', label: 'Молодь Вальмара', description: 'Valmar Fly и Valmar Young роятся у лунных колонн, защищая внутренние узлы.', enemyKeys: ['valmarFly', 'valmarYoung'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 240, experience: 84, skillCoins: 18, magicCoins: 14, scarletPotion: 1, meteorScroll: 1 } },
   ],
   birthplace_of_the_gods: [
     { id: 'enc-birthplace-guardians', label: 'Древние хранители', description: 'Dragon Knight и Valmar Magna делают Исток богов более похожим на поздний древний bestiary-порог, а не на generic guardian room.', enemyKeys: ['dragonKnight', 'valmarMagna'], theme: 'ruins', openingAdvantage: 'neutral', rewards: { gold: 240, experience: 82, skillCoins: 18, magicCoins: 14, medicinalHerb: 2, antidote: 2, healingIncense: 1 } },
+    { id: 'enc-birthplace-yeti', label: 'Ледяные стражи истока', description: 'Yeti и Dragon Knight охраняют цветные механизмы древнего комплекса.', enemyKeys: ['yeti', 'dragonKnight'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 260, experience: 90, skillCoins: 20, magicCoins: 16, paralysisSalve: 1, manaCrystal: 1 } },
+    { id: 'enc-birthplace-ancients', label: 'Древние воины архива', description: 'Ancient Warrior и Death Doberman сторожат залы правды Истока богов.', enemyKeys: ['ancientWarrior', 'deathDoberman'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 270, experience: 94, skillCoins: 20, magicCoins: 16, scarletPotion: 1, meteorScroll: 1 } },
+    { id: 'enc-birthplace-emerald', label: 'Изумрудный дозор', description: 'Emerald Bird реет над цветными механизмами и срывает заклинания путников.', enemyKeys: ['emeraldBird', 'ancientWarrior'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 280, experience: 98, skillCoins: 21, magicCoins: 17, healingIncense: 1, seedOfMagic: 1 } },
   ],
   new_valmar: [
     { id: 'enc-new-valmar-vanguard', label: 'Передовые ужасы Нового Вальмара', description: 'Killer Tree, Mind Eater и Valmar Moth превращают финальный данж в более оригинально-чужой late-game bestiary слой.', enemyKeys: ['killerTree', 'mindEater', 'valmarMoth'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 280, experience: 92, skillCoins: 20, magicCoins: 16, medicinalHerb: 3, antidote: 2, panacea: 1, yomisElixir: 1 } },
@@ -1536,118 +1989,232 @@ const EXIT_REQUIREMENTS = {
   st_heim_forbidden_room: { valmars_moon: ['flag_zera_reveal_path'] },
   valmars_moon: { valmars_womb: ['flag_moon_surface'] },
   cyrum_kingdom_south: { birthplace_of_the_gods: ['flag_cyrum_war_room'] },
+  raul_hills: { raul_hills_special: ['flag_cyrum_war_room'] },
   birthplace_of_the_gods: { inner_trial: ['flag_birthplace_truth'], new_valmar: ['flag_birthplace_truth', 'flag_birthplace_red'] },
   new_valmar: { new_valmar_room_of_chaos: ['flag_new_valmar_outer'], new_valmar_core: ['flag_new_valmar_chaos'] },
 };
 
 const ADDITIONAL_WORLD_EVENTS_BY_LOCATION = {
   carbo_inn: [
+
     { id: 'carbo-inn-meeting', label: 'Встретиться с Кариусом в трактире', text: 'Кариус объясняет, почему сопровождение Елены — уже не обычный контракт, а опасный путь к ритуалу.', requiresFlags: ['flag_carbo_briefed'], setFlags: ['flag_carbo_inn_meeting'], rewards: { experience: 10, skillCoins: 2, magicCoins: 2, setFlags: ['flag_carbo_inn_meeting'] } },
     { id: 'carbo-night-watch', label: 'Остаться на ночной страже', text: 'Тревога нарастает, и ночь в Карбо уже не кажется безопасной. Именно сейчас в воздухе чувствуется присутствие Миллении.', allowedBeatIds: ['millenia_first_attack'], requiresFlags: ['flag_carbo_departure'], setFlags: ['flag_carbo_night_watch'], rewards: { experience: 12, skillCoins: 2, magicCoins: 3, setFlags: ['flag_carbo_night_watch'] } },
+  
   ],
   carbo_village: [
+
     { id: 'carbo-departure', label: 'Подготовить выход из деревни', text: 'После разговора с Кариусом, песни Елены, quiet-паузы в лавке и короткого взгляда на обычную жизнь Карбо деревня остаётся позади — пора идти в Black Forest.', requiresFlags: ['flag_carbo_briefed', 'flag_carbo_song_heard', 'flag_scene_carbo_store_hush', 'flag_scene_carbo_house_farewell', 'flag_carbo_inn_meeting'], setFlags: ['flag_carbo_departure'], rewards: { experience: 12, skillCoins: 2, magicCoins: 2, setFlags: ['flag_carbo_departure'] } },
     { id: 'carbo-millenia-sign', label: 'Почуять вмешательство Миллении', text: 'Даже до прямой атаки становится ясно: в Карбо появилась чужая, насмешливая и слишком сильная воля.', allowedBeatIds: ['millenia_first_attack'], requiresFlags: ['flag_carbo_night_watch'], setFlags: ['flag_millenia_presence'], rewards: { experience: 14, skillCoins: 2, magicCoins: 4, setFlags: ['flag_millenia_presence'] } },
+  ,
+    { id: 'carbo-herb-garden', label: 'Собрать травы у забора', text: 'За деревенским забором растут дикие лечебные травы — редкая удача для такого места.', rewards: { medicinalHerb: 1, poffNut: 1 } },
+  
   ],
   garmia_tower: [
+
     { id: 'garmia-lower-floors', label: 'Пробиться через нижние этажи', text: 'Первые этажи башни уже потеряны. Партия поднимается выше сквозь хаос.', setFlags: ['flag_garmia_floor1'], rewards: { experience: 14, skillCoins: 3, magicCoins: 2, setFlags: ['flag_garmia_floor1'] } },
     { id: 'garmia-window-route', label: 'Найти путь через разбитое окно', text: 'Обычный путь наверх сорван, остаётся только опасный маршрут к верхней площадке.', requiresFlags: ['flag_garmia_floor1'], setFlags: ['flag_garmia_window'], rewards: { experience: 14, skillCoins: 3, magicCoins: 3, setFlags: ['flag_garmia_window'] } },
+  
   ],
   agear_town: [
+
     { id: 'agear-roan-plea', label: 'Услышать о Роане и медали', text: 'Становится ясно: Роан уже ушёл в Durham Cave, и оставлять его там нельзя.', requiresFlags: ['flag_agear_briefed'], setFlags: ['flag_agear_roan_plea'], rewards: { experience: 12, skillCoins: 2, magicCoins: 2, setFlags: ['flag_agear_roan_plea'] } },
+  ,
+    { id: 'agear-poff-stranger', label: 'Взять орех у странника на руинах', text: 'Странник у разрушенного дома молча протягивает орех Poff и кивает в сторону пещеры.', rewards: { poffNut: 1 } },
+  
   ],
   durham_cave_entrance: [
+
     { id: 'durham-bridges', label: 'Разблокировать мосты пещеры', text: 'Партия находит рычаги и начинает вскрывать пещеру слой за слоем.', requiresFlags: ['flag_agear_roan_plea'], setFlags: ['flag_durham_bridge'], rewards: { experience: 14, skillCoins: 3, magicCoins: 2, setFlags: ['flag_durham_bridge'] } },
     { id: 'durham-roan-trail', label: 'Найти след Роана', text: 'Следы и чудовища ведут всё глубже. Роан действительно впереди.', requiresFlags: ['flag_durham_bridge'], setFlags: ['flag_durham_roan_found'], rewards: { experience: 16, skillCoins: 3, magicCoins: 3, setFlags: ['flag_durham_roan_found'] } },
+    { id: 'carro-feed-1', label: 'Покормить Карро (орех 1/3)', text: 'Странный грызун Карро смотрит на тебя голодными глазами. Он явно хочет орех Poff.', consumeItems: { poffNut: 1 }, rewards: { experience: 6, gold: 10 } },
+    { id: 'carro-feed-2', label: 'Покормить Карро (орех 2/3)', text: 'Карро довольно хрустит вторым орехом и начинает вилять хвостом. Кажется, он узнаёт Рюдо.', consumeItems: { poffNut: 1 }, rewards: { experience: 8, gold: 15 } },
+    { id: 'carro-feed-3', label: 'Покормить Карро (орех 3/3)', text: 'Третий орех — и Карро счастлив как никогда. Грызун приносит находку, которую прятал в норе.', consumeItems: { poffNut: 1 }, rewards: { experience: 12, gold: 30, equipmentIds: ['roan-multiple-knife'] } },
+  
   ],
   liligue_cave: [
+
     { id: 'liligue-seals', label: 'Активировать руинные печати', text: 'Чтобы пройти дальше, нужно понять и открыть древние механизмы пещеры.', requiresFlags: ['flag_liligue_gadan'], setFlags: ['flag_liligue_seals'], rewards: { experience: 20, skillCoins: 4, magicCoins: 4, setFlags: ['flag_liligue_seals'] } },
+  
   ],
   st_heim_inn: [
+
     { id: 'stheim-inn-stay', label: 'Переночевать в священном городе', text: 'Ночь в St. Heim меняет тон всей истории: теперь поход касается не только Елены, но и судьбы мира.', setFlags: ['flag_stheim_inn_stay'], rewards: { experience: 16, skillCoins: 2, magicCoins: 4, setFlags: ['flag_stheim_inn_stay'] } },
+  
   ],
   st_heim_audience_chamber: [
+
     { id: 'stheim-first-audience', label: 'Первая аудиенция у Зеры', text: 'Зера формально даёт направление, но оставляет слишком много скрытых смыслов.', requiresFlags: ['flag_stheim_inn_stay', 'flag_scene_stheim_inn_arrival'], setFlags: ['flag_stheim_first_audience'], rewards: { experience: 18, skillCoins: 2, magicCoins: 4, setFlags: ['flag_stheim_first_audience'] } },
     { id: 'stheim-second-audience', label: 'Вернуться к Зере после библиотеки и балкона', text: 'После quiet-паузы в гостевой комнате, маленьких человеческих штрихов святого города и дополнительных разговоров план похода утверждается, и партия может двигаться дальше.', requiresFlags: ['flag_stheim_library', 'flag_scene_stheim_bakery_facade', 'flag_scene_stheim_guestroom_evening', 'flag_stheim_balcony'], setFlags: ['flag_stheim_second_audience'], rewards: { experience: 20, skillCoins: 3, magicCoins: 4, setFlags: ['flag_stheim_second_audience'] } },
+  
   ],
   st_heim_guestroom: [
+
     { id: 'stheim-guestroom-reflection', label: 'Поговорить в гостевой комнате', text: 'Ночь в гостевой комнате подчёркивает, что путь в St. Heim уже меняет отношения внутри партии и повышает ставки.', requiresFlags: ['flag_stheim_first_audience'], rewards: { experience: 12, skillCoins: 1, magicCoins: 3 } },
+  
   ],
   st_heim_balcony: [
+
     { id: 'stheim-balcony-talk', label: 'Поговорить на балконе о настоящей цене пути', text: 'Вдали от официальных речей становится понятно, что задание Зеры опаснее, чем звучит.', requiresFlags: ['flag_stheim_first_audience', 'flag_stheim_library', 'flag_scene_stheim_guestroom_evening'], setFlags: ['flag_stheim_balcony'], rewards: { experience: 16, skillCoins: 2, magicCoins: 4, setFlags: ['flag_stheim_balcony'] } },
+  
   ],
   cyrum_inn: [
+
     { id: 'cyrum-inn-stay', label: 'Провести вечер в Цайруме', text: 'Ночь в Цайруме становится частью местной политической интриги и открывает новые сцены.', setFlags: ['flag_cyrum_inn'], rewards: { experience: 18, skillCoins: 3, magicCoins: 3, setFlags: ['flag_cyrum_inn'] } },
+  
   ],
   cyrum_castle_square: [
+
     { id: 'cyrum-hemble-duel', label: 'Сцена с Хемблом на площади', text: 'Площадь Цайрума служит театром для безобидной с виду, но сюжетно важной городской сцены.', requiresFlags: ['flag_cyrum_inn', 'flag_scene_cyrum_inn_evening'], setFlags: ['flag_cyrum_hemble'], rewards: { experience: 18, skillCoins: 3, magicCoins: 3, setFlags: ['flag_cyrum_hemble'] } },
     { id: 'cyrum-juice-scene', label: 'Вернуться с напитком и закончить сцену', text: 'Мелкая бытовая сцена оказывается обязательной частью раскрытия местного ритма и состава партии.', requiresFlags: ['flag_cyrum_hemble'], setFlags: ['flag_cyrum_juice'], rewards: { experience: 18, skillCoins: 2, magicCoins: 4, setFlags: ['flag_cyrum_juice'] } },
+  
+  ],
+  hemble_tent: [
+
+    { id: 'hemble-arm-wrestle', label: 'Сыграть с Хемблом в армрестлинг', text: 'Хембл вызывает на руку. Три раунда: сила Рюдо против удачи и хватки чемпиона палатки. Две победы — и приз твой.', minigameArmWrestle: true, rewards: { experience: 30, skillCoins: 6, magicCoins: 4 } },
+  
   ],
   cyrum_port: [
+
     { id: 'cyrum-port-brief', label: 'Подойти к порту и стражникам', text: 'Путь в secret passage подтверждён. Дальше начинается не городской эпизод, а вторжение внутрь замка.', requiresFlags: ['flag_cyrum_juice', 'flag_scene_cyrum_kings_burden'], setFlags: ['flag_cyrum_port'], rewards: { experience: 18, skillCoins: 2, magicCoins: 3, setFlags: ['flag_cyrum_port'] } },
     { id: 'cyrum-war-room-port', label: 'Собрать позднюю оборону Цайрума через порт', text: 'Поздний Цайрум уже не про праздник и дворцовую игру — это военный тыл, который надо организовать перед следующим походом.', allowedBeatIds: ['cyrum_defense'], requiresFlags: ['flag_zera_reveal_path', 'flag_scene_cyrum_front_command'], setFlags: ['flag_cyrum_war_room'], rewards: { experience: 26, skillCoins: 4, magicCoins: 4, setFlags: ['flag_cyrum_war_room'] } },
+  ,
+    { id: 'cyrum-firebomb-trade', label: 'Выменять бомбу у моряка', text: 'Моряк меняет пару огненных бомб на обещание «доложить, что творится под дворцом».', rewards: { firebomb: 1 } },
+  
   ],
   cyrum_secret_passage: [
+
     { id: 'cyrum-passage-levers', label: 'Открыть тайный проход глубже', text: 'Лестницы, рычаги и скрытые двери ведут к нижним уровням замка.', requiresFlags: ['flag_cyrum_port'], setFlags: ['flag_cyrum_passage'], rewards: { experience: 20, skillCoins: 4, magicCoins: 3, setFlags: ['flag_cyrum_passage'] } },
+  
   ],
   underground_plant: [
+
     { id: 'plant-terminals', label: 'Активировать терминалы', text: 'Механический комплекс подчиняется только после серии включений и обходных путей.', requiresFlags: ['flag_cyrum_passage'], setFlags: ['flag_plant_terminal'], rewards: { experience: 22, skillCoins: 4, magicCoins: 4, setFlags: ['flag_plant_terminal'] } },
     { id: 'plant-pipe-route', label: 'Перенастроить трубы и лифты', text: 'После терминалов партия строит реальный путь к control room.', requiresFlags: ['flag_plant_terminal'], setFlags: ['flag_plant_pipe'], rewards: { experience: 24, skillCoins: 4, magicCoins: 5, setFlags: ['flag_plant_pipe'] } },
+  
   ],
   garlan_tombs: [
+
     { id: 'garlan-tombs-memory', label: 'Посетить могилы деревни', text: 'У могил атмосфера Гарлана чувствуется сильнее всего: вина и память здесь почти физически давят на Рюдо.', requiresFlags: ['flag_garlan_past'], rewards: { experience: 14, skillCoins: 3, magicCoins: 2 } },
+  
   ],
   garlan_inn: [
+
     { id: 'garlan-night', label: 'Переночевать в Гарлане', text: 'Только после разговора со старостой, холодной бытовой сцены в лавке и тяжёлой ночи прошлое окончательно догоняет Рюдо.', allowedBeatIds: ['garlan_return'], requiresFlags: ['flag_garlan_past', 'flag_scene_garlan_chief_resentment', 'flag_scene_garlan_store_cold_trade'], setFlags: ['flag_garlan_night'], rewards: { experience: 20, skillCoins: 4, magicCoins: 2, setFlags: ['flag_garlan_night'] } },
+  
   ],
   grail_mountain: [
+
     { id: 'grail-shrine-trace', label: 'Дойти до святилища и уловить след Мелфиса', text: 'Подъём к святилищу Грайл даёт партии не только высоту, но и более чёткое понимание, где произойдёт решающая встреча.', allowedBeatIds: ['melfice_duel'], requiresFlags: ['flag_garlan_night', 'flag_scene_grail_vow'], setFlags: ['flag_grail_shrine'], rewards: { experience: 22, skillCoins: 4, magicCoins: 3, setFlags: ['flag_grail_shrine'] } },
+  
   ],
   plateau_of_memories: [
+
     { id: 'plateau-memory-step', label: 'Выйти на Plateau of Memories', text: 'Путь доведён до точки, где воспоминания и вина Рюдо больше нельзя отложить. Дальше уже только сама дуэль.', allowedBeatIds: ['melfice_duel'], requiresFlags: ['flag_grail_shrine', 'flag_scene_plateau_hush'], setFlags: ['flag_plateau_memory'], rewards: { experience: 24, skillCoins: 4, magicCoins: 4, setFlags: ['flag_plateau_memory'] } },
+  
   ],
   ghoss_forest_east: [
+
     { id: 'ghoss-scout', label: 'Разведать путь к Разлому', text: 'Лес открывает маршрут к Великому Разлому только после внимательного поиска и совета Нанана.', requiresFlags: ['flag_nanan_edge', 'flag_scene_nanan_clan_council'], setFlags: ['flag_rift_cross'], rewards: { experience: 22, skillCoins: 4, magicCoins: 3, setFlags: ['flag_rift_cross'] } },
+  
   ],
   great_rift: [
+
     { id: 'rift-demons-law', label: 'Открыть путь к Demons Law', text: 'Через ветер, мосты и древние структуры партия находит путь к следующему механизму.', requiresFlags: ['flag_rift_cross'], setFlags: ['flag_demons_law'], rewards: { experience: 24, skillCoins: 5, magicCoins: 4, setFlags: ['flag_demons_law'] } },
+  
   ],
   demons_law: [
+
     { id: 'demons-law-control', label: 'Добраться до control room Demons Law', text: 'Партия продавливает древний комплекс глубже и глубже, пока не находит путь дальше, к новому слою ужаса.', requiresFlags: ['flag_demons_law'], rewards: { experience: 26, skillCoins: 5, magicCoins: 5 } },
+  ,
+    { id: 'demons-law-crystal', label: 'Извлечь кристалл маны из консоли', text: 'Из треснувшей консоли древней системы можно вытащить кристалл чистой маны.', rewards: { manaCrystal: 1, magicCoins: 4 } },
+  ,
+    { id: 'demons-law-medicine', label: 'Взять магическое снадобье', text: 'В сундуке контрольного зала лежит запас магической медицины старой экспедиции.', rewards: { magicalMedicine: 1, magicCoins: 4 } },
+  
   ],
   valmar_body: [
+
     { id: 'valmar-body-core', label: 'Прорваться к сердцевине Тела Вальмара', text: 'После длинного органического маршрута партия доходит до сердцевины Тела Вальмара и получает право двигаться к следующей крупной развязке.', allowedBeatIds: ['granasaber_ship'], requiresFlags: ['flag_demons_law', 'flag_scene_demons_law_console'], setFlags: ['flag_valmar_body_core'], rewards: { experience: 28, skillCoins: 5, magicCoins: 5, setFlags: ['flag_valmar_body_core'] } },
+  
   ],
   birthplace_of_the_gods: [
+
     { id: 'birthplace-blue', label: 'Активировать синий механизм', text: 'Первый древний механизм отвечает и перестраивает маршрут.', requiresFlags: ['flag_birthplace_truth', 'flag_scene_birthplace_truth_hall'], setFlags: ['flag_birthplace_blue'], rewards: { experience: 26, skillCoins: 4, magicCoins: 5, setFlags: ['flag_birthplace_blue'] } },
     { id: 'birthplace-yellow', label: 'Активировать жёлтый механизм', text: 'Второй древний блок открывает новые проходы ниже.', requiresFlags: ['flag_birthplace_blue', 'flag_scene_birthplace_blue'], setFlags: ['flag_birthplace_yellow'], rewards: { experience: 26, skillCoins: 4, magicCoins: 5, setFlags: ['flag_birthplace_yellow'] } },
     { id: 'birthplace-red', label: 'Активировать красный механизм', text: 'Третий и последний ключ делает доступным путь ещё глубже.', requiresFlags: ['flag_birthplace_yellow', 'flag_scene_birthplace_yellow'], setFlags: ['flag_birthplace_red'], rewards: { experience: 28, skillCoins: 5, magicCoins: 5, setFlags: ['flag_birthplace_red'] } },
+  ,
+    { id: 'birthplace-archive-seed', label: 'Ответить архиву и получить семя магии', text: 'Архив распознаёт исследователя и выдаёт семя магии из хранилища припасов.', rewards: { seedOfMagic: 1, magicCoins: 4 } },
+    { id: 'birthplace-tickle-elmo', label: 'Пощекотать Эльмо', text: 'Маленький механический Эльмо в Истоке богов заливается смехом и выплёвывает редкий припас: «Ещё! Ещё!»', rewards: { heroElixir: 1, magicCoins: 6 } },
+  
   ],
   inner_trial: [
+
     { id: 'inner-trial-accept', label: 'Принять внутреннее испытание', text: 'Рюдо больше не бежит от себя. Он входит в испытание уже как человек, который осознанно выбирает пройти через собственную тьму.', allowedBeatIds: ['inner_trial'], requiresFlags: ['flag_birthplace_truth'], setFlags: ['flag_inner_trial_accept'], rewards: { experience: 30, skillCoins: 6, magicCoins: 6, setFlags: ['flag_inner_trial_accept'] } },
+  
   ],
   st_heim_cathedral_lobby: [
+
     { id: 'stheim-massacre-entry', label: 'Войти в Собор в день резни', text: 'Теперь St. Heim — уже не город визита, а место катастрофы. Этот вход открывает поздний церковный этап.', allowedBeatIds: ['cathedral_massacre'], setFlags: ['flag_stheim_massacre_entry'], rewards: { experience: 26, skillCoins: 4, magicCoins: 5, setFlags: ['flag_stheim_massacre_entry'] } },
+  
   ],
   st_heim_forbidden_room: [
+
     { id: 'stheim-zera-reveal', label: 'Открыть путь к разоблачению Зеры', text: 'После позднего аудиенционного зала и личной комнаты Зеры становится ясно, кто и как управлял всей ложью этого мира.', allowedBeatIds: ['zera_revealed'], requiresFlags: ['flag_stheim_massacre_entry', 'flag_scene_stheim_audience_ruin', 'flag_scene_zera_room_truth'], setFlags: ['flag_zera_reveal_path'], rewards: { experience: 30, skillCoins: 5, magicCoins: 6, setFlags: ['flag_zera_reveal_path'] } },
+  
   ],
   valmars_moon: [
+
     { id: 'moon-surface-push', label: 'Пройти поверхность Луны', text: 'Партия продавливает внешний слой Луны Вальмара и открывает путь глубже.', allowedBeatIds: ['moon_assault'], requiresFlags: ['flag_zera_reveal_path'], setFlags: ['flag_moon_surface'], rewards: { experience: 30, skillCoins: 5, magicCoins: 6, setFlags: ['flag_moon_surface'] } },
     { id: 'moon-womb-route', label: 'Открыть путь к Чреву Луны', text: 'После нескольких прорывов и защитных систем маршрут к внутреннему узлу Луны становится доступен.', allowedBeatIds: ['moon_assault'], requiresFlags: ['flag_moon_surface'], setFlags: ['flag_moon_womb_route'], rewards: { experience: 32, skillCoins: 6, magicCoins: 6, setFlags: ['flag_moon_womb_route'] } },
+  
   ],
   cyrum_kingdom: [
+
     { id: 'cyrum-war-room', label: 'Собрать оборону позднего Цайрума', text: 'Поздний Цайрум уже действует как военный штаб, а не как обычная столица. Партия подготавливает следующий этап похода.', requiresFlags: ['flag_zera_reveal_path', 'flag_scene_cyrum_front_command'], setFlags: ['flag_cyrum_war_room'], rewards: { experience: 26, skillCoins: 4, magicCoins: 4, setFlags: ['flag_cyrum_war_room'] } },
+  
   ],
   new_valmar: [
+
     { id: 'newvalmar-outer', label: 'Пробить внешний барьер Нового Вальмара', text: 'Органическая оболочка данжа отступает только после того, как партия выдержит уже не один, а два навязанных хора воли этого места и всё равно пойдёт дальше.', allowedBeatIds: ['zera_inside_valmar'], requiresFlags: ['flag_new_valmar_will', 'flag_scene_new_valmar_vein_whisper', 'flag_scene_new_valmar_vein_choir'], setFlags: ['flag_new_valmar_outer'], rewards: { experience: 30, skillCoins: 5, magicCoins: 6, setFlags: ['flag_new_valmar_outer'] } },
     { id: 'newvalmar-chaos', label: 'Открыть Room of Chaos', text: 'После первого прорыва партия добирается до узла, ведущего к главной внутренней лжи Зеры.', allowedBeatIds: ['zera_inside_valmar'], requiresFlags: ['flag_new_valmar_outer'], setFlags: ['flag_new_valmar_chaos'], rewards: { experience: 32, skillCoins: 6, magicCoins: 6, setFlags: ['flag_new_valmar_chaos'] } },
+  ,
+    { id: 'new-valmar-nut-memory', label: 'Найти орех в живой стене', text: 'В складке живой стены застрял орех сочувствия — кто-то прятал его здесь, чтобы вернуться.', rewards: { sympathyNut: 1, experience: 10 } },
+    { id: 'new-valmar-ash-memory', label: 'Собрать пепел демона', text: 'Тёмный пепел на стенах — остатки того, кто пытался пройти этот путь раньше.', rewards: { demonAsh: 1, experience: 12 } },
+  
   ],
   new_valmar_room_of_chaos: [
+
     { id: 'newvalmar-false-masks', label: 'Пройти зал ложных образов', text: 'Даже в Room of Chaos Зера воюет не только силой, но и ложью, подменой личности и давлением на волю.', allowedBeatIds: ['zera_inside_valmar'], requiresFlags: ['flag_new_valmar_chaos', 'flag_scene_room_of_chaos_echo'], rewards: { experience: 20, skillCoins: 4, magicCoins: 5 } },
+  
   ],
   new_valmar_core: [
+
     { id: 'true-finale-core', label: 'Подготовить ядро финальной развязки', text: 'Финальный проход к ядру Нового Вальмара открыт. Дальше — уже только последняя развязка.', allowedBeatIds: ['true_finale'], requiresFlags: ['flag_new_valmar_chaos', 'flag_scene_new_valmar_core_judgement'], setFlags: ['flag_true_finale_core'], rewards: { experience: 36, skillCoins: 7, magicCoins: 7, setFlags: ['flag_true_finale_core'] } },
+  
+  ],
+  carbo_church: [
+
+    { id: 'carbo-elder-blessing', label: 'Получить благословение старушки', text: 'Пожилая прихожанка благословляет партию на дорогу и делится последним запасом семян.', rewards: { experience: 8, skillCoins: 2, magicCoins: 2, seedOfLife: 1 } },
+  
+  ],
+  liligue_city: [
+
+    { id: 'liligue-bomb-trader', label: 'Поторговаться с инженером-взрывником', text: 'Инженер Лилига продаёт «настоящую могейскую взрывчатку» по цене дружбы.', rewards: { mogayBomb: 1, experience: 8 } },
+  
+  ],
+  mirumu_village: [
+
+    { id: 'mirumu-seed-gift', label: 'Принять семя жизни от знахарки', text: 'Знахарка Мирумы отдаёт семя жизни: «Для того, кто идёт в разлом. Оно согреет лучше любой песни».', rewards: { seedOfLife: 1, experience: 10 } },
+  
+  ],
+  st_heim_library: [
+
+    { id: 'stheim-lost-index', label: 'Найти «потерянный» индекс', text: 'Между страницами книги застрял индекс запретных текстов — и свиток алхимии, служивший закладкой.', rewards: { scrollOfAlheal: 1, magicCoins: 3 } },
+  
+  ],
+  nanan_store: [
+
+    { id: 'nanan-scroll-offer', label: 'Взять свиток урагана', text: 'Торговец Нанана вручает свиток урагана: «На краю мира такие вещи не продают. Их отдают тем, кто идёт в бурю».', rewards: { whirlwindScroll: 1, experience: 12 } },
+  
   ],
 };
 
@@ -1793,6 +2360,11 @@ function normalizeCampaignRun(run) {
     growthUnlockIds: Array.isArray(run?.growthUnlockIds) ? [...run.growthUnlockIds] : [],
     activeLocationSceneId: run?.activeLocationSceneId ?? null,
     seenLocationSceneIds: Array.isArray(run?.seenLocationSceneIds) ? [...run.seenLocationSceneIds] : [],
+    seenNpcDialogueIds: Array.isArray(run?.seenNpcDialogueIds) ? [...run.seenNpcDialogueIds] : [],
+    actionLevels: JSON.parse(JSON.stringify(run?.actionLevels ?? {})),
+    eggLoadout: { ryudo: null, elena: 'holy_egg', tio: null, roan: null, mareg: null, millenia: 'chaos_egg', ...(run?.eggLoadout ?? {}) },
+    eggLevels: JSON.parse(JSON.stringify(run?.eggLevels ?? {})),
+    ownedEggIds: Array.isArray(run?.ownedEggIds) ? [...run.ownedEggIds] : [],
     roster: cloneCampaignRoster(run?.roster),
     equipmentLoadout: cloneCampaignEquipmentLoadout(run?.equipmentLoadout),
     checkpointInventory: createBaseInventory({
@@ -2139,6 +2711,19 @@ function triggerEventFx(event) {
     return;
   }
 
+  if (state.settings.soundEnabled) {
+    const sfx = mapEventTypeToSfx(event);
+    if (sfx) {
+      sound.playSfx(sfx);
+    }
+    for (const extra of event.supplementalEvents ?? []) {
+      const extraSfx = mapEventTypeToSfx(extra);
+      if (extraSfx) {
+        sound.playSfx(extraSfx);
+      }
+    }
+  }
+
   const chain = [event, ...(event.supplementalEvents ?? [])].filter(Boolean);
   if (chain.length === 0) {
     return;
@@ -2158,6 +2743,42 @@ function getEventFxProgress() {
   return Math.max(0, Math.min(1, (now - state.eventFx.startedAt) / duration));
 }
 
+const TITLE_MENU_ITEMS = [
+  { id: 'menu-open-play', tab: 'play', run: () => resetToPlayBattle() },
+  { id: 'menu-open-campaign', tab: 'campaign', run: null },
+  { id: 'menu-open-debug', tab: 'debug', run: null },
+  { id: 'menu-open-compare', tab: 'compare', run: null },
+  { id: 'menu-open-parity', tab: 'parity', run: null },
+];
+
+function renderTitleMenu() {
+  if (state.appScreen !== 'menu' || !elements.menuDescText) {
+    return;
+  }
+  const items = TITLE_MENU_ITEMS;
+  const active = items[Math.max(0, Math.min(state.menuCursor ?? 0, items.length - 1))] ?? items[0];
+  for (const item of items) {
+    const btn = document.getElementById(item.id);
+    if (btn) {
+      btn.dataset.active = String(item.id === active.id);
+    }
+  }
+  const activeBtn = document.getElementById(active.id);
+  const desc = activeBtn?.dataset?.mdesc ?? 'Выберите пункт меню.';
+  elements.menuDescText.textContent = desc;
+  activeBtn?.focus({ preventScroll: true });
+}
+
+function activateTitleMenuItem(item) {
+  if (!item) {
+    return;
+  }
+  if (item.run) {
+    item.run();
+  }
+  openWorkspace(item.tab);
+}
+
 function openWorkspace(tab = state.activeTab) {
   state.appScreen = 'app';
   state.activeTab = tab;
@@ -2169,6 +2790,7 @@ function openMainMenu() {
   stopCompareAutoplay();
   state.eventFx = null;
   state.eventFxQueue = [];
+  state.menuCursor = 0;
   state.appScreen = 'menu';
   render();
 }
@@ -2336,7 +2958,15 @@ function baseInventoryForCurrentEncounter() {
       return createBaseInventory({ medicinalHerb: 6, antidote: 3, woundSalve: 1, moveBlessing: 1 });
     case 'fullParty4v4':
     case 'guardianTrial':
-      return createBaseInventory({ medicinalHerb: 6, antidote: 4, woundSalve: 2, healingHerb: 1, magicBlessing: 1 });
+      return createBaseInventory({ medicinalHerb: 6, antidote: 4, woundSalve: 2, healingHerb: 1, magicBlessing: 1, healingFruit: 1, dynamite: 1 });
+    case 'eyeOfValmarBoss':
+    case 'crimsonTailsBoss':
+    case 'nagaQueensBoss':
+    case 'dualFistsBoss':
+    case 'birthplaceGuardianBoss':
+    case 'eggGuardianBoss':
+    case 'finalValmarBoss':
+      return createBaseInventory({ medicinalHerb: 6, antidote: 4, woundSalve: 2, healingHerb: 1, healingFruit: 2, scarletPotion: 1, dynamite: 2, blessingScroll: 1, magicalMedicine: 1 });
     default:
       return createBaseInventory(DEFAULT_CAMPAIGN_INVENTORY);
   }
@@ -2431,6 +3061,34 @@ function actionSortScore(action) {
     endure: 25,
     evade: 26,
     wingSlice: 27,
+    poisonSpit: 28,
+    webTrap: 29,
+    freeze: 30,
+    paralysisWave: 31,
+    craze: 32,
+    poizn: 33,
+    boom: 34,
+    baBoom: 35,
+    meteorStrike: 36,
+    gadZap: 37,
+    halvah: 38,
+    firebomb: 40,
+    mogayBomb: 41,
+    handGrenade: 42,
+    dynamite: 43,
+    hyperMogayBomb: 44,
+    superMogayBomb: 45,
+    meteorScroll: 46,
+    whirlwindScroll: 47,
+    redGoblinToad: 48,
+    demonAsh: 49,
+    spiderweb: 50,
+    redBirdStone: 51,
+    icefangStone: 52,
+    electrumStone: 53,
+    galeStone: 54,
+    flameStone: 55,
+    quakeStone: 56,
   };
 
   return order[action.id] ?? 99;
@@ -2489,6 +3147,7 @@ function commandSectionLabelForAction(action, category) {
     return 'Offensive magic';
   }
   if (category === 'items') {
+    if (definition.offensive) return 'Offensive items';
     if (definition.revive) return 'Revive';
     if ((definition.restoreSp ?? 0) > 0 || (definition.restoreMp ?? 0) > 0) return 'Resource recovery';
     if ((definition.cureStatuses ?? []).length > 0 && !(definition.healBase ?? 0)) return 'Status recovery';
@@ -2621,6 +3280,7 @@ function renderTabs() {
   const campaignActive = state.activeTab === 'campaign';
   const debugActive = state.activeTab === 'debug';
   const compareActive = state.activeTab === 'compare';
+  const parityActive = state.activeTab === 'parity';
 
   elements.menuScreen.hidden = state.appScreen !== 'menu';
   elements.appScreen.hidden = state.appScreen !== 'app';
@@ -2629,11 +3289,13 @@ function renderTabs() {
   elements.campaignSection.hidden = !campaignActive;
   elements.debugSection.hidden = !debugActive;
   elements.compareSection.hidden = !compareActive;
+  elements.paritySection.hidden = !parityActive;
 
   elements.tabPlay.dataset.active = String(playActive);
   elements.tabCampaign.dataset.active = String(campaignActive);
   elements.tabDebug.dataset.active = String(debugActive);
   elements.tabCompare.dataset.active = String(compareActive);
+  elements.tabParity.dataset.active = String(parityActive);
 }
 
 function toCanvasPoint(point) {
@@ -2755,7 +3417,15 @@ function drawCombatant(fighter) {
   drawActionPreview(fighter);
 
   if (sprite) {
-    drawImageCover(context, sprite, x - fighter.radius * 1.65, y - fighter.radius * 1.9, fighter.radius * 3.3, fighter.radius * 3.3, fighter.isAlive ? 1 : 0.4);
+    const phase = fighter.bossPhaseIndex ?? 0;
+    if (phase > 0) {
+      context.save();
+      context.filter = `hue-rotate(${phase * 55}deg) saturate(${1 + phase * 0.25})`;
+      drawImageCover(context, sprite, x - fighter.radius * 1.65, y - fighter.radius * 1.9, fighter.radius * 3.3, fighter.radius * 3.3, fighter.isAlive ? 1 : 0.4);
+      context.restore();
+    } else {
+      drawImageCover(context, sprite, x - fighter.radius * 1.65, y - fighter.radius * 1.9, fighter.radius * 3.3, fighter.radius * 3.3, fighter.isAlive ? 1 : 0.4);
+    }
   } else {
     context.fillStyle = fighter.color;
     context.beginPath();
@@ -2946,6 +3616,41 @@ function roleAccent(role = 'combatant') {
     'moon-sentinel': '#f472b6',
     'blade-echo': '#facc15',
     'fanatic-bruiser': '#f87171',
+    'sand-harasser': '#eab308',
+    'poison-striker': '#65a30d',
+    'scaled-vanguard': '#94a3b8',
+    'shell-tank': '#cbd5e1',
+    'twin-bruiser': '#f87171',
+    'warp-slasher': '#a78bfa',
+    'vein-caster': '#f472b6',
+    'star-flier': '#facc15',
+    'venom-brute': '#3f6212',
+    'organic-flier': '#ec4899',
+    'valmar-youngling': '#d946ef',
+    'ice-bruiser': '#e0f2fe',
+    'early-flier': '#fbbf24',
+    'snow-bruiser': '#cbd5e1',
+    'camouflage-harasser': '#84cc16',
+    'drake-vanguard': '#f87171',
+    'ember-harasser': '#f97316',
+    'clay-flier': '#d6d3d1',
+    'reef-striker': '#ef4444',
+    'rift-diver': '#f59e0b',
+    'mind-flier': '#a78bfa',
+    'ice-tank': '#bae6fd',
+    'venom-crawler': '#4d7c0f',
+    'special-elite': '#7c3aed',
+    'special-stalker': '#e0f2fe',
+    'storm-flier': '#34d399',
+    'ancient-vanguard': '#94a3b8',
+    'death-hound': '#57534e',
+    'gravity-eye': '#f472b6',
+    'twin-reef-boss': '#f43f5e',
+    'rift-queen': '#0ea5e9',
+    'twin-fist': '#f97316',
+    'archive-guardian': '#93c5fd',
+    'final-warden': '#f8fafc',
+    'apex-god': '#d946ef',
     combatant: '#94a3b8',
   };
   return map[role] ?? '#94a3b8';
@@ -2990,6 +3695,8 @@ function drawStatusIconsNearUnit(ctx, fighter, x, y) {
       moveBlock: '#f59e0b',
       magicBlock: '#22d3ee',
       poison: '#84cc16',
+      confusion: '#c084fc',
+      paralysis: '#facc15',
       atkUp: '#60a5fa',
       defUp: '#34d399',
       actUp: '#f472b6',
@@ -3200,6 +3907,28 @@ function drawEventFxOverlay() {
     destructionRay: '147,197,253',
     medicinalHerb: '74,222,128',
     antidote: '250,204,21',
+    boom: '251,146,60',
+    baBoom: '239,68,68',
+    meteorStrike: '248,113,113',
+    gadZap: '56,189,248',
+    poizn: '132,204,22',
+    craze: '192,132,252',
+    halvah: '250,204,21',
+    paralysisWave: '250,204,21',
+    dynamite: '251,146,60',
+    hyperMogayBomb: '248,113,113',
+    superMogayBomb: '239,68,68',
+    meteorScroll: '248,113,113',
+    whirlwindScroll: '125,211,252',
+    redGoblinToad: '251,146,60',
+    demonAsh: '167,139,250',
+    spiderweb: '163,230,53',
+    redBirdStone: '248,113,113',
+    icefangStone: '125,211,252',
+    electrumStone: '56,189,248',
+    galeStone: '125,211,252',
+    flameStone: '251,146,60',
+    quakeStone: '251,191,36',
     bossPhase: '248,113,113',
     bossReaction: '244,63,94',
     battlefield: '148,163,184',
@@ -4447,7 +5176,7 @@ function drawCampaignSceneCanvas() {
   context.textAlign = 'left';
   context.fillStyle = '#93c5fd';
   context.font = '12px system-ui';
-  context.fillText(state.campaignRun.phase === 'setpiece' ? 'Bespoke setpiece' : state.campaignRun.phase === 'location-scene' ? 'Location scene' : page?.kind === 'dialogue' ? 'Dialogue scene' : 'Story scene', 76, 78);
+  context.fillText(state.campaignRun.phase === 'setpiece' ? 'Bespoke setpiece' : state.campaignRun.phase === 'location-scene' ? 'Location scene' : state.campaignRun.phase === 'npc-dialogue' ? 'NPC dialogue' : page?.kind === 'dialogue' ? 'Dialogue scene' : 'Story scene', 76, 78);
 
   context.fillStyle = '#f8fafc';
   context.font = 'bold 28px system-ui';
@@ -4603,10 +5332,12 @@ function renderCommandPanel() {
       button.className = 'action-button';
       button.textContent = describeAction(action);
 
-      const hint = document.createElement('small');
-      hint.textContent = actionHint(action);
-      button.appendChild(document.createElement('br'));
-      button.appendChild(hint);
+      if (state.settings.showCommandHints) {
+        const hint = document.createElement('small');
+        hint.textContent = actionHint(action);
+        button.appendChild(document.createElement('br'));
+        button.appendChild(hint);
+      }
 
       button.addEventListener('click', () => {
         const accepted = queueManualAction(state.battle, awaiting.fighterId, action);
@@ -4861,6 +5592,427 @@ function renderGraphsPanel() {
     : `Actions considered: ${filtered.length}. Run balance snapshot or debug winrate for metrics.`;
 }
 
+function renderMenuParityPanel() {
+  if (!elements.mpOutput) {
+    return;
+  }
+
+  for (const screen of MP_SCREENS) {
+    const button = elements[screen.button];
+    if (button) {
+      button.className = state.menuParityScreen === screen.key ? '' : 'secondary';
+    }
+  }
+  menuParityFocus = null;
+
+  elements.mpImages.innerHTML = '';
+  switch (state.menuParityScreen) {
+    case 'skills':
+      renderMpSkillsScreen();
+      break;
+    case 'eggs':
+      renderMpEggsScreen();
+      break;
+    case 'items':
+      renderMpItemsScreen();
+      break;
+    case 'bestiary':
+      renderMpBestiaryScreen();
+      break;
+    case 'config':
+      renderMpConfigScreen();
+      break;
+    case 'valuables':
+      renderMpValuablesScreen();
+      break;
+    case 'status':
+    default:
+      renderMpStatusScreen();
+      break;
+  }
+  bindMpActionButtons();
+}
+
+function mpPartyPortraitBlock(key) {
+  const preset = PRESETS[key];
+  const rosterEntry = state.campaignRun.roster[key] ?? null;
+  const hp = rosterEntry?.hp ?? preset.maxHp;
+  return `<div class="mp-entry"><img src="${unitArtPathForFighter(preset)}" alt="${preset.name}" width="48" height="48"/> <span>${preset.name} — HP ${hp}/${preset.maxHp}</span></div>`;
+}
+
+function renderMpStatusScreen() {
+  const lines = [
+    'Статус партии (original-like hero screen)',
+    `Уровень кампании: ${state.campaignRun.partyLevel} | EXP ${state.campaignRun.experience} | SC ${state.campaignRun.skillCoins} | MC ${state.campaignRun.magicCoins}`,
+    '',
+  ];
+  for (const key of CAMPAIGN_PLAYABLE_UNITS) {
+    const preset = buildCampaignPresetForKey(key);
+    const rosterEntry = state.campaignRun.roster[key] ?? null;
+    const loadout = state.campaignRun.equipmentLoadout?.[key] ?? {};
+    const weapon = EQUIPMENT_CATALOG.find((entry) => entry.id === loadout.weapon)?.label ?? '—';
+    const armor = EQUIPMENT_CATALOG.find((entry) => entry.id === loadout.armor)?.label ?? '—';
+    const accessory = EQUIPMENT_CATALOG.find((entry) => entry.id === loadout.accessory)?.label ?? '—';
+    lines.push(
+      `${preset.name} [${preset.role}]${rosterEntry?.available ? '' : ' (не в активной партии)'}`,
+      `  HP ${rosterEntry?.hp ?? preset.maxHp}/${preset.maxHp} | SP ${rosterEntry?.sp ?? preset.startSp}/${preset.maxSp} | MP ${rosterEntry?.mp ?? preset.startMp}/${preset.maxMp}`,
+      `  STR ${preset.str} VIT ${preset.vit} AGI ${preset.agi} SPD ${preset.spd} MAG ${preset.mag} MEN ${preset.men}`,
+      `  Оружие: ${weapon} | Броня: ${armor} | Аксессуар: ${accessory}`,
+      `  Mana Egg: ${(() => { const eggId = state.campaignRun.eggLoadout?.[key] ?? null; const egg = eggId ? MANA_EGGS.find((entry) => entry.id === eggId) : null; return egg ? `${egg.label} (ур.${campaignEggLevel(key, egg.id)})` : '—'; })()}`,
+      '',
+    );
+  }
+  elements.mpOutput.textContent = lines.join('\n');
+  elements.mpImages.innerHTML = CAMPAIGN_PLAYABLE_UNITS.map(mpPartyPortraitBlock).join('');
+}
+
+function renderMpSkillsScreen() {
+  const lines = [
+    'Навыки и магия (skill screen)',
+    'Уровни приёмов (Lv1–5) прокачиваются за SC, уровни магии — за MC. Рост уровня усиливает урон/лечение и ускоряет charge.',
+    '',
+  ];
+  const buttons = [];
+  for (const key of CAMPAIGN_PLAYABLE_UNITS) {
+    const preset = PRESETS[key];
+    const groups = groupedActionDefinitions(loadoutActionIds(preset.loadout));
+    lines.push(`— ${preset.name} — SC: ${state.campaignRun.skillCoins} | MC: ${state.campaignRun.magicCoins}`);
+    if (groups.length === 0) {
+      lines.push('  (нет закреплённых действий)');
+    }
+    for (const group of groups) {
+      lines.push(`  ${group.label}:`);
+      for (const definition of group.definitions) {
+        const cost = [];
+        if (definition.costSp) cost.push(`${definition.costSp} SP`);
+        if (definition.costMp) cost.push(`${definition.costMp} MP`);
+        const costText = cost.length ? ` [${cost.join(', ')}]` : '';
+        const level = campaignMoveLevel(key, definition.id);
+        const moveCosts = moveLevelCosts(definition.id);
+        const magicCosts = magicLevelCosts(definition.id);
+        let levelText = '';
+        if (isMoveLevelable(definition.id, definition)) {
+          levelText = ` ур.${level}/5`;
+          if (level < 5) {
+            const nextCost = moveCosts[level - 1];
+            buttons.push(mpActionButton(`${preset.name}: ${definition.label} → ур.${level + 1} (${nextCost} SC)`, () => upgradeCampaignMove(key, definition.id)));
+          }
+        } else if (isMagicLevelable(definition.id, definition)) {
+          levelText = ` ур.${level}/5`;
+          if (level < 5) {
+            const nextCost = magicCosts[level - 1];
+            buttons.push(mpActionButton(`${preset.name}: ${definition.label} → ур.${level + 1} (${nextCost} MC)`, () => upgradeCampaignMagic(key, definition.id)));
+          }
+        }
+        lines.push(`    - ${definition.label}${levelText}${costText} — ${definition.targeting}`);
+      }
+    }
+    lines.push('');
+  }
+  elements.mpOutput.textContent = lines.join('\n');
+  elements.mpImages.innerHTML = buttons.join('');
+}
+
+function renderMpEggsScreen() {
+  const lines = [
+    'Mana Eggs (magic egg screen)',
+    'Каноничные яйца маны Grandia II: школа, уровни изучения, MC-стоимость прокачки и экипировка на героев.',
+    'Яйца находятся в сундуках кампании (Durham → Mist, Aira → Gravity, Ceceile → Soul, Demon\'s Law → Star, Raul Hills → Fairy, Birthplace → Dragon).',
+    '',
+    '— Владение яйцами —',
+    ...(state.campaignRun.ownedEggIds.length ? state.campaignRun.ownedEggIds.map((id) => `  ✓ ${MANA_EGGS.find((egg) => egg.id === id)?.label ?? id}`) : ['  (пока нет; Elena и Millenia начинают со своими яйцами)']),
+    '',
+    '— Экипировка на героях —',
+    ...CAMPAIGN_PLAYABLE_UNITS.map((key) => {
+      const eggId = state.campaignRun.eggLoadout?.[key] ?? null;
+      const egg = eggId ? MANA_EGGS.find((entry) => entry.id === eggId) : null;
+      return `  ${PRESETS[key]?.name ?? key}: ${egg ? egg.label : '—'}`;
+    }),
+    '',
+  ];
+  const buttons = [];
+  for (const egg of MANA_EGGS) {
+    lines.push(`◆ ${egg.label} — ${egg.type}`);
+    lines.push(`  Элементы: ${egg.elements.join(' / ')}`);
+    lines.push(`  Где получить: ${egg.location}`);
+    lines.push(`  ${egg.description}`);
+    for (const spell of egg.spells) {
+      const mc = spell.mcCost.join(' / ');
+      lines.push(`    - ${spell.label} (уровень яйца ${spell.level}, MC: ${mc})`);
+    }
+    const owned = state.campaignRun.ownedEggIds.includes(egg.id);
+    if (owned) {
+      for (const key of CAMPAIGN_PLAYABLE_UNITS) {
+        const equipped = state.campaignRun.eggLoadout?.[key] === egg.id;
+        buttons.push(mpActionButton(equipped ? `${PRESETS[key]?.name ?? key}: ${egg.label} (надето)` : `Надеть ${egg.label} на ${PRESETS[key]?.name ?? key}`, () => equipCampaignEgg(key, egg.id)));
+      }
+      for (const key of CAMPAIGN_PLAYABLE_UNITS) {
+        if (state.campaignRun.eggLoadout?.[key] === egg.id) {
+          const level = campaignEggLevel(key, egg.id);
+          if (level < 5) {
+            const cost = EGG_LEVEL_COSTS[level - 1];
+            buttons.push(mpActionButton(`${PRESETS[key]?.name ?? key}: ${egg.label} → ур.${level + 1} (${cost} MC)`, () => upgradeCampaignEgg(key, egg.id)));
+          }
+        }
+      }
+    }
+    lines.push('');
+  }
+  elements.mpOutput.textContent = lines.join('\n');
+  elements.mpImages.innerHTML = buttons.join('');
+}
+
+const mpActionRegistry = new Map();
+let mpActionCounter = 0;
+let menuParityFocus = null;
+const mpFocusables = new Set();
+
+function mpActionButton(label, onClick) {
+  mpActionCounter += 1;
+  const id = `mp-act-${mpActionCounter}`;
+  mpActionRegistry.set(id, onClick);
+  return `<button id="${id}" class="secondary" style="min-width:200px;">${label}</button>`;
+}
+
+function bindMpActionButtons() {
+  for (const [id, onClick] of mpActionRegistry) {
+    const button = document.getElementById(id);
+    if (button) {
+      button.addEventListener('click', onClick);
+      mpActionRegistry.delete(id);
+    }
+  }
+  if (state.activeTab === 'parity') {
+    mpFocusables.clear();
+    for (const screen of MP_SCREENS) {
+      const btn = document.getElementById(screen.button.replace('mpStatus', 'mp-status'));
+      if (btn) mpFocusables.add(btn.id);
+    }
+    document.querySelectorAll('#menu-parity-section button').forEach((btn) => {
+      if (btn.id) mpFocusables.add(btn.id);
+    });
+    if (!menuParityFocus || !document.getElementById(menuParityFocus)) {
+      menuParityFocus = [...mpFocusables][0] ?? null;
+    }
+    updateMenuParityFocusRing();
+  }
+}
+
+function updateMenuParityFocusRing() {
+  document.querySelectorAll('#menu-parity-section button').forEach((btn) => {
+    btn.style.outline = btn.id === menuParityFocus ? '2px solid #f59e0b' : '';
+  });
+}
+
+function moveMenuParityFocus(delta) {
+  const list = [...mpFocusables];
+  if (list.length === 0) return;
+  const idx = list.indexOf(menuParityFocus);
+  const next = list[Math.max(0, Math.min(idx + delta, list.length - 1))];
+  menuParityFocus = next;
+  updateMenuParityFocusRing();
+}
+
+function activateMenuParityFocus() {
+  if (!menuParityFocus) return;
+  const btn = document.getElementById(menuParityFocus);
+  if (btn) btn.click();
+}
+
+function handleMenuParityKeys(event) {
+  if (state.activeTab !== 'parity') return;
+  const tag = event.target?.tagName ?? '';
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) return;
+  const key = event.key;
+  if (key === 'ArrowDown' || key === 'ArrowRight') {
+    moveMenuParityFocus(1);
+    event.preventDefault();
+  } else if (key === 'ArrowUp' || key === 'ArrowLeft') {
+    moveMenuParityFocus(-1);
+    event.preventDefault();
+  } else if (key === 'Enter' || key === ' ') {
+    activateMenuParityFocus();
+    event.preventDefault();
+  } else if (key === 'Escape') {
+    document.querySelectorAll('#menu-parity-section button').forEach((btn) => { btn.style.outline = ''; });
+  }
+}
+
+function statDiffText(before, after) {
+  const keys = ['maxHp', 'str', 'vit', 'agi', 'spd', 'mag', 'men', 'maxMp'];
+  const parts = [];
+  for (const key of keys) {
+    const diff = Number(after[key] ?? 0) - Number(before[key] ?? 0);
+    if (Math.abs(diff) > 0) {
+      parts.push(`${key} ${diff > 0 ? '+' : ''}${diff}`);
+    }
+  }
+  return parts.join(', ') || 'нет изменений';
+}
+
+function equipmentStatPreview(entry, key) {
+  const before = buildCampaignPresetForKey(key);
+  const wasEquipped = state.campaignRun.equipmentLoadout?.[key]?.[entry.slot] === entry.id;
+  if (wasEquipped || !entry.targetKey) {
+    return null;
+  }
+  // simulate equipping: apply bonuses to a copy
+  const after = JSON.parse(JSON.stringify(before));
+  for (const [field, amount] of Object.entries(entry.bonuses ?? {})) {
+    if (field in after) {
+      after[field] = Number(after[field] ?? 0) + Number(amount ?? 0);
+    }
+  }
+  return `превью: ${statDiffText(before, after)}`;
+}
+
+function renderMpItemsScreen() {
+  const lines = [
+    'Предметы и снаряжение (item / bag / equipment screen)',
+    '',
+    `Инвентарь партии сейчас: ${campaignInventoryString()}`,
+    `Золото: ${campaignGoldString()}`,
+    '',
+    '— Каталог расходников —',
+    ...ITEM_CATALOG.map((item) => `  ${item.label}: ${item.description}`),
+    '',
+    '— Каталог магазинов —',
+    ...SHOP_CATALOG.map((entry) => `  ${entry.label} (${entry.price} G): ${entry.description}`),
+    '',
+    '— Каталог экипировки (превью статов для владельца слота) —',
+    ...EQUIPMENT_CATALOG.map((entry) => {
+      const owner = entry.targetKey ? PRESETS[entry.targetKey]?.name ?? entry.targetKey : 'party';
+      const preview = entry.targetKey ? equipmentStatPreview(entry, entry.targetKey) : null;
+      return `  ${entry.label} [${entry.slot}] → ${owner}: ${entry.description}${preview ? ` | ${preview}` : ''}`;
+    }),
+    '',
+    '— Текущие слоты партии —',
+    ...campaignEquipmentLoadoutLines(),
+  ];
+  elements.mpOutput.textContent = lines.join('\n');
+}
+
+function renderMpBestiaryScreen() {
+  const enemyEntries = Object.entries(PRESETS).filter(([, preset]) => preset.team === 'enemies');
+  const groups = buildBestiaryGroupSnapshot(PRESETS);
+  const lines = [
+    'Энциклопедия врагов (bestiary encyclopedia)',
+    `Всего enemy presets: ${enemyEntries.length} | групп: ${groups.length}`,
+    'Сортировка по регионам оригинала; у каждого врага — роли, статы, сопротивления и drop table.',
+    '',
+  ];
+  const imageBlocks = [];
+  for (const group of groups) {
+    lines.push(`### ${group.label} (${group.resolvedEnemies.length}/${group.enemyKeys.length})`);
+    lines.push(`  Локации: ${group.locations.join(', ')}`);
+    for (const { key, preset } of group.resolvedEnemies) {
+      const drops = dropEntriesForPresetKey(key);
+      const dropText = drops.length
+        ? drops.map((drop) => {
+          const name = drop.equipment
+            ? EQUIPMENT_CATALOG.find((entry) => entry.id === drop.equipment)?.label ?? drop.equipment
+            : ITEM_CATALOG.find((entry) => entry.key === drop.key)?.label ?? drop.key;
+          return `${name} (${Math.round((drop.chance ?? 0) * 100)}%)`;
+        }).join(', ')
+        : '—';
+      lines.push(
+        `  • ${preset.name} — роль: ${preset.role}`,
+        `    HP ${preset.maxHp} | STR ${preset.str} VIT ${preset.vit} AGI ${preset.agi} SPD ${preset.spd} MAG ${preset.mag} MEN ${preset.men}`,
+        `    Сопр.: fire ${preset.resistances?.fire ?? 1} / lightning ${preset.resistances?.lightning ?? 1}`,
+        `    Drops: ${dropText}`,
+      );
+      imageBlocks.push(`<div class="mp-entry"><img src="${unitArtPathForFighter(preset)}" alt="${preset.name}" width="48" height="48"/> <span>${preset.name} [${preset.role}]</span></div>`);
+    }
+    lines.push('');
+  }
+  elements.mpOutput.textContent = lines.join('\n');
+  elements.mpImages.innerHTML = imageBlocks.join('');
+}
+
+function renderMpValuablesScreen() {
+  const lines = [
+    'Ключевые предметы (valuables / key items)',
+    'Знаковые вещи пути — как в оригинальных меню Grandia II.',
+    '',
+  ];
+  const images = [];
+  for (const item of valuablesList()) {
+    lines.push(`◆ ${item.label}`);
+    lines.push(`  ${item.description}`);
+    lines.push(`  Найден: ${item.acquiredWhere}`);
+    lines.push('');
+  }
+  elements.mpOutput.textContent = lines.join('\n');
+  elements.mpImages.innerHTML = valuablesList().map((item) => `<div class="mp-entry"><span>${item.label}</span></div>`).join('');
+}
+
+function renderMpConfigScreen() {
+  elements.mpConfigAi.value = state.settings.defaultPlayEnemyAi;
+  elements.mpConfigTheme.value = state.settings.defaultBattlefieldTheme;
+  elements.mpConfigHints.checked = Boolean(state.settings.showCommandHints);
+  elements.mpConfigSpeed.value = String(state.settings.replaySpeedMs);
+  elements.mpConfigSound.checked = Boolean(state.settings.soundEnabled);
+  elements.mpConfigMusic.checked = Boolean(state.settings.musicEnabled);
+  elements.mpOutput.textContent = [
+    'Настройки (options screen)',
+    'Эти значения сохраняются в localStorage и применяются к игре.',
+    '',
+    `AI врага по умолчанию: ${state.settings.defaultPlayEnemyAi}`,
+    `Поле боя по умолчанию: ${state.settings.defaultBattlefieldTheme}`,
+    `Подсказки в командном меню: ${state.settings.showCommandHints ? 'вкл' : 'выкл'}`,
+    `Скорость replay по умолчанию: ${state.settings.replaySpeedMs} мс`,
+    `Звуковые эффекты: ${state.settings.soundEnabled ? 'вкл' : 'выкл'}`,
+    `Музыка: ${state.settings.musicEnabled ? 'вкл' : 'выкл'}`,
+    '',
+    'Кнопка «Сбросить сохранения кампании» удаляет сохранённый забег и настройки.',
+  ].join('\n');
+  const buttons = [];
+  buttons.push(mpActionButton('▶ Послушать боевую тему', () => {
+    sound.init();
+    sound.setEnabled(true);
+    sound.startBattleTheme();
+  }));
+  buttons.push(mpActionButton('⏹ Остановить музыку', () => sound.stopBattleTheme()));
+  buttons.push(mpActionButton('Сбросить сохранения кампании', () => {
+    resetCampaignState();
+    state.debugOutput = 'Сохранения кампании сброшены.';
+    render();
+  }));
+  buttons.push(mpActionButton('Сбросить настройки', () => {
+    state.settings = { ...DEFAULT_SETTINGS };
+    localStorage.removeItem(SETTINGS_STORAGE_KEY);
+    state.playEnemyAi = DEFAULT_SETTINGS.defaultPlayEnemyAi;
+    state.battlefieldTheme = DEFAULT_SETTINGS.defaultBattlefieldTheme;
+    if (elements.replaySpeed) elements.replaySpeed.value = String(DEFAULT_SETTINGS.replaySpeedMs);
+    writeStateToForms();
+    state.debugOutput = 'Настройки сброшены к умолчаниям.';
+    render();
+  }));
+  elements.mpImages.innerHTML = buttons.join('');
+}
+
+function saveMenuParityConfig() {
+  state.settings.defaultPlayEnemyAi = elements.mpConfigAi.value;
+  state.settings.defaultBattlefieldTheme = elements.mpConfigTheme.value;
+  state.settings.showCommandHints = Boolean(elements.mpConfigHints.checked);
+  state.settings.replaySpeedMs = Number(elements.mpConfigSpeed.value) || 550;
+  state.settings.soundEnabled = Boolean(elements.mpConfigSound.checked);
+  state.settings.musicEnabled = Boolean(elements.mpConfigMusic.checked);
+  savePersistedSettings();
+  sound.setEnabled(state.settings.soundEnabled);
+  if (!state.settings.musicEnabled) {
+    sound.stopBattleTheme();
+  }
+  state.playEnemyAi = state.settings.defaultPlayEnemyAi;
+  state.battlefieldTheme = state.settings.defaultBattlefieldTheme;
+  if (elements.replaySpeed) {
+    elements.replaySpeed.value = String(state.settings.replaySpeedMs);
+  }
+  writeStateToForms();
+  state.debugOutput = 'Настройки сохранены в localStorage.';
+  render();
+}
+
 function renderStatusPanels() {
   if (isCampaignNarrativeMode()) {
     const beat = getCurrentCampaignBeat();
@@ -4995,7 +6147,9 @@ function renderToolbar() {
 
 function render() {
   finalizeCampaignBattleOutcome();
+  manageBattleTheme();
   renderTabs();
+  renderTitleMenu();
   renderToolbar();
   renderCanvas();
   renderStatusPanels();
@@ -5006,6 +6160,35 @@ function render() {
   renderDecisionStatsPanel();
   renderGraphsPanel();
   renderComparePanel();
+  renderMenuParityPanel();
+}
+
+function playSandboxOutcomeSfx() {
+  if (!state.battle || state.settings?.soundEnabled === false) {
+    return;
+  }
+  if (isBattleOver(state.battle.players, state.battle.enemies) && state.sfxOutcomeFor !== state.battle) {
+    state.sfxOutcomeFor = state.battle;
+    sound.playSfx(battleWinner(state.battle.players, state.battle.enemies) === 'players' ? 'victory' : 'defeat');
+  }
+}
+
+function manageBattleTheme() {
+  const inBattle = state.battle && !isBattleOver(state.battle.players, state.battle.enemies)
+    && state.appScreen === 'app' && (state.activeTab === 'play' || state.activeTab === 'debug' || (state.activeTab === 'campaign' && state.campaignRun.phase === 'battle'));
+  const inTravel = state.appScreen === 'app' && state.activeTab === 'campaign'
+    && campaignRunActive() && (state.campaignRun.phase === 'travel' || state.campaignRun.phase === 'overworld');
+  if (!state.settings.musicEnabled) {
+    sound.stopBattleTheme();
+    return;
+  }
+  if (inBattle) {
+    sound.startBattleTheme('battle');
+  } else if (inTravel) {
+    sound.startBattleTheme('overworld');
+  } else {
+    sound.stopBattleTheme();
+  }
 }
 
 function stepBattle() {
@@ -5030,6 +6213,7 @@ function stepBattle() {
   }
 
   if (isBattleOver(state.battle.players, state.battle.enemies)) {
+    playSandboxOutcomeSfx();
     finalizeCampaignBattleOutcome();
     render();
     return;
@@ -5042,6 +6226,7 @@ function stepBattle() {
 
   const event = advanceBattle(state.battle);
   triggerEventFx(event);
+  playSandboxOutcomeSfx();
   finalizeCampaignBattleOutcome();
   render();
 }
@@ -5075,6 +6260,7 @@ function autoBattle() {
     }
   }
 
+  playSandboxOutcomeSfx();
   finalizeCampaignBattleOutcome();
   render();
 }
@@ -5151,6 +6337,9 @@ function readFormsToState() {
   for (const key of UNIT_KEYS) {
     for (const field of STAT_FIELDS) {
       const input = document.querySelector(`#stat-${key}-${field}`);
+      if (!input) {
+        continue;
+      }
       state.unitFormState[key][field] = Number(input.value);
     }
   }
@@ -5201,6 +6390,9 @@ function writeStateToForms() {
   for (const key of UNIT_KEYS) {
     for (const field of STAT_FIELDS) {
       const input = document.querySelector(`#stat-${key}-${field}`);
+      if (!input) {
+        continue;
+      }
       input.value = state.unitFormState[key][field];
     }
   }
@@ -5404,6 +6596,55 @@ function resolveLocationSceneCompletion() {
   saveCampaignStateToLocalStorage();
 }
 
+function availableNpcDialoguesForCurrentLocation() {
+  const locationId = state.campaignRun.currentLocationId;
+  const beatId = state.campaignRun.currentBeatId ?? null;
+  return npcDialoguesForLocation(locationId, beatId)
+    .filter((entry) => !state.campaignRun.seenNpcDialogueIds?.includes(entry.id));
+}
+
+function activeNpcDialogue() {
+  if (!state.campaignRun.activeNpcDialogueId) {
+    return null;
+  }
+  return NPC_DIALOGUES.find((entry) => entry.id === state.campaignRun.activeNpcDialogueId) ?? null;
+}
+
+function openNpcDialogue(dialogueId) {
+  const dialogue = NPC_DIALOGUES.find((entry) => entry.id === dialogueId) ?? null;
+  if (!dialogue) {
+    return false;
+  }
+  state.campaignRun.activeNpcDialogueId = dialogue.id;
+  state.campaignRun.phase = 'npc-dialogue';
+  state.campaignRun.sceneIndex = 0;
+  state.campaignRun.lastResultSummary = `NPC dialogue: ${dialogue.label}`;
+  pushCampaignJournalEntry(`NPC-разговор: ${dialogue.label}.`);
+  saveCampaignStateToLocalStorage();
+  return true;
+}
+
+function resolveNpcDialogueCompletion() {
+  const dialogue = activeNpcDialogue();
+  if (!dialogue) {
+    return;
+  }
+  if (!state.campaignRun.seenNpcDialogueIds.includes(dialogue.id)) {
+    state.campaignRun.seenNpcDialogueIds.push(dialogue.id);
+  }
+  if (dialogue.setFlags?.length) {
+    applyQuestFlags(dialogue.setFlags);
+  }
+  if (dialogue.rewards) {
+    grantCampaignRewards(dialogue.rewards, { sourceLabel: `NPC: ${dialogue.label}` });
+  }
+  state.campaignRun.activeNpcDialogueId = null;
+  state.campaignRun.phase = 'travel';
+  state.campaignRun.sceneIndex = 0;
+  state.campaignRun.travelMessage = `${dialogue.label}: разговор завершён.`;
+  saveCampaignStateToLocalStorage();
+}
+
 function activeSetpieceForBeat(beatId) {
   return setpieceConfigForBeat(beatId);
 }
@@ -5540,6 +6781,151 @@ function growthBonusesForKey(key) {
   return result;
 }
 
+
+function campaignMoveLevel(key, actionId) {
+  return Number(state.campaignRun.actionLevels?.[key]?.[actionId] ?? 1);
+}
+
+function campaignEggLevel(key, eggId) {
+  return Number(state.campaignRun.eggLevels?.[key]?.[eggId] ?? 1);
+}
+
+function campaignEggSpells(key, eggId) {
+  const egg = MANA_EGGS.find((entry) => entry.id === eggId);
+  const level = campaignEggLevel(key, eggId);
+  if (!egg) {
+    return [];
+  }
+  return egg.spells
+    .filter((spell) => spell.level <= level)
+    .map((spell) => spell.id);
+}
+
+function campaignActionLevelsForKey(key) {
+  const stored = { ...(state.campaignRun.actionLevels?.[key] ?? {}) };
+  const eggId = state.campaignRun.eggLoadout?.[key] ?? null;
+  if (eggId) {
+    const egg = MANA_EGGS.find((entry) => entry.id === eggId);
+    const level = campaignEggLevel(key, eggId);
+    if (egg) {
+      for (const spell of egg.spells) {
+        if (spell.level <= level) {
+          stored[spell.id] = Math.max(Number(stored[spell.id] ?? 1), level);
+        }
+      }
+    }
+  }
+  return stored;
+}
+
+function applyEggToLoadout(loadout, key, eggId) {
+  if (!eggId || !loadout) {
+    return loadout;
+  }
+  const spells = campaignEggSpells(key, eggId);
+  const next = { ...loadout };
+  const push = (arrayKey, id) => {
+    next[arrayKey] = [...new Set([...(next[arrayKey] ?? []), id])];
+  };
+  for (const spellId of spells) {
+    const def = ACTION_LIBRARY[spellId];
+    if (!def) {
+      continue;
+    }
+    const isAlly = def.targeting === 'single-ally' || def.targeting === 'all-allies';
+    const isHeal = isAlly && (def.revive || def.powerBase || def.healBase || (def.cureStatuses ?? []).length > 0);
+    const hasStatus = (def.statusEffects ?? []).length > 0;
+    const hasDebuff = (def.statShifts ?? []).some((shift) => shift.amount < 0);
+    if (isHeal) {
+      push('healMagics', spellId);
+    } else if (isAlly) {
+      push('supportMagics', spellId);
+    } else if (hasStatus) {
+      push('statusMoves', spellId);
+    } else if (hasDebuff) {
+      push('debuffMagics', spellId);
+    } else {
+      push('offensiveMagics', spellId);
+    }
+  }
+  return next;
+}
+
+function upgradeCampaignMove(key, actionId) {
+  const costs = moveLevelCosts(actionId);
+  const level = campaignMoveLevel(key, actionId);
+  if (!costs || level >= 5) {
+    return;
+  }
+  const cost = costs[level - 1];
+  if (state.campaignRun.skillCoins < cost) {
+    state.campaignRun.travelMessage = `Не хватает SC для ${ACTION_LIBRARY[actionId]?.label ?? actionId}: нужно ${cost}.`;
+    saveCampaignStateToLocalStorage();
+    render();
+    return;
+  }
+  state.campaignRun.skillCoins -= cost;
+  state.campaignRun.actionLevels[key] = { ...(state.campaignRun.actionLevels[key] ?? {}), [actionId]: level + 1 };
+  pushCampaignJournalEntry(`${PRESETS[key]?.name ?? key}: ${ACTION_LIBRARY[actionId]?.label ?? actionId} до ур. ${level + 1} (${cost} SC).`);
+  state.campaignRun.travelMessage = `${PRESETS[key]?.name ?? key}: ${ACTION_LIBRARY[actionId]?.label ?? actionId} → ур. ${level + 1}.`;
+  saveCampaignStateToLocalStorage();
+  render();
+}
+
+function upgradeCampaignMagic(key, actionId) {
+  const costs = magicLevelCosts(actionId);
+  const level = campaignMoveLevel(key, actionId);
+  if (!costs || level >= 5) {
+    return;
+  }
+  const cost = costs[level - 1];
+  if (state.campaignRun.magicCoins < cost) {
+    state.campaignRun.travelMessage = `Не хватает MC для ${ACTION_LIBRARY[actionId]?.label ?? actionId}: нужно ${cost}.`;
+    saveCampaignStateToLocalStorage();
+    render();
+    return;
+  }
+  state.campaignRun.magicCoins -= cost;
+  state.campaignRun.actionLevels[key] = { ...(state.campaignRun.actionLevels[key] ?? {}), [actionId]: level + 1 };
+  pushCampaignJournalEntry(`${PRESETS[key]?.name ?? key}: заклинание ${ACTION_LIBRARY[actionId]?.label ?? actionId} до ур. ${level + 1} (${cost} MC).`);
+  state.campaignRun.travelMessage = `${PRESETS[key]?.name ?? key}: ${ACTION_LIBRARY[actionId]?.label ?? actionId} → ур. ${level + 1}.`;
+  saveCampaignStateToLocalStorage();
+  render();
+}
+
+function upgradeCampaignEgg(key, eggId) {
+  const level = campaignEggLevel(key, eggId);
+  if (level >= 5) {
+    return;
+  }
+  const cost = EGG_LEVEL_COSTS[level - 1] ?? 80;
+  if (state.campaignRun.magicCoins < cost) {
+    state.campaignRun.travelMessage = `Не хватает MC для улучшения яйца: нужно ${cost}.`;
+    saveCampaignStateToLocalStorage();
+    render();
+    return;
+  }
+  state.campaignRun.magicCoins -= cost;
+  state.campaignRun.eggLevels[key] = { ...(state.campaignRun.eggLevels[key] ?? {}), [eggId]: level + 1 };
+  const egg = MANA_EGGS.find((entry) => entry.id === eggId);
+  pushCampaignJournalEntry(`${PRESETS[key]?.name ?? key}: ${egg?.label ?? eggId} до ур. ${level + 1} (${cost} MC).`);
+  state.campaignRun.travelMessage = `${PRESETS[key]?.name ?? key}: ${egg?.label ?? eggId} → ур. ${level + 1}.`;
+  saveCampaignStateToLocalStorage();
+  render();
+}
+
+function equipCampaignEgg(key, eggId) {
+  if (!state.campaignRun.ownedEggIds.includes(eggId)) {
+    return;
+  }
+  state.campaignRun.eggLoadout[key] = eggId;
+  const egg = MANA_EGGS.find((entry) => entry.id === eggId);
+  pushCampaignJournalEntry(`${PRESETS[key]?.name ?? key} надевает ${egg?.label ?? eggId}.`);
+  state.campaignRun.travelMessage = `${PRESETS[key]?.name ?? key}: надето яйцо ${egg?.label ?? eggId}.`;
+  saveCampaignStateToLocalStorage();
+  render();
+}
+
 function buildCampaignPresetForKey(key) {
   const preset = buildFormPresetForKey(key);
   const bonuses = {
@@ -5549,7 +6935,36 @@ function buildCampaignPresetForKey(key) {
   for (const [field, amount] of Object.entries(growthBonuses)) {
     bonuses[field] = Number(bonuses[field] ?? 0) + Number(amount ?? 0);
   }
+  const partyAccessoryIds = (state.campaignRun.purchasedUpgradeIds ?? []).filter((upgradeId) => {
+    const entry = EQUIPMENT_CATALOG.find((item) => item.id === upgradeId);
+    return entry && !entry.targetKey && entry.slot && entry.slot !== 'consumable-pack';
+  });
+  for (const upgradeId of partyAccessoryIds) {
+    const entry = EQUIPMENT_CATALOG.find((item) => item.id === upgradeId);
+    for (const [field, amount] of Object.entries(entry.bonuses ?? {})) {
+      bonuses[field] = Number(bonuses[field] ?? 0) + Number(amount ?? 0);
+    }
+  }
+  const eggId = state.campaignRun.eggLoadout?.[key] ?? null;
+  if (eggId) {
+    preset.loadout = applyEggToLoadout(preset.loadout, key, eggId);
+  }
+  preset.actionLevels = campaignActionLevelsForKey(key);
+  const resistBonusMap = {
+    resistSleep: 'sleep',
+    resistPoison: 'poison',
+    resistConfusion: 'confusion',
+    resistParalysis: 'paralysis',
+    resistMoveBlock: 'moveBlock',
+    resistMagicBlock: 'magicBlock',
+  };
   for (const [field, amount] of Object.entries(bonuses)) {
+    const resistKey = resistBonusMap[field];
+    if (resistKey) {
+      const current = Number(preset.statusResistances?.[resistKey] ?? 1);
+      preset.statusResistances = { ...(preset.statusResistances ?? {}), [resistKey]: Math.max(0.05, Math.min(1, current * (1 - Number(amount)))) };
+      continue;
+    }
     if (field in preset) {
       preset[field] = Number(preset[field] ?? 0) + Number(amount ?? 0);
     }
@@ -5748,13 +7163,20 @@ function renderCampaignEquipmentPanel() {
   const availableItems = state.campaignRun.purchasedUpgradeIds
     .map((id) => EQUIPMENT_CATALOG.find((entry) => entry.id === id))
     .filter(Boolean)
-    .filter((entry) => entry.slot && entry.slot !== 'consumable-pack');
+    .filter((entry) => entry.slot && entry.slot !== 'consumable-pack' && entry.targetKey);
+  const partyAccessories = state.campaignRun.purchasedUpgradeIds
+    .map((id) => EQUIPMENT_CATALOG.find((entry) => entry.id === id))
+    .filter(Boolean)
+    .filter((entry) => entry.slot && entry.slot !== 'consumable-pack' && !entry.targetKey);
 
   elements.campaignEquipmentSummary.textContent = [
     `Золото: ${campaignGoldString()}`,
     `Куплено предметов: ${availableItems.length}`,
     'Текущие слоты:',
     ...campaignEquipmentLoadoutLines(),
+    '',
+    'Партийные аксессуары (действуют на всех):',
+    ...(partyAccessories.length ? partyAccessories.map((entry) => `- ${entry.label}: ${entry.description}`) : ['- none']),
     '',
     'Купленный инвентарь:',
     ...(campaignOwnedEquipmentLines().length ? campaignOwnedEquipmentLines() : ['none']),
@@ -5935,6 +7357,7 @@ function currentCampaignTravelPage() {
   const objectiveLocation = getWorldLocation(binding?.objectiveLocationId ?? null);
   const treasures = availableTreasuresForCurrentLocation();
   const encounters = availableTravelEncountersForCurrentLocation();
+  const npcDialogues = availableNpcDialoguesForCurrentLocation();
   const missingFlags = missingObjectiveFlagsForCurrentBeat();
   const nextChainStep = nextQuestChainStepForBeat(beat?.id ?? null);
   const pendingLocationScene = nextLocationSceneForCurrentContext();
@@ -5958,6 +7381,7 @@ function currentCampaignTravelPage() {
       nextChainStep ? `Ближайший конкретный шаг: ${nextChainStep.label} @ ${getWorldLocation(nextChainStep.locationId)?.title ?? nextChainStep.locationId}.` : 'Текущая цепочка уже почти закрыта.',
       treasures.length > 0 ? `В этой локации ещё осталось сундуков: ${treasures.length}.` : 'Сундуки этой локации уже вскрыты.',
       encounters.length > 0 ? `Здесь ещё бродят монстры: ${encounters.map((entry) => entry.label).join(', ')}.` : 'Бродячие encounter-ы этой локации уже очищены.',
+      npcDialogues.length > 0 ? `Есть невыслушанные NPC-разговоры: ${npcDialogues.map((entry) => entry.label).join(', ')}.` : 'Все доступные NPC-разговоры этой локации уже состоялись.',
       missingFlags.length > 0 ? `Чтобы продвинуть сюжет, ещё нужны флаги: ${missingFlags.map(questFlagLabel).join(', ')}.` : 'Все ключевые флаги текущего шага уже собраны.',
       pendingLocationScene
         ? `Прежде чем двигаться к бою или setpiece, здесь нужно отыграть локальную сцену: ${pendingLocationScene.title}. Это поддерживает оригинальный room-by-room pacing Grandia II.`
@@ -6065,6 +7489,10 @@ function currentCampaignScenePages() {
     case 'location-scene': {
       const scene = activeLocationScene();
       return scene?.pages ?? [];
+    }
+    case 'npc-dialogue': {
+      const dialogue = activeNpcDialogue();
+      return dialogue?.pages ?? [];
     }
     case 'travel':
       return [currentCampaignTravelPage()];
@@ -6331,6 +7759,8 @@ function advanceCampaignScene() {
     enterCampaignTravelPhase();
   } else if (state.campaignRun.phase === 'location-scene') {
     resolveLocationSceneCompletion();
+  } else if (state.campaignRun.phase === 'npc-dialogue') {
+    resolveNpcDialogueCompletion();
   } else if (state.campaignRun.phase === 'overworld') {
     completeCampaignOverworldTravel();
   } else if (state.campaignRun.phase === 'victory' || state.campaignRun.phase === 'placeholder-result') {
@@ -6571,6 +8001,9 @@ function finalizeCampaignBattleOutcome() {
   const meta = storyBeatImplementationMeta(beat);
   const winner = battleWinner(state.battle.players, state.battle.enemies);
   const battleContext = state.campaignRun.battleContext ?? { type: 'story', beatId: beat.id };
+  if (state.settings.soundEnabled) {
+    sound.playSfx(winner === 'players' ? 'victory' : 'defeat');
+  }
   state.campaignRun.lastBattleWinner = winner;
   state.activeTab = 'campaign';
 
@@ -6735,6 +8168,7 @@ function grantCampaignRewards(rewards = {}, { sourceLabel = 'Награда' } =
     ...createBaseInventory(rewards),
     equipmentIds: Array.isArray(rewards.equipmentIds) ? rewards.equipmentIds : [],
     setFlags: Array.isArray(rewards.setFlags) ? rewards.setFlags : [],
+    eggIds: Array.isArray(rewards.eggIds) ? rewards.eggIds : [],
   };
 
   state.campaignRun.gold += normalized.gold;
@@ -6764,6 +8198,11 @@ function grantCampaignRewards(rewards = {}, { sourceLabel = 'Награда' } =
       }
     }
   }
+  for (const eggId of normalized.eggIds) {
+    if (!state.campaignRun.ownedEggIds.includes(eggId)) {
+      state.campaignRun.ownedEggIds.push(eggId);
+    }
+  }
   writeStateToForms();
 
   const hasReward = normalized.gold
@@ -6772,11 +8211,15 @@ function grantCampaignRewards(rewards = {}, { sourceLabel = 'Награда' } =
     || normalized.magicCoins
     || inventoryEntries(normalized).length > 0
     || normalized.equipmentIds.length
-    || normalized.setFlags.length;
+    || normalized.setFlags.length
+    || normalized.eggIds.length;
   if (hasReward) {
     const extra = [];
     if (normalized.equipmentIds.length) {
       extra.push(`экипировка ${normalized.equipmentIds.map((id) => EQUIPMENT_CATALOG.find((entry) => entry.id === id)?.label ?? id).join(', ')}`);
+    }
+    if (normalized.eggIds.length) {
+      extra.push(`Mana Eggs: ${normalized.eggIds.map((id) => MANA_EGGS.find((egg) => egg.id === id)?.label ?? id).join(', ')}`);
     }
     if (normalized.setFlags.length) {
       extra.push(`flags ${normalized.setFlags.map(questFlagLabel).join(', ')}`);
@@ -6811,8 +8254,31 @@ function triggerWorldEvent(eventId) {
   if (!location || !event) {
     return;
   }
+  for (const [itemKey, amount] of Object.entries(event.consumeItems ?? {})) {
+    if ((state.campaignRun.inventory[itemKey] ?? 0) < amount) {
+      state.campaignRun.travelMessage = `Нужен предмет: ${inventoryLabel(itemKey)} (${amount} шт.).`;
+      saveCampaignStateToLocalStorage();
+      render();
+      return;
+    }
+  }
+  for (const [itemKey, amount] of Object.entries(event.consumeItems ?? {})) {
+    state.campaignRun.inventory[itemKey] = Math.max(0, (state.campaignRun.inventory[itemKey] ?? 0) - amount);
+  }
   state.campaignRun.seenWorldEventIds.push(event.id);
-  const reward = grantCampaignRewards(event.rewards ?? { experience: 8, skillCoins: 2, magicCoins: 2, setFlags: event.setFlags ?? [] }, { sourceLabel: `World event: ${event.label}` });
+  let rewards = event.rewards ?? { experience: 8, skillCoins: 2, magicCoins: 2, setFlags: event.setFlags ?? [] };
+  if (event.minigameArmWrestle) {
+    const rounds = 3;
+    const wins = Array.from({ length: rounds }, () => Math.random() < 0.55).filter(Boolean).length;
+    pushCampaignJournalEntry(`Армрестлинг с Хемблом: ${wins}/${rounds} раундов.`);
+    if (wins >= 2) {
+      rewards = { ...rewards, equipmentIds: [...(rewards.equipmentIds ?? []), 'ryudo-silver-freeze'] };
+      state.campaignRun.travelMessage = `Хембл: «Ну ты и силён!» — ${wins}/3 раундов. Приз — ${EQUIPMENT_CATALOG.find((entry) => entry.id === 'ryudo-silver-freeze')?.label ?? 'Silver Freeze'}!`;
+    } else {
+      state.campaignRun.travelMessage = `Хембл: «Рука дрогнула!» — ${wins}/3 раундов. Попробуй ещё раз.`;
+    }
+  }
+  const reward = grantCampaignRewards(rewards, { sourceLabel: `World event: ${event.label}` });
   if (event.setFlags?.length) {
     applyQuestFlags(event.setFlags);
   }
@@ -6842,19 +8308,23 @@ function renderCampaignEventsPanel() {
   const available = availableWorldEventsForCurrentLocation();
   const treasures = availableTreasuresForCurrentLocation();
   const encounters = availableTravelEncountersForCurrentLocation();
+  const npcDialogues = availableNpcDialoguesForCurrentLocation();
   const seen = state.campaignRun.seenWorldEventIds.slice(-12);
   const opened = (state.campaignRun.openedTreasureIds ?? []).slice(-12);
   const cleared = (state.campaignRun.clearedTravelEncounterIds ?? []).slice(-12);
+  const seenDialogues = (state.campaignRun.seenNpcDialogueIds ?? []).slice(-12);
   elements.campaignEventsSummary.textContent = [
     `Локация: ${location?.title ?? 'n/a'}`,
     `Осталось world events здесь: ${available.length}`,
     `Неоткрытых сундуков: ${treasures.length}`,
     `Неочищенных wandering encounters: ${encounters.length}`,
+    `Невыслушанных NPC-диалогов: ${npcDialogues.length}`,
     '',
     'Доступно сейчас:',
     ...(available.length ? available.map((entry) => `- EVENT: ${entry.label}`) : ['- EVENT: none']),
     ...(treasures.length ? treasures.map((entry) => `- TREASURE: ${entry.label}`) : ['- TREASURE: none']),
     ...(encounters.length ? encounters.map((entry) => `- ENCOUNTER: ${entry.label}`) : ['- ENCOUNTER: none']),
+    ...(npcDialogues.length ? npcDialogues.map((entry) => `- DIALOGUE: ${entry.label}`) : ['- DIALOGUE: none']),
     '',
     'Уже просмотрено в забеге:',
     ...(seen.length ? seen.map((entry) => `- ${entry}`) : ['- none']),
@@ -6864,6 +8334,9 @@ function renderCampaignEventsPanel() {
     '',
     'Очищенные encounter-ы:',
     ...(cleared.length ? cleared.map((entry) => `- ${entry}`) : ['- none']),
+    '',
+    'Прослушанные NPC-диалоги:',
+    ...(seenDialogues.length ? seenDialogues.map((entry) => `- ${entry}`) : ['- none']),
   ].join('\n');
 }
 
@@ -6880,10 +8353,21 @@ function renderCampaignGrowthPanel() {
 
   const unlocked = GROWTH_NODES.filter((node) => (state.campaignRun.growthUnlockIds ?? []).includes(node.id));
   const available = GROWTH_NODES.filter((node) => !(state.campaignRun.growthUnlockIds ?? []).includes(node.id));
+  const eggLines = CAMPAIGN_PLAYABLE_UNITS
+    .filter((key) => state.campaignRun.eggLoadout?.[key])
+    .map((key) => {
+      const eggId = state.campaignRun.eggLoadout[key];
+      const egg = MANA_EGGS.find((entry) => entry.id === eggId);
+      return `- ${PRESETS[key]?.name ?? key}: ${egg?.label ?? eggId} (ур.${campaignEggLevel(key, eggId)})`;
+    });
 
   elements.campaignGrowthSummary.textContent = [
     `Рост: ${campaignGrowthString()}`,
     `Следующий уровень через ${xpThresholdForLevel(state.campaignRun.partyLevel) - state.campaignRun.experience} EXP.`,
+    '',
+    'Mana Eggs на героях:',
+    ...(eggLines.length ? eggLines : ['- нет']),
+    `Найдено яиц: ${state.campaignRun.ownedEggIds.length}/${MANA_EGGS.length} (экипировка и прокачка — во вкладке «Меню» → Mana Eggs)`,
     '',
     'Открытые growth nodes:',
     ...(unlocked.length ? unlocked.map((node) => `- ${node.label} [${node.category}]`) : ['- none']),
@@ -7369,6 +8853,10 @@ function renderCampaignTravelControls() {
     makeActionButton(event.label, () => triggerWorldEvent(event.id), 'сюжет / NPC');
   }
 
+  for (const dialogue of availableNpcDialoguesForCurrentLocation()) {
+    makeActionButton(`Поговорить: ${dialogue.label}`, () => openNpcDialogue(dialogue.id), 'NPC-диалог');
+  }
+
   const exits = campaignVisibleExitsForBeat(location.id, beat.id);
   exits.forEach((exitLocation) => {
     const button = document.createElement('button');
@@ -7632,7 +9120,7 @@ function renderCampaignPanel() {
   renderCampaignOriginalFlowPanel();
 
   const currentAction = effectiveRunPage?.action ?? null;
-  elements.campaignNextScene.hidden = !campaignRunActive() || !(state.campaignRun.phase === 'opening' || state.campaignRun.phase === 'intro' || state.campaignRun.phase === 'location-scene' || state.campaignRun.phase === 'overworld' || state.campaignRun.phase === 'setpiece' || state.campaignRun.phase === 'victory' || state.campaignRun.phase === 'placeholder-result' || state.campaignRun.phase === 'finished');
+  elements.campaignNextScene.hidden = !campaignRunActive() || !(state.campaignRun.phase === 'opening' || state.campaignRun.phase === 'intro' || state.campaignRun.phase === 'location-scene' || state.campaignRun.phase === 'npc-dialogue' || state.campaignRun.phase === 'overworld' || state.campaignRun.phase === 'setpiece' || state.campaignRun.phase === 'victory' || state.campaignRun.phase === 'placeholder-result' || state.campaignRun.phase === 'finished');
   elements.campaignNextScene.disabled = !campaignRunActive() || currentAction === 'launch-battle' || currentAction === 'launch-setpiece' || currentAction === 'complete-placeholder' || currentAction === 'retry-battle' || currentAction === 'restart-campaign' || currentAction === 'travel';
   elements.campaignLaunchBattle.hidden = !(campaignRunActive() && (currentAction === 'launch-battle' || currentAction === 'launch-setpiece'));
   elements.campaignContinueAfterBattle.hidden = !(campaignRunActive() && ['complete-placeholder', 'next-beat', 'finish-campaign', 'restart-campaign', 'return-travel'].includes(currentAction));
@@ -8271,7 +9759,15 @@ function drawReplayScene(ctx, canvas, snapshot, decision, replay = null) {
     }
 
     if (sprite) {
-      drawImageCover(ctx, sprite, x - (fighter.radius ?? 18) * 1.65, y - (fighter.radius ?? 18) * 1.9, (fighter.radius ?? 18) * 3.3, (fighter.radius ?? 18) * 3.3, fighter.isAlive ? 1 : 0.4);
+      const phase = fighter.bossPhaseIndex ?? 0;
+      if (phase > 0) {
+        ctx.save();
+        ctx.filter = `hue-rotate(${phase * 55}deg) saturate(${1 + phase * 0.25})`;
+        drawImageCover(ctx, sprite, x - (fighter.radius ?? 18) * 1.65, y - (fighter.radius ?? 18) * 1.9, (fighter.radius ?? 18) * 3.3, (fighter.radius ?? 18) * 3.3, fighter.isAlive ? 1 : 0.4);
+        ctx.restore();
+      } else {
+        drawImageCover(ctx, sprite, x - (fighter.radius ?? 18) * 1.65, y - (fighter.radius ?? 18) * 1.9, (fighter.radius ?? 18) * 3.3, (fighter.radius ?? 18) * 3.3, fighter.isAlive ? 1 : 0.4);
+      }
     } else {
       ctx.fillStyle = fighter.color;
       ctx.beginPath();
@@ -8583,18 +10079,56 @@ async function importArtifactFromLocalFile(file) {
 }
 
 function bindEvents() {
-  elements.menuOpenPlay.addEventListener('click', () => {
-    resetToPlayBattle();
-    openWorkspace('play');
-  });
-  elements.menuOpenCampaign.addEventListener('click', () => openWorkspace('campaign'));
-  elements.menuOpenDebug.addEventListener('click', () => openWorkspace('debug'));
-  elements.menuOpenCompare.addEventListener('click', () => openWorkspace('compare'));
+  for (const item of TITLE_MENU_ITEMS) {
+    const btn = document.getElementById(item.id);
+    if (!btn) {
+      continue;
+    }
+    btn.addEventListener('click', () => activateTitleMenuItem(item));
+    btn.addEventListener('mouseenter', () => {
+      const idx = TITLE_MENU_ITEMS.findIndex((entry) => entry.id === item.id);
+      if (idx >= 0) {
+        state.menuCursor = idx;
+        renderTitleMenu();
+      }
+    });
+  }
   elements.backToMenu.addEventListener('click', openMainMenu);
   elements.tabPlay.addEventListener('click', () => setActiveTab('play'));
   elements.tabCampaign.addEventListener('click', () => setActiveTab('campaign'));
   elements.tabDebug.addEventListener('click', () => setActiveTab('debug'));
   elements.tabCompare.addEventListener('click', () => setActiveTab('compare'));
+  elements.tabParity.addEventListener('click', () => setActiveTab('parity'));
+  elements.menuOpenParity.addEventListener('click', () => openWorkspace('parity'));
+  elements.mpStatus.addEventListener('click', () => {
+    state.menuParityScreen = 'status';
+    render();
+  });
+  elements.mpSkills.addEventListener('click', () => {
+    state.menuParityScreen = 'skills';
+    render();
+  });
+  elements.mpEggs.addEventListener('click', () => {
+    state.menuParityScreen = 'eggs';
+    render();
+  });
+  elements.mpItems.addEventListener('click', () => {
+    state.menuParityScreen = 'items';
+    render();
+  });
+  elements.mpBestiary.addEventListener('click', () => {
+    state.menuParityScreen = 'bestiary';
+    render();
+  });
+  elements.mpValuables.addEventListener('click', () => {
+    state.menuParityScreen = 'valuables';
+    render();
+  });
+  elements.mpConfig.addEventListener('click', () => {
+    state.menuParityScreen = 'config';
+    render();
+  });
+  elements.mpConfigSave.addEventListener('click', saveMenuParityConfig);
   elements.canvas.addEventListener('click', handleCanvasClick);
   elements.canvas.addEventListener('mousemove', handleCanvasPointerMove);
   elements.canvas.addEventListener('mouseleave', () => {
@@ -8604,6 +10138,28 @@ function bindEvents() {
     const tag = event.target?.tagName ?? '';
     if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) {
       return;
+    }
+    if (state.appScreen === 'menu' && state.activeTab === 'play') {
+      const key = event.key;
+      if (key === 'ArrowUp' || key === 'w' || key === 'W' || key === 'ArrowLeft') {
+        state.menuCursor = Math.max(0, (state.menuCursor ?? 0) - 1);
+        renderTitleMenu();
+        event.preventDefault();
+        return;
+      }
+      if (key === 'ArrowDown' || key === 's' || key === 'S' || key === 'ArrowRight') {
+        const items = TITLE_MENU_ITEMS;
+        state.menuCursor = Math.min(items.length - 1, (state.menuCursor ?? 0) + 1);
+        renderTitleMenu();
+        event.preventDefault();
+        return;
+      }
+      if (key === 'Enter' || key === ' ') {
+        const item = TITLE_MENU_ITEMS[Math.max(0, Math.min(state.menuCursor ?? 0, TITLE_MENU_ITEMS.length - 1))];
+        activateTitleMenuItem(item);
+        event.preventDefault();
+        return;
+      }
     }
     const key = String(event.key ?? '').toLowerCase();
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
@@ -8619,6 +10175,7 @@ function bindEvents() {
       event.preventDefault();
     }
   });
+  window.addEventListener('keydown', handleMenuParityKeys);
   elements.nextTurn.addEventListener('click', stepBattle);
   elements.autoBattle.addEventListener('click', autoBattle);
   elements.exportLog.addEventListener('click', exportCurrentBattleLog);
@@ -8790,6 +10347,12 @@ function bindEvents() {
 async function init() {
   preloadArtAssets();
   populateDecisionActionFilterOptions();
+  state.playEnemyAi = state.settings.defaultPlayEnemyAi ?? state.playEnemyAi;
+  state.battlefieldTheme = state.settings.defaultBattlefieldTheme ?? state.battlefieldTheme;
+  sound.setEnabled(Boolean(state.settings.soundEnabled));
+  if (elements.replaySpeed) {
+    elements.replaySpeed.value = String(state.settings.replaySpeedMs ?? 550);
+  }
   writeStateToForms();
   bindEvents();
   resetToPlayBattle();

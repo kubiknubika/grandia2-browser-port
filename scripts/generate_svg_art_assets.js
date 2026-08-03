@@ -30,12 +30,17 @@ function initials(name = '') {
 }
 
 function roleAccent(role = '') {
-  if (role.includes('support')) return '#c084fc';
-  if (role.includes('caster')) return '#38bdf8';
-  if (role.includes('bruiser')) return '#fb923c';
-  if (role.includes('sentinel') || role.includes('guardian')) return '#93c5fd';
-  if (role.includes('valmar') || role.includes('chaos') || role.includes('core')) return '#ef4444';
-  if (role.includes('poison') || role.includes('root')) return '#84cc16';
+  if (role.includes('support') || role.includes('heal') || role.includes('priest')) return '#c084fc';
+  if (role.includes('caster') || role.includes('magi')) return '#38bdf8';
+  if (role.includes('bruiser') || role.includes('smash') || role.includes('tank')) return '#fb923c';
+  if (role.includes('sentinel') || role.includes('guardian') || role.includes('warden')) return '#93c5fd';
+  if (role.includes('valmar') || role.includes('chaos') || role.includes('core') || role.includes('demon')) return '#ef4444';
+  if (role.includes('poison') || role.includes('root') || role.includes('venom') || role.includes('spider')) return '#84cc16';
+  if (role.includes('flier') || role.includes('bird') || role.includes('wing')) return '#facc15';
+  if (role.includes('ice') || role.includes('snow') || role.includes('frost')) return '#e0f2fe';
+  if (role.includes('storm') || role.includes('lightning') || role.includes('zap')) return '#22d3ee';
+  if (role.includes('dragon') || role.includes('drake') || role.includes('lizard') || role.includes('toad')) return '#f97316';
+  if (role.includes('shadow') || role.includes('moon') || role.includes('night')) return '#a78bfa';
   return '#facc15';
 }
 

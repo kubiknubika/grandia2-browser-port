@@ -58,21 +58,166 @@
 
       .tab-row button[data-active='true'] { background: #0ea5e9; }
 
-      .menu-hero {
-        text-align: center;
-        padding: 36px 18px;
-        background-image:
-          linear-gradient(rgba(15, 23, 42, 0.58), rgba(15, 23, 42, 0.84)),
-          url('./assets/ui/menu-hero.svg');
-        background-size: cover;
-        background-position: center;
+      .title-screen {
+        position: relative;
+        min-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        overflow: hidden;
+        border-radius: 14px;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: #050b16;
+        padding: 0;
+        margin-bottom: 16px;
       }
 
-      .menu-actions { justify-content: center; }
+      .title-bg {
+        position: absolute;
+        inset: 0;
+        background-size: cover;
+        background-position: center 28%;
+        opacity: 0.55;
+      }
 
-      .menu-actions button {
-        min-width: 220px;
-        min-height: 56px;
+      .title-vignette {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(ellipse at 50% 30%, rgba(5, 11, 22, 0) 0%, rgba(5, 11, 22, 0.55) 78%),
+          linear-gradient(to bottom, rgba(5, 11, 22, 0.55), rgba(5, 11, 22, 0.92) 85%);
+      }
+
+      .title-logo {
+        position: relative;
+        padding: 44px 48px 0;
+        pointer-events: none;
+      }
+
+      .title-kicker {
+        letter-spacing: 0.42em;
+        font-size: 13px;
+        color: #fbbf24;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+      }
+
+      .title-name {
+        font-size: clamp(42px, 8vw, 76px);
+        line-height: 1;
+        letter-spacing: 0.03em;
+        margin: 0 0 10px;
+        color: #f8fafc;
+        text-shadow: 0 4px 30px rgba(59, 130, 246, 0.45);
+      }
+
+      .title-sub {
+        font-size: 15px;
+        color: #cbd5e1;
+        max-width: 520px;
+      }
+
+      .title-layout {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(280px, 420px) minmax(220px, 320px);
+        gap: 28px;
+        align-items: start;
+        padding: 20px 48px 28px;
+      }
+
+      .title-menu {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .title-item {
+        position: relative;
+        display: flex;
+        align-items: center;
+        min-height: 52px;
+        padding: 10px 16px 10px 44px;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        border-radius: 10px;
+        background: rgba(15, 23, 42, 0.72);
+        color: #e2e8f0;
+        font-size: 16px;
+        font-weight: 600;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+      }
+
+      .title-item::before {
+        content: '';
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        width: 10px;
+        height: 10px;
+        transform: translateY(-50%) rotate(45deg);
+        border: 2px solid #94a3b8;
+        opacity: 0;
+        transition: opacity 0.15s, border-color 0.15s, transform 0.15s;
+      }
+
+      .title-item:hover,
+      .title-item[data-active='true'] {
+        background: rgba(37, 99, 235, 0.35);
+        border-color: rgba(96, 165, 250, 0.75);
+        color: #ffffff;
+      }
+
+      .title-item[data-active='true']::before {
+        opacity: 1;
+        border-color: #fbbf24;
+        transform: translateY(-50%) rotate(45deg) scale(1.25);
+      }
+
+      .title-item[data-active='true'] .title-item-name::after {
+        content: ' ◂';
+        color: #fbbf24;
+      }
+
+      .title-desc {
+        border-left: 2px solid rgba(96, 165, 250, 0.55);
+        padding: 4px 0 4px 18px;
+        min-height: 110px;
+      }
+
+      .title-desc-label {
+        font-size: 11px;
+        letter-spacing: 0.3em;
+        color: #fbbf24;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+      }
+
+      .title-desc-text {
+        margin: 0;
+        color: #cbd5e1;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      .title-footer {
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        padding: 14px 48px;
+        border-top: 1px solid rgba(148, 163, 184, 0.18);
+        font-size: 12px;
+        color: #64748b;
+      }
+
+      @media (max-width: 760px) {
+        .title-layout {
+          grid-template-columns: 1fr;
+          padding: 20px 20px 24px;
+        }
+        .title-logo { padding: 28px 20px 0; }
+        .title-footer { padding: 12px 20px; }
       }
 
       .action-button {
@@ -241,6 +386,21 @@
         font-weight: 700;
       }
 
+      .mp-entry {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid #475569;
+        border-radius: 10px;
+        padding: 6px 10px;
+        background: rgba(30, 41, 59, 0.8);
+      }
+
+      .mp-entry img {
+        border-radius: 8px;
+        display: block;
+      }
+
       @media (max-width: 1100px) {
         .grid, .two-col, .three-col { grid-template-columns: 1fr; }
       }
@@ -248,17 +408,43 @@
   </head>
   <body>
     <main>
-      <section id="menu-screen" class="panel menu-hero">
-        <h1>Grandia 2 Browser Port</h1>
-        <p>
-          Играбельный combat prototype с ручным боем, AI-дебагом, обучаемым veteran AI,
-          экспортом battle log и replay lab.
-        </p>
-        <div class="menu-actions">
-          <button id="menu-open-play">Начать игру</button>
-          <button id="menu-open-campaign" class="secondary">Сюжетная кампания</button>
-          <button id="menu-open-debug" class="secondary">Открыть дебаг-меню</button>
-          <button id="menu-open-compare" class="secondary">Replay compare lab</button>
+      <section id="menu-screen" class="title-screen" hidden>
+        <div class="title-bg" style="background-image: url('./assets/ui/menu-hero.svg');"></div>
+        <div class="title-vignette"></div>
+
+        <div class="title-logo">
+          <div class="title-kicker">BROWSER PORT</div>
+          <h1 class="title-name">Grandia&nbsp;II</h1>
+          <div class="title-sub">Играбельный прототип боевой системы и сюжетной кампании</div>
+        </div>
+
+        <div class="title-layout">
+          <nav class="title-menu" id="title-menu" aria-label="Главное меню">
+            <button class="title-item" id="menu-open-play" data-mdesc="Бой 2x2 вручную: IP Gauge, Combo / Critical / Moves / Magic / Items / Defend. Играй человеком против Novice или Veteran AI.">
+              <span class="title-item-name">Начать игру</span>
+            </button>
+            <button class="title-item" id="menu-open-campaign" data-mdesc="Полная сюжетная кампания: 19 битов, катсцены, NPC-диалоги, мир, магазины, экипировка, Mana Eggs и уровни приёмов.">
+              <span class="title-item-name">Сюжетная кампания</span>
+            </button>
+            <button class="title-item" id="menu-open-debug" data-mdesc="Лаборатория: AI-vs-AI, винрейты, обучение veteran-бота, баланс-вектор, редактор статов, replay viewer.">
+              <span class="title-item-name">Дебаг-меню</span>
+            </button>
+            <button class="title-item" id="menu-open-compare" data-mdesc="Сравнение двух replay-логов по шагам: события, решения, HP и экспорт diff.">
+              <span class="title-item-name">Replay compare</span>
+            </button>
+            <button class="title-item" id="menu-open-parity" data-mdesc="Original-like экраны: статус героя, навыки, Mana Eggs, предметы, энциклопедия врагов, ключевые предметы, настройки.">
+              <span class="title-item-name">Меню и энциклопедия</span>
+            </button>
+          </nav>
+
+          <aside class="title-desc" id="menu-desc">
+            <div class="title-desc-label">ОПИСАНИЕ</div>
+            <p class="title-desc-text" id="menu-desc-text">Выберите пункт меню.</p>
+          </aside>
+        </div>
+
+        <div class="title-footer">
+          <span id="menu-version">версия 2.0 · content parity</span>
         </div>
       </section>
 
@@ -269,6 +455,7 @@
           <button id="tab-campaign" class="secondary" data-active="false">Кампания</button>
           <button id="tab-debug" class="secondary" data-active="false">Дебаг-меню</button>
           <button id="tab-compare" class="secondary" data-active="false">Replay compare</button>
+          <button id="tab-parity" class="secondary" data-active="false">Меню</button>
         </div>
 
         <div class="panel toolbar">
@@ -571,6 +758,62 @@
               </div>
             </section>
 
+            <section id="menu-parity-section" hidden>
+              <div class="panel">
+                <h2>Меню и энциклопедия (menu parity)</h2>
+                <p class="muted">
+                  Original-like экраны, которых раньше не хватало: статус героя, экран навыков,
+                  экран Mana Eggs, предметы/снаряжение, энциклопедия врагов с drop tables и настройки.
+                </p>
+                <div class="inline-form">
+                  <button id="mp-status" class="secondary">Статус / герой</button>
+                  <button id="mp-skills" class="secondary">Навыки и магия</button>
+                  <button id="mp-eggs" class="secondary">Mana Eggs</button>
+                  <button id="mp-items" class="secondary">Предметы и снаряжение</button>
+                  <button id="mp-bestiary" class="secondary">Энциклопедия врагов</button>
+                  <button id="mp-valuables" class="secondary">Ключевые предметы</button>
+                  <button id="mp-config" class="secondary">Настройки</button>
+                </div>
+                <div id="mp-images" class="tag-list" style="margin-top:12px;"></div>
+                <pre id="mp-output" style="margin-top:12px;"></pre>
+              </div>
+
+              <div class="panel">
+                <h3>Настройки</h3>
+                <div class="inline-form">
+                  <label>
+                    AI врага по умолчанию:
+                    <select id="mp-config-ai">
+                      <option value="novice">Novice AI</option>
+                      <option value="veteran">Veteran AI</option>
+                    </select>
+                  </label>
+                  <label>
+                    Поле боя по умолчанию:
+                    <select id="mp-config-theme">
+                      <option value="forest">forest</option>
+                      <option value="cavern">cavern</option>
+                      <option value="ruins">ruins</option>
+                      <option value="volcano">volcano</option>
+                    </select>
+                  </label>
+                  <label>
+                    Скорость replay по умолчанию:
+                    <select id="mp-config-speed">
+                      <option value="900">0.5x</option>
+                      <option value="550">1x</option>
+                      <option value="300">2x</option>
+                      <option value="160">4x</option>
+                    </select>
+                  </label>
+                  <label><input id="mp-config-hints" type="checkbox" checked /> Показывать подсказки в командном меню</label>
+                  <label><input id="mp-config-sound" type="checkbox" checked /> Звуковые эффекты</label>
+                  <label><input id="mp-config-music" type="checkbox" checked /> Музыка</label>
+                  <button id="mp-config-save" class="secondary">Сохранить настройки</button>
+                </div>
+              </div>
+            </section>
+
             <section id="compare-section" hidden>
               <div class="panel">
                 <h2>Replay compare lab</h2>
@@ -645,6 +888,13 @@
                     <option value="zera-finale">Zera / New Valmar finale</option>
                     <option value="miniboss-minotaur">Mini-boss Durham Minotaur</option>
                     <option value="miniboss-escort">Mini-boss escort</option>
+                    <option value="eye-of-valmar">Eye of Valmar</option>
+                    <option value="crimson-tails">Crimson Tails</option>
+                    <option value="naga-queens">Naga Queens</option>
+                    <option value="dual-fists">Dual Fists</option>
+                    <option value="birthplace-guardians">Birthplace Guardians</option>
+                    <option value="egg-guardian">Egg Guardian</option>
+                    <option value="final-valmar">Final Valmar</option>
                   </select>
                 </label>
                 <label>
@@ -661,6 +911,13 @@
                     <option value="clawsValmarBoss">Claws of Valmar</option>
                     <option value="heartValmarBoss">Heart of Valmar</option>
                     <option value="zeraFinale">Zera / New Valmar finale</option>
+                    <option value="eyeOfValmarBoss">Eye of Valmar</option>
+                    <option value="crimsonTailsBoss">Crimson Tails</option>
+                    <option value="nagaQueensBoss">Naga Queens</option>
+                    <option value="dualFistsBoss">Dual Fists</option>
+                    <option value="birthplaceGuardianBoss">Birthplace Guardians</option>
+                    <option value="eggGuardianBoss">Egg Guardian</option>
+                    <option value="finalValmarBoss">Final Valmar</option>
                   </select>
                 </label>
                 <label>
@@ -718,6 +975,13 @@
                     <option value="zera-6565">Zera finale #6565</option>
                     <option value="boss-6161">Mini-boss #6161</option>
                     <option value="boss-escort-7171">Mini-boss escort #7171</option>
+                    <option value="eye-6767">Eye of Valmar #6767</option>
+                    <option value="crimson-6868">Crimson Tails #6868</option>
+                    <option value="naga-6969">Naga Queens #6969</option>
+                    <option value="fists-7070">Dual Fists #7070</option>
+                    <option value="guardians-7171">Birthplace Guardians #7171</option>
+                    <option value="egg-7272">Egg Guardian #7272</option>
+                    <option value="valmar-7373">Final Valmar #7373</option>
                   </select>
                 </label>
                 <button id="scenario-run-apply" class="secondary">Загрузить seed preset</button>
@@ -899,6 +1163,54 @@
                     <td><input id="stat-durhamMinotaur-spd" type="number" value="22" /></td>
                     <td><input id="stat-durhamMinotaur-mag" type="number" value="6" /></td>
                     <td><input id="stat-durhamMinotaur-men" type="number" value="16" /></td>
+                  </tr>
+                  <tr>
+                    <td>Tongue of Valmar</td>
+                    <td><input id="stat-tongueValmar-maxHp" type="number" value="560" /></td>
+                    <td><input id="stat-tongueValmar-startSp" type="number" value="42" /></td>
+                    <td><input id="stat-tongueValmar-startMp" type="number" value="0" /></td>
+                    <td><input id="stat-tongueValmar-str" type="number" value="40" /></td>
+                    <td><input id="stat-tongueValmar-vit" type="number" value="24" /></td>
+                    <td><input id="stat-tongueValmar-agi" type="number" value="21" /></td>
+                    <td><input id="stat-tongueValmar-spd" type="number" value="19" /></td>
+                    <td><input id="stat-tongueValmar-mag" type="number" value="12" /></td>
+                    <td><input id="stat-tongueValmar-men" type="number" value="18" /></td>
+                  </tr>
+                  <tr>
+                    <td>Claws of Valmar</td>
+                    <td><input id="stat-clawsValmar-maxHp" type="number" value="520" /></td>
+                    <td><input id="stat-clawsValmar-startSp" type="number" value="44" /></td>
+                    <td><input id="stat-clawsValmar-startMp" type="number" value="0" /></td>
+                    <td><input id="stat-clawsValmar-str" type="number" value="38" /></td>
+                    <td><input id="stat-clawsValmar-vit" type="number" value="22" /></td>
+                    <td><input id="stat-clawsValmar-agi" type="number" value="29" /></td>
+                    <td><input id="stat-clawsValmar-spd" type="number" value="30" /></td>
+                    <td><input id="stat-clawsValmar-mag" type="number" value="10" /></td>
+                    <td><input id="stat-clawsValmar-men" type="number" value="16" /></td>
+                  </tr>
+                  <tr>
+                    <td>Heart of Valmar</td>
+                    <td><input id="stat-heartValmar-maxHp" type="number" value="760" /></td>
+                    <td><input id="stat-heartValmar-startSp" type="number" value="60" /></td>
+                    <td><input id="stat-heartValmar-startMp" type="number" value="0" /></td>
+                    <td><input id="stat-heartValmar-str" type="number" value="34" /></td>
+                    <td><input id="stat-heartValmar-vit" type="number" value="30" /></td>
+                    <td><input id="stat-heartValmar-agi" type="number" value="24" /></td>
+                    <td><input id="stat-heartValmar-spd" type="number" value="20" /></td>
+                    <td><input id="stat-heartValmar-mag" type="number" value="30" /></td>
+                    <td><input id="stat-heartValmar-men" type="number" value="22" /></td>
+                  </tr>
+                  <tr>
+                    <td>Zera Ascendant</td>
+                    <td><input id="stat-zeraAvatar-maxHp" type="number" value="880" /></td>
+                    <td><input id="stat-zeraAvatar-startSp" type="number" value="64" /></td>
+                    <td><input id="stat-zeraAvatar-startMp" type="number" value="0" /></td>
+                    <td><input id="stat-zeraAvatar-str" type="number" value="36" /></td>
+                    <td><input id="stat-zeraAvatar-vit" type="number" value="30" /></td>
+                    <td><input id="stat-zeraAvatar-agi" type="number" value="27" /></td>
+                    <td><input id="stat-zeraAvatar-spd" type="number" value="22" /></td>
+                    <td><input id="stat-zeraAvatar-mag" type="number" value="32" /></td>
+                    <td><input id="stat-zeraAvatar-men" type="number" value="24" /></td>
                   </tr>
                 </tbody>
               </table>
