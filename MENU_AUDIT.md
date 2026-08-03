@@ -14,7 +14,7 @@
 - Shop catalog: **53**.
 - Equipment catalog: **126**.
 - Mana Egg catalog: **8**.
-- Optional NPC dialogue entries: **30**.
+- Optional NPC dialogue entries: **64**.
 
 ## Усиления текущего menu parity pass
 

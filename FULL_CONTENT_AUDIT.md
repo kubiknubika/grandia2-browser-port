@@ -13,7 +13,7 @@
 - ❌ **Все оригинальные мобы/боссы:** нет; есть 74 enemy presets (52 с drop tables), это заметный curated subset, но не вся энциклопедия оригинала.
 - ❌ **Все оригинальные предметы/экипировка:** нет; есть 57 inventory items, 53 shop SKUs и 126 equipment entries, это не весь original item database.
 - ❌ **Все оригинальные секреты:** нет; есть 54 treasure nodes, 43 travel encounters и 103 world/event nodes, но это не полный secret compendium оригинала.
-- 🟡 **Все оригинальные диалоги:** нет; story/dialogue coverage большая (234 dialogue blocks + 70 narration blocks + 30 optional NPC dialogues), но не весь original script.
+- 🟡 **Все оригинальные диалоги:** нет; story/dialogue coverage большая (234 dialogue blocks + 70 narration blocks + 64 optional NPC dialogues), но не весь original script.
 
 ## Что реально на 100%
 
@@ -61,7 +61,7 @@
 - Travel encounter nodes: **43**.
 - World event nodes: **41**.
 - Additional scripted world events: **62**.
-- Optional NPC dialogues: **30** (31 страниц).
+- Optional NPC dialogues: **64** (65 страниц).
 - Это хороший campaign layer, но не полный original item/secret/dialogue completionist layer.
 
 ## Итоговая честная оценка
