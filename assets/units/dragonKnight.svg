@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96">
+  <defs>
+    <radialGradient id="bg-dragonKnight" cx="50%" cy="35%" r="70%">
+      <stop offset="0%" stop-color="rgba(96,165,250,0.95)"/>
+      <stop offset="100%" stop-color="rgba(15,23,42,0.98)"/>
+    </radialGradient>
+  </defs>
+  <rect x="4" y="4" width="88" height="88" rx="18" fill="url(#bg-dragonKnight)" stroke="#fecaca" stroke-width="2"/>
+  <ellipse cx="48" cy="79" rx="24" ry="8" fill="rgba(2,6,23,0.45)"/>
+  <circle cx="48" cy="34" r="16" fill="rgba(248,250,252,0.92)" opacity="0.92"/>
+  <path d="M30 28 Q20 8 38 18 Q42 6 50 18" fill="rgba(250,204,21,0.9)" opacity="0.85"/><path d="M66 28 Q76 8 58 18 Q54 6 46 18" fill="rgba(250,204,21,0.9)" opacity="0.85"/>
+  <path d="M20 74 Q48 46 76 74 L68 92 L28 92 Z" fill="rgba(96,165,250,0.55)"/>
+  <path d="M30 76 Q48 46 66 76 L60 92 L36 92 Z" fill="rgba(96,165,250,0.92)" stroke="rgba(250,204,21,0.8)" stroke-width="2"/>
+  <path d="M39 52 Q48 58 57 52" stroke="rgba(15,23,42,0.7)" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="42" cy="31" r="2.5" fill="rgba(15,23,42,0.75)"/>
+  <circle cx="54" cy="31" r="2.5" fill="rgba(15,23,42,0.75)"/>
+  <circle cx="72" cy="24" r="7" fill="#facc15" opacity="0.9"/>
+  <rect x="10" y="70" width="30" height="16" rx="8" fill="rgba(2,6,23,0.55)"/>
+  <text x="25" y="81" text-anchor="middle" font-family="system-ui, sans-serif" font-size="10" font-weight="700" fill="#f8fafc">DK</text>
+</svg>

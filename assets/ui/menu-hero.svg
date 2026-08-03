@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="700" viewBox="0 0 1600 700">
+  <defs>
+    <linearGradient id="menu-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="55%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#581c87"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="700" fill="url(#menu-bg)"/>
+  <circle cx="1180" cy="180" r="150" fill="rgba(248,250,252,0.11)"/>
+  <path d="M0 520 Q260 430 500 480 T1040 500 T1600 450 V700 H0 Z" fill="rgba(2,6,23,0.35)"/>
+  <g transform="translate(980 120)">
+    <circle cx="120" cy="70" r="56" fill="#f8fafc" opacity="0.92"/>
+    <path d="M46 228 Q120 72 194 228 L170 286 L70 286 Z" fill="#60a5fa" stroke="#dbeafe" stroke-width="6"/>
+    <path d="M138 158 L228 118 L232 148 L160 180 Z" fill="#facc15" opacity="0.9"/>
+    <path d="M70 142 Q120 182 170 142" stroke="#0f172a" stroke-width="8" stroke-linecap="round"/>
+  </g>
+  <text x="120" y="170" fill="#f8fafc" font-family="system-ui, sans-serif" font-size="70" font-weight="800">Grandia II Browser Port</text>
+  <text x="124" y="230" fill="#cbd5e1" font-family="system-ui, sans-serif" font-size="28">Story campaign • combat sandbox • replay lab</text>
+</svg>

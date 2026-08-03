@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="sky-campaign-ancient_core" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0b1120"/>
+      <stop offset="60%" stop-color="#263243"/>
+      <stop offset="100%" stop-color="#2f3440"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky-campaign-ancient_core)"/>
+  <ellipse cx="1260" cy="180" rx="170" ry="110" fill="rgba(147,197,253,0.22)"/>
+  <path d="M0 640 Q180 520 340 590 T700 570 T1100 610 T1600 540 V900 H0 Z" fill="rgba(15,23,42,0.35)"/>
+  <path d="M0 720 Q220 600 420 670 T860 650 T1280 700 T1600 640 V900 H0 Z" fill="rgba(2,6,23,0.48)"/>
+  <g fill="rgba(147,197,253,0.14)"><rect x="260" y="230" width="120" height="310"/><rect x="740" y="180" width="120" height="360"/><rect x="1180" y="250" width="120" height="290"/></g>
+</svg>

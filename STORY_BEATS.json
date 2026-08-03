@@ -1,0 +1,435 @@
+{
+  "title": "Grandia II Story Beats",
+  "version": 1,
+  "spoilers": true,
+  "purpose": "Machine-readable story structure for encounter planning, battle theming, boss phases, and campaign progression.",
+  "sourceFiles": [
+    "STORY_SUMMARY.md"
+  ],
+  "arcs": [
+    {
+      "id": "arc_01_failed_seal",
+      "title": "Failed seal and escort mission",
+      "storyFocus": "Ryudo accepts the church job, the ritual at Garmia Tower fails, and Elena becomes tied to the Wings of Valmar.",
+      "tone": ["mystery", "escort", "church", "first-contact-with-darkness"],
+      "plotBeats": [
+        {
+          "id": "carbo_contract",
+          "title": "Contract in Carbo Village",
+          "summary": "Ryudo and Skye meet Father Carius and take the escort job for Elena.",
+          "locations": ["Carbo Village", "Church of Granas"],
+          "partyState": {
+            "core": ["Ryudo", "Elena"],
+            "temporary": [],
+            "missing": ["Millenia", "Roan", "Mareg", "Tio"]
+          },
+          "recommendedTemplate": "Duel 2v2",
+          "recommendedTheme": "forest",
+          "openingAdvantage": "neutral",
+          "bosses": [],
+          "currentPrototypeFit": "starter"
+        },
+        {
+          "id": "garmia_failure",
+          "title": "Garmia Tower disaster",
+          "summary": "The sealing ceremony fails, monsters break free, and Elena is linked to Valmar.",
+          "locations": ["Black Forest", "Garmia Tower"],
+          "partyState": {
+            "core": ["Ryudo", "Elena"],
+            "temporary": [],
+            "missing": ["Millenia", "Roan", "Mareg", "Tio"]
+          },
+          "recommendedTemplate": "Mini-boss solo",
+          "recommendedTheme": "cavern",
+          "openingAdvantage": "players",
+          "bosses": ["Ritual failure setpiece", "First Valmar corruption encounter"],
+          "currentPrototypeFit": "line-pressure"
+        }
+      ]
+    },
+    {
+      "id": "arc_02_road_to_st_heim",
+      "title": "Road to St. Heim",
+      "storyFocus": "Ryudo escorts Elena, Millenia appears, and the first larger party members begin to join.",
+      "tone": ["road-journey", "party-friction", "awakening-evil", "travel"],
+      "plotBeats": [
+        {
+          "id": "millenia_first_attack",
+          "title": "Night attack and Millenia reveal",
+          "summary": "The winged woman attacks the village, defeats Ryudo, and later reappears as Millenia.",
+          "locations": ["Carbo Village outskirts"],
+          "partyState": {
+            "core": ["Ryudo", "Elena"],
+            "temporary": ["Millenia"],
+            "missing": ["Roan", "Mareg", "Tio"]
+          },
+          "recommendedTemplate": "Duel 2v2",
+          "recommendedTheme": "forest",
+          "openingAdvantage": "enemies",
+          "bosses": ["Millenia duel"],
+          "currentPrototypeFit": "veteran-seed"
+        },
+        {
+          "id": "agear_roan",
+          "title": "Agear and Roan",
+          "summary": "Agear has been hit by monsters; Roan joins after the medal incident and the group keeps moving toward St. Heim.",
+          "locations": ["Agear Town", "Durham Cave"],
+          "partyState": {
+            "core": ["Ryudo", "Elena", "Roan"],
+            "temporary": ["Millenia"],
+            "missing": ["Mareg", "Tio"]
+          },
+          "recommendedTemplate": "Mini-boss solo",
+          "recommendedTheme": "cavern",
+          "openingAdvantage": "neutral",
+          "bosses": ["Durham Minotaur"],
+          "currentPrototypeFit": "miniboss-minotaur"
+        },
+        {
+          "id": "liligue_and_mareg",
+          "title": "Liligue, the Tongue of Valmar, and Mareg",
+          "summary": "The party uncovers another Valmar piece beneath Liligue; Mareg joins and the world’s corruption becomes harder to deny.",
+          "locations": ["Liligue City", "Temple Ruins", "Granacliffs"],
+          "partyState": {
+            "core": ["Ryudo", "Elena", "Roan", "Mareg"],
+            "temporary": ["Millenia"],
+            "missing": ["Tio"]
+          },
+          "recommendedTemplate": "Skirmish 3v3",
+          "recommendedTheme": "ruins",
+          "openingAdvantage": "neutral",
+          "bosses": ["Tongue of Valmar / Gadan"],
+          "currentPrototypeFit": "party-skirmish"
+        }
+      ]
+    },
+    {
+      "id": "arc_03_st_heim_cyrum",
+      "title": "St. Heim, Cyrum, and the dark legacy",
+      "storyFocus": "Zera sends the party after the Granasaber, Cyrum’s history is exposed, and Tio joins after the Claws of Valmar incident.",
+      "tone": ["holy-city", "false-authority", "royal-secrets", "ancient-machinery"],
+      "plotBeats": [
+        {
+          "id": "st_heim_zera",
+          "title": "Audience with Zera",
+          "summary": "Zera orders Ryudo to find the Granasaber and the party’s journey shifts from escort mission to world-level crisis.",
+          "locations": ["St. Heim Papal State", "Granas Cathedral"],
+          "partyState": {
+            "core": ["Ryudo", "Elena", "Roan", "Mareg"],
+            "temporary": ["Millenia"],
+            "missing": ["Tio"]
+          },
+          "recommendedTemplate": "Guardian trial",
+          "recommendedTheme": "ruins",
+          "openingAdvantage": "neutral",
+          "bosses": ["Church confrontation setup"],
+          "currentPrototypeFit": "guardian-trial"
+        },
+        {
+          "id": "cyrum_and_claws",
+          "title": "Cyrum and the Claws of Valmar",
+          "summary": "Roan is revealed as prince, the underground plant is discovered, and Tio joins after the Claws are defeated.",
+          "locations": ["Cyrum Kingdom", "Underground Plant"],
+          "partyState": {
+            "core": ["Ryudo", "Elena", "Roan", "Mareg", "Tio"],
+            "temporary": ["Millenia"],
+            "missing": []
+          },
+          "recommendedTemplate": "Boss swarm test",
+          "recommendedTheme": "cavern",
+          "openingAdvantage": "players",
+          "bosses": ["Claws of Valmar", "Factory guardian-type fights"],
+          "currentPrototypeFit": "guardian-trial"
+        }
+      ]
+    },
+    {
+      "id": "arc_04_melfice_and_garlan",
+      "title": "Melfice and Garlan",
+      "storyFocus": "Ryudo’s trauma and Melfice’s fall become the emotional center of the story.",
+      "tone": ["personal-trauma", "sword-village", "brother-conflict", "moral-grey"],
+      "plotBeats": [
+        {
+          "id": "garlan_return",
+          "title": "Return to Garlan",
+          "summary": "Ryudo returns to the village that blames him for leaving; Skye reveals the history behind Melfice and Reena.",
+          "locations": ["Garlan Village", "Grail Mountain Road"],
+          "partyState": {
+            "core": ["Ryudo", "Elena", "Mareg", "Tio"],
+            "temporary": ["Millenia"],
+            "missing": ["Roan"]
+          },
+          "recommendedTemplate": "Mini-boss escort",
+          "recommendedTheme": "forest",
+          "openingAdvantage": "neutral",
+          "bosses": ["Pre-Melfice story encounters"],
+          "currentPrototypeFit": "miniboss-escort"
+        },
+        {
+          "id": "melfice_duel",
+          "title": "Melfice confrontation",
+          "summary": "Ryudo defeats Melfice, learns the next step toward the Granasaber, and is immediately endangered by the Horns of Valmar.",
+          "locations": ["Grail Mountain", "Plateau of Memories"],
+          "partyState": {
+            "core": ["Ryudo", "Elena", "Mareg", "Tio"],
+            "temporary": ["Millenia"],
+            "missing": ["Roan"]
+          },
+          "recommendedTemplate": "Mini-boss solo",
+          "recommendedTheme": "ruins",
+          "openingAdvantage": "neutral",
+          "bosses": ["Melfice duel"],
+          "currentPrototypeFit": "miniboss-minotaur"
+        }
+      ]
+    },
+    {
+      "id": "arc_05_granasaber_truth",
+      "title": "Granasaber and the collapse of official truth",
+      "storyFocus": "The party finds the Granasaber and the Church’s narrative begins to crack apart in full view.",
+      "tone": ["artifact-quest", "ancient-truth", "church-conspiracy", "escalation"],
+      "plotBeats": [
+        {
+          "id": "nanan_and_cyclone",
+          "title": "Nanan and the cyclone",
+          "summary": "The party discovers the location of the Granasaber inside the great storm and learns the sword is more than a weapon.",
+          "locations": ["Nanan Village", "Great Rift", "Demon's Law"],
+          "partyState": {
+            "core": ["Ryudo", "Elena", "Mareg", "Tio"],
+            "temporary": ["Millenia"],
+            "missing": ["Roan"]
+          },
+          "recommendedTemplate": "Boss swarm test",
+          "recommendedTheme": "volcano",
+          "openingAdvantage": "neutral",
+          "bosses": ["Body of Valmar"],
+          "currentPrototypeFit": "full-party"
+        },
+        {
+          "id": "granasaber_ship",
+          "title": "The true Granasaber",
+          "summary": "Tio reveals the Granasaber as a vast vessel; the fight is no longer local, and the Day of Darkness approaches fast.",
+          "locations": ["Granasaber interior", "Return to St. Heim"],
+          "partyState": {
+            "core": ["Ryudo", "Elena", "Mareg", "Tio"],
+            "temporary": ["Millenia"],
+            "missing": ["Roan"]
+          },
+          "recommendedTemplate": "Full party 4v4",
+          "recommendedTheme": "ruins",
+          "openingAdvantage": "players",
+          "bosses": ["Setpiece ship deployment"],
+          "currentPrototypeFit": "full-party"
+        }
+      ]
+    },
+    {
+      "id": "arc_06_day_of_darkness",
+      "title": "Day of Darkness",
+      "storyFocus": "Selene and Zera reveal their true plan, the Church turns openly violent, and Elena becomes central to Valmar’s rebirth.",
+      "tone": ["apocalypse", "betrayal", "mass-sacrifice", "revelation"],
+      "plotBeats": [
+        {
+          "id": "cathedral_massacre",
+          "title": "St. Heim collapses",
+          "summary": "The Cathedral Knights slaughter civilians; Elena reveals the truth of her role; Selene becomes the Heart of Valmar.",
+          "locations": ["St. Heim Papal State", "Granas Cathedral"],
+          "partyState": {
+            "core": ["Ryudo", "Elena", "Mareg", "Tio"],
+            "temporary": ["Millenia"],
+            "missing": ["Roan"]
+          },
+          "recommendedTemplate": "Guardian trial",
+          "recommendedTheme": "ruins",
+          "openingAdvantage": "enemies",
+          "bosses": ["Heart of Valmar", "Church execution squads"],
+          "currentPrototypeFit": "guardian-trial"
+        },
+        {
+          "id": "zera_revealed",
+          "title": "Zera’s betrayal",
+          "summary": "Zera admits the church lied about the ancient war and abducts Elena to the Moon of Valmar.",
+          "locations": ["Cathedral core", "Moon launch setup"],
+          "partyState": {
+            "core": ["Ryudo", "Mareg", "Tio"],
+            "temporary": ["Millenia"],
+            "missing": ["Elena", "Roan"]
+          },
+          "recommendedTemplate": "Mini-boss escort",
+          "recommendedTheme": "volcano",
+          "openingAdvantage": "enemies",
+          "bosses": ["Zera reveal cutscene fight"],
+          "currentPrototypeFit": "miniboss-escort"
+        }
+      ]
+    },
+    {
+      "id": "arc_07_moon_and_sacrifice",
+      "title": "Moon of Valmar and Mareg’s sacrifice",
+      "storyFocus": "The party reaches the moon, loses Mareg, and is pushed into the late-game war for the world’s survival.",
+      "tone": ["moon-assault", "sacrifice", "siege", "desperation"],
+      "plotBeats": [
+        {
+          "id": "moon_assault",
+          "title": "Assault on Valmar’s Moon",
+          "summary": "The group fights through Valmar’s moon to save Elena while Mareg holds the line in a doomed stand.",
+          "locations": ["Valmar's Moon", "Valmar's Womb"],
+          "partyState": {
+            "core": ["Ryudo", "Elena", "Mareg", "Tio"],
+            "temporary": ["Millenia"],
+            "missing": ["Roan"]
+          },
+          "recommendedTemplate": "Mini-boss escort",
+          "recommendedTheme": "volcano",
+          "openingAdvantage": "players",
+          "bosses": ["Moon guardians", "Valmar hatchlings", "Mareg last stand setpiece"],
+          "currentPrototypeFit": "boss-escort-7171"
+        },
+        {
+          "id": "cyrum_defense",
+          "title": "Defense of Cyrum",
+          "summary": "After escaping the moon, the party regroups at Cyrum and tries to hold the line against the spread of Valmar’s monsters.",
+          "locations": ["Cyrum Kingdom", "Cyrum South", "Raul Hills"],
+          "partyState": {
+            "core": ["Ryudo", "Elena", "Tio", "Roan"],
+            "temporary": ["Millenia"],
+            "missing": ["Mareg"]
+          },
+          "recommendedTemplate": "Full party 4v4",
+          "recommendedTheme": "cavern",
+          "openingAdvantage": "enemies",
+          "bosses": ["Defensive waves", "Moonfall aftermath"],
+          "currentPrototypeFit": "full-party"
+        }
+      ]
+    },
+    {
+      "id": "arc_08_birthplace_of_gods",
+      "title": "Birthplace of the Gods and the true sword",
+      "storyFocus": "The party uncovers the oldest truth in the setting, and Ryudo earns the true Granasaber by surviving his inner trial.",
+      "tone": ["cosmic-history", "self-confrontation", "myth-reversal", "awakening"],
+      "plotBeats": [
+        {
+          "id": "birthplace_descent",
+          "title": "Birthplace of the Gods",
+          "summary": "The party learns what really happened in the ancient war and why both Granas and Valmar are not what the church taught.",
+          "locations": ["Birthplace of the Gods"],
+          "partyState": {
+            "core": ["Ryudo", "Elena", "Tio", "Roan"],
+            "temporary": ["Millenia"],
+            "missing": ["Mareg"]
+          },
+          "recommendedTemplate": "Guardian trial",
+          "recommendedTheme": "ruins",
+          "openingAdvantage": "neutral",
+          "bosses": ["Ancient guardian encounters", "trial constructs"],
+          "currentPrototypeFit": "guardian-trial"
+        },
+        {
+          "id": "inner_trial",
+          "title": "Ryudo’s inner trial",
+          "summary": "Ryudo confronts guilt, fear, and the Horns within, and emerges with the true Granasaber.",
+          "locations": ["Inner trial", "Elmo sequence"],
+          "partyState": {
+            "core": ["Ryudo"],
+            "temporary": [],
+            "missing": ["Elena", "Tio", "Roan", "Millenia"]
+          },
+          "recommendedTemplate": "Mini-boss solo",
+          "recommendedTheme": "cavern",
+          "openingAdvantage": "neutral",
+          "bosses": ["Inner shadow forms", "trial selves"],
+          "currentPrototypeFit": "miniboss-minotaur"
+        }
+      ]
+    },
+    {
+      "id": "arc_09_new_valmar_finale",
+      "title": "New Valmar and final destruction",
+      "storyFocus": "The party enters the new Valmar, defeats Zera, and ends Valmar for good while proving humanity can stand without gods.",
+      "tone": ["final-dungeon", "godfall", "separation", "human-self-determination"],
+      "plotBeats": [
+        {
+          "id": "zera_inside_valmar",
+          "title": "Zera inside New Valmar",
+          "summary": "Inside Valmar’s body, Zera launches his last sequence of deception and force, even weaponizing a false Millenia.",
+          "locations": ["New Valmar", "Room of Chaos"],
+          "partyState": {
+            "core": ["Ryudo", "Elena", "Tio", "Roan"],
+            "temporary": ["Millenia"],
+            "missing": []
+          },
+          "recommendedTemplate": "Boss swarm test",
+          "recommendedTheme": "volcano",
+          "openingAdvantage": "neutral",
+          "bosses": ["Zera forms", "false Millenia", "Valmar internals"],
+          "currentPrototypeFit": "boss-escort-7171"
+        },
+        {
+          "id": "true_finale",
+          "title": "Valmar’s end",
+          "summary": "Ryudo, Elena, and the true Millenia destroy Zera and Valmar, proving the future belongs to human choice rather than divine authority.",
+          "locations": ["New Valmar Core", "Final body space"],
+          "partyState": {
+            "core": ["Ryudo", "Elena", "Millenia"],
+            "temporary": [],
+            "missing": ["Roan", "Tio"]
+          },
+          "recommendedTemplate": "Mini-boss solo",
+          "recommendedTheme": "volcano",
+          "openingAdvantage": "neutral",
+          "bosses": ["Zera final", "New Valmar core"],
+          "currentPrototypeFit": "boss-6161"
+        }
+      ]
+    }
+  ],
+  "characterProgression": {
+    "Ryudo": {
+      "theme": "from cynical mercenary to self-aware protector",
+      "earlyRole": "vanguard / cancel specialist",
+      "lateRole": "single-target boss breaker"
+    },
+    "Elena": {
+      "theme": "faith, compassion, and discovering the church lied",
+      "earlyRole": "support / control hybrid",
+      "lateRole": "support caster with holy pressure"
+    },
+    "Millenia": {
+      "theme": "separate identity, dark power, eventual emotional autonomy",
+      "earlyRole": "mysterious antagonist / ally",
+      "lateRole": "aoe caster and volatile damage dealer"
+    },
+    "Roan": {
+      "theme": "child burdened with national guilt becomes a ruler",
+      "earlyRole": "young support attacker",
+      "lateRole": "royal strategist / utility"
+    },
+    "Mareg": {
+      "theme": "vengeance, honor, sacrifice",
+      "earlyRole": "heavy bruiser",
+      "lateRole": "tragic protector"
+    },
+    "Tio": {
+      "theme": "machine learning how to live and feel",
+      "earlyRole": "fast utility caster",
+      "lateRole": "clean tactical hybrid"
+    }
+  },
+  "designNotes": {
+    "currentPrototypeCoverage": [
+      "escort/start arc",
+      "road battle templates",
+      "boss-like bruiser template",
+      "party skirmish template",
+      "guardian/elite template",
+      "phase-driven boss scripting"
+    ],
+    "bestTargetsForNextNarrativeWork": [
+      "story chapter selection in UI",
+      "campaign sequence using story beats as encounter presets",
+      "custom boss templates for Tongue/Claws/Heart of Valmar",
+      "dialogue trigger stubs tied to story arc ids"
+    ]
+  }
+}

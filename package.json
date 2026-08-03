@@ -1,0 +1,17 @@
+{
+  "name": "grandia2-browser-port",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "simulate": "node src/test_bot.js",
+    "balance": "node bot.js",
+    "balance:full": "node bot.js --full",
+    "balance:save-artifact": "node bot.js --save-artifact",
+    "balance:save-artifact-full": "node bot.js --save-artifact-full",
+    "audit:story": "node scripts/generate_story_audit.js",
+    "audit:full-content": "node scripts/generate_full_content_audit.js",
+    "audit:bestiary": "node scripts/generate_bestiary_audit.js",
+    "audit:menu": "node scripts/generate_menu_audit.js",
+    "audit:script": "node scripts/generate_script_audit.js"
+  }
+}
