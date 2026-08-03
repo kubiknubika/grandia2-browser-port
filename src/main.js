@@ -251,7 +251,7 @@ function handbookGroupLabelForAction(definition) {
     return 'Other';
   }
   if (definition.commandType === 'item') {
-    return 'Items';
+    return definition.offensive ? 'Offensive items' : 'Items';
   }
   if (definition.commandType === 'defense' || definition.commandType === 'basic') {
     return 'Core';
@@ -1000,6 +1000,7 @@ const state = {
     danger: 'all',
   },
   lastMetrics: null,
+  sfxOutcomeFor: null,
   canvasHotspots: [],
   navigationKeys: {},
   campaignAvatar: null,
@@ -3020,6 +3021,34 @@ function actionSortScore(action) {
     endure: 25,
     evade: 26,
     wingSlice: 27,
+    poisonSpit: 28,
+    webTrap: 29,
+    freeze: 30,
+    paralysisWave: 31,
+    craze: 32,
+    poizn: 33,
+    boom: 34,
+    baBoom: 35,
+    meteorStrike: 36,
+    gadZap: 37,
+    halvah: 38,
+    firebomb: 40,
+    mogayBomb: 41,
+    handGrenade: 42,
+    dynamite: 43,
+    hyperMogayBomb: 44,
+    superMogayBomb: 45,
+    meteorScroll: 46,
+    whirlwindScroll: 47,
+    redGoblinToad: 48,
+    demonAsh: 49,
+    spiderweb: 50,
+    redBirdStone: 51,
+    icefangStone: 52,
+    electrumStone: 53,
+    galeStone: 54,
+    flameStone: 55,
+    quakeStone: 56,
   };
 
   return order[action.id] ?? 99;
@@ -3078,6 +3107,7 @@ function commandSectionLabelForAction(action, category) {
     return 'Offensive magic';
   }
   if (category === 'items') {
+    if (definition.offensive) return 'Offensive items';
     if (definition.revive) return 'Revive';
     if ((definition.restoreSp ?? 0) > 0 || (definition.restoreMp ?? 0) > 0) return 'Resource recovery';
     if ((definition.cureStatuses ?? []).length > 0 && !(definition.healBase ?? 0)) return 'Status recovery';
@@ -3347,7 +3377,15 @@ function drawCombatant(fighter) {
   drawActionPreview(fighter);
 
   if (sprite) {
-    drawImageCover(context, sprite, x - fighter.radius * 1.65, y - fighter.radius * 1.9, fighter.radius * 3.3, fighter.radius * 3.3, fighter.isAlive ? 1 : 0.4);
+    const phase = fighter.bossPhaseIndex ?? 0;
+    if (phase > 0) {
+      context.save();
+      context.filter = `hue-rotate(${phase * 55}deg) saturate(${1 + phase * 0.25})`;
+      drawImageCover(context, sprite, x - fighter.radius * 1.65, y - fighter.radius * 1.9, fighter.radius * 3.3, fighter.radius * 3.3, fighter.isAlive ? 1 : 0.4);
+      context.restore();
+    } else {
+      drawImageCover(context, sprite, x - fighter.radius * 1.65, y - fighter.radius * 1.9, fighter.radius * 3.3, fighter.radius * 3.3, fighter.isAlive ? 1 : 0.4);
+    }
   } else {
     context.fillStyle = fighter.color;
     context.beginPath();
@@ -3538,6 +3576,41 @@ function roleAccent(role = 'combatant') {
     'moon-sentinel': '#f472b6',
     'blade-echo': '#facc15',
     'fanatic-bruiser': '#f87171',
+    'sand-harasser': '#eab308',
+    'poison-striker': '#65a30d',
+    'scaled-vanguard': '#94a3b8',
+    'shell-tank': '#cbd5e1',
+    'twin-bruiser': '#f87171',
+    'warp-slasher': '#a78bfa',
+    'vein-caster': '#f472b6',
+    'star-flier': '#facc15',
+    'venom-brute': '#3f6212',
+    'organic-flier': '#ec4899',
+    'valmar-youngling': '#d946ef',
+    'ice-bruiser': '#e0f2fe',
+    'early-flier': '#fbbf24',
+    'snow-bruiser': '#cbd5e1',
+    'camouflage-harasser': '#84cc16',
+    'drake-vanguard': '#f87171',
+    'ember-harasser': '#f97316',
+    'clay-flier': '#d6d3d1',
+    'reef-striker': '#ef4444',
+    'rift-diver': '#f59e0b',
+    'mind-flier': '#a78bfa',
+    'ice-tank': '#bae6fd',
+    'venom-crawler': '#4d7c0f',
+    'special-elite': '#7c3aed',
+    'special-stalker': '#e0f2fe',
+    'storm-flier': '#34d399',
+    'ancient-vanguard': '#94a3b8',
+    'death-hound': '#57534e',
+    'gravity-eye': '#f472b6',
+    'twin-reef-boss': '#f43f5e',
+    'rift-queen': '#0ea5e9',
+    'twin-fist': '#f97316',
+    'archive-guardian': '#93c5fd',
+    'final-warden': '#f8fafc',
+    'apex-god': '#d946ef',
     combatant: '#94a3b8',
   };
   return map[role] ?? '#94a3b8';
@@ -3794,6 +3867,28 @@ function drawEventFxOverlay() {
     destructionRay: '147,197,253',
     medicinalHerb: '74,222,128',
     antidote: '250,204,21',
+    boom: '251,146,60',
+    baBoom: '239,68,68',
+    meteorStrike: '248,113,113',
+    gadZap: '56,189,248',
+    poizn: '132,204,22',
+    craze: '192,132,252',
+    halvah: '250,204,21',
+    paralysisWave: '250,204,21',
+    dynamite: '251,146,60',
+    hyperMogayBomb: '248,113,113',
+    superMogayBomb: '239,68,68',
+    meteorScroll: '248,113,113',
+    whirlwindScroll: '125,211,252',
+    redGoblinToad: '251,146,60',
+    demonAsh: '167,139,250',
+    spiderweb: '163,230,53',
+    redBirdStone: '248,113,113',
+    icefangStone: '125,211,252',
+    electrumStone: '56,189,248',
+    galeStone: '125,211,252',
+    flameStone: '251,146,60',
+    quakeStone: '251,191,36',
     bossPhase: '248,113,113',
     bossReaction: '244,63,94',
     battlefield: '148,163,184',
@@ -6027,15 +6122,29 @@ function render() {
   renderMenuParityPanel();
 }
 
+function playSandboxOutcomeSfx() {
+  if (!state.battle || state.settings?.soundEnabled === false) {
+    return;
+  }
+  if (isBattleOver(state.battle.players, state.battle.enemies) && state.sfxOutcomeFor !== state.battle) {
+    state.sfxOutcomeFor = state.battle;
+    sound.playSfx(battleWinner(state.battle.players, state.battle.enemies) === 'players' ? 'victory' : 'defeat');
+  }
+}
+
 function manageBattleTheme() {
   const inBattle = state.battle && !isBattleOver(state.battle.players, state.battle.enemies)
     && state.appScreen === 'app' && (state.activeTab === 'play' || state.activeTab === 'debug' || (state.activeTab === 'campaign' && state.campaignRun.phase === 'battle'));
+  const inTravel = state.appScreen === 'app' && state.activeTab === 'campaign'
+    && campaignRunActive() && (state.campaignRun.phase === 'travel' || state.campaignRun.phase === 'overworld');
+  if (!state.settings.musicEnabled) {
+    sound.stopBattleTheme();
+    return;
+  }
   if (inBattle) {
-    if (state.settings.musicEnabled) {
-      sound.startBattleTheme();
-    } else {
-      sound.stopBattleTheme();
-    }
+    sound.startBattleTheme('battle');
+  } else if (inTravel) {
+    sound.startBattleTheme('overworld');
   } else {
     sound.stopBattleTheme();
   }
@@ -6063,6 +6172,7 @@ function stepBattle() {
   }
 
   if (isBattleOver(state.battle.players, state.battle.enemies)) {
+    playSandboxOutcomeSfx();
     finalizeCampaignBattleOutcome();
     render();
     return;
@@ -6075,6 +6185,7 @@ function stepBattle() {
 
   const event = advanceBattle(state.battle);
   triggerEventFx(event);
+  playSandboxOutcomeSfx();
   finalizeCampaignBattleOutcome();
   render();
 }
@@ -6108,6 +6219,7 @@ function autoBattle() {
     }
   }
 
+  playSandboxOutcomeSfx();
   finalizeCampaignBattleOutcome();
   render();
 }
@@ -9600,7 +9712,15 @@ function drawReplayScene(ctx, canvas, snapshot, decision, replay = null) {
     }
 
     if (sprite) {
-      drawImageCover(ctx, sprite, x - (fighter.radius ?? 18) * 1.65, y - (fighter.radius ?? 18) * 1.9, (fighter.radius ?? 18) * 3.3, (fighter.radius ?? 18) * 3.3, fighter.isAlive ? 1 : 0.4);
+      const phase = fighter.bossPhaseIndex ?? 0;
+      if (phase > 0) {
+        ctx.save();
+        ctx.filter = `hue-rotate(${phase * 55}deg) saturate(${1 + phase * 0.25})`;
+        drawImageCover(ctx, sprite, x - (fighter.radius ?? 18) * 1.65, y - (fighter.radius ?? 18) * 1.9, (fighter.radius ?? 18) * 3.3, (fighter.radius ?? 18) * 3.3, fighter.isAlive ? 1 : 0.4);
+        ctx.restore();
+      } else {
+        drawImageCover(ctx, sprite, x - (fighter.radius ?? 18) * 1.65, y - (fighter.radius ?? 18) * 1.9, (fighter.radius ?? 18) * 3.3, (fighter.radius ?? 18) * 3.3, fighter.isAlive ? 1 : 0.4);
+      }
     } else {
       ctx.fillStyle = fighter.color;
       ctx.beginPath();

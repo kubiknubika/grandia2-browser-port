@@ -101,22 +101,29 @@ const SFX_DEFS = {
 const BATTLE_BASS = [110, 110, 87.3, 87.3, 98, 98, 82.4, 82.4];
 const BATTLE_ARP = [220, 261.6, 329.6, 440, 329.6, 261.6, 220, 174.6];
 
+// Overworld / travel theme: slower, airier major-pentatonic feel.
+const OVERWORLD_BASS = [65.4, 65.4, 73.4, 73.4, 82.4, 82.4, 98, 98];
+const OVERWORLD_ARP = [196, 261.6, 329.6, 392, 329.6, 261.6, 196, 246.9];
+
+const THEME_CONFIG = {
+  battle: { bass: BATTLE_BASS, arp: BATTLE_ARP, interval: 170, arpType: 'square', arpGain: 0.1, bassGain: 0.24, snare: true },
+  overworld: { bass: OVERWORLD_BASS, arp: OVERWORLD_ARP, interval: 330, arpType: 'sine', arpGain: 0.12, bassGain: 0.18, snare: false },
+};
+
 function playMusicStep() {
   const ac = ensureContext();
   if (!ac || !enabled || !musicGain) return;
+  const cfg = THEME_CONFIG[themeKind] ?? THEME_CONFIG.battle;
   const step = musicStep;
   const beat = step % 8;
   const bar = Math.floor(step / 8);
-  // bass
-  const bassFreq = BATTLE_BASS[(bar * 2 + (beat >= 4 ? 1 : 0)) % BATTLE_BASS.length];
-  tone(bassFreq, 0, 0.24, 'triangle', 0.24, musicGain);
-  // arpeggio on even beats
+  const bassFreq = cfg.bass[(bar * 2 + (beat >= 4 ? 1 : 0)) % cfg.bass.length];
+  tone(bassFreq, 0, 0.3, 'triangle', cfg.bassGain, musicGain);
   if (beat % 2 === 0) {
-    const arpFreq = BATTLE_ARP[(bar * 4 + beat / 2) % BATTLE_ARP.length];
-    tone(arpFreq, 0, 0.18, 'square', 0.1, musicGain);
+    const arpFreq = cfg.arp[(bar * 4 + beat / 2) % cfg.arp.length];
+    tone(arpFreq, 0, 0.2, cfg.arpType, cfg.arpGain, musicGain);
   }
-  // snare-ish noise on beats 2,6
-  if (beat === 2 || beat === 6) {
+  if (cfg.snare && (beat === 2 || beat === 6)) {
     noiseBurst(0, 0.06, 0.08, musicGain);
   }
   musicStep += 1;
@@ -140,13 +147,18 @@ export const sound = {
   },
   startBattleTheme(kind = 'battle') {
     const ac = ensureContext();
-    if (!ac || !enabled || musicTimer) {
+    if (!ac || !enabled) {
       return;
     }
+    if (musicTimer && themeKind === kind) {
+      return;
+    }
+    this.stopBattleTheme();
     themeKind = kind;
     musicStep = 0;
     playMusicStep();
-    musicTimer = setInterval(playMusicStep, 170);
+    const interval = (THEME_CONFIG[kind] ?? THEME_CONFIG.battle).interval;
+    musicTimer = setInterval(playMusicStep, interval);
   },
   stopBattleTheme() {
     if (musicTimer) {
