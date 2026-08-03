@@ -1326,6 +1326,10 @@ const WORLD_LOCATION_EVENTS = {
   cyrum_kingdom_south: [
     { id: 'cyrum-front-maps', label: 'Осмотреть карты фронта', text: 'На южном фронте даже карты выглядят как список отсроченных потерь. Здесь поздний Цайрум окончательно перестаёт быть просто столицей.' },
   ],
+  raul_hills_special: [
+    { id: 'special-stage-altar', label: 'Осмотреть алтарь башни', text: 'На вершине башни лабиринта — алтарь, хранящий защитное яйцо феи. Вокруг — следы древнего ритуала.', rewards: { experience: 40, skillCoins: 8, magicCoins: 10 } },
+    { id: 'special-stage-echo', label: 'Прислушаться к эху развалин', text: 'Эхо повторяет шаги давно ушедших искателей сокровищ. Где-то здесь спрятан запас старой экспедиции.', rewards: { experience: 30, gold: 150 } },
+  ],
   birthplace_of_the_gods: [
     { id: 'ancient-echo', label: 'Исследовать древние надписи', text: 'Древние надписи в Истоке богов говорят не о благочестии, а о технологиях, катастрофе и переписанной истории.', setFlags: ['flag_birthplace_truth'], rewards: { experience: 24, skillCoins: 4, magicCoins: 8, setFlags: ['flag_birthplace_truth'] } },
     { id: 'origin-reversal', label: 'Осмотреть центральный зал', text: 'Чем глубже партия идёт, тем яснее становится: мир Grandia II держался не на истине, а на удобной версии прошлого.' },
@@ -1491,6 +1495,51 @@ const WORLD_LOCATION_TREASURES = {
     { id: 'new-valmar-hero-cache', label: 'Ларец героя', description: 'Запас, спрятанный для тех, кто дойдёт до самого сердца тьмы.', rewards: { heroElixir: 1, goldenPotion: 1 } },
   
   ],
+  cyrum_kingdom: [
+    { id: 'cyrum-castle-cache', label: 'Кладовая замка', description: 'Запас замковой стражи, забытый при спешной смене караула.', rewards: { gold: 90, scarletPotion: 1 } },
+  ],
+  garlan_tombs: [
+    { id: 'garlan-tombs-cache', label: 'Дар у могил', description: 'Кто-то оставил припасы у старых надгробий в память о погибших.', rewards: { gold: 60, sympathyNut: 1 } },
+  ],
+  nanan_village: [
+    { id: 'nanan-north-cache', label: 'Северный тайник', description: 'Схрон охотников клана на краю деревни.', rewards: { gold: 80, swiftnessNut: 1 } },
+  ],
+  st_heim_forbidden_room: [
+    { id: 'forbidden-room-cache', label: 'Сундук запретной комнаты', description: 'То, что церковь прятала за запретными дверями.', rewards: { gold: 160, blessingScroll: 1, holyAshes: 1 } },
+  ],
+  plateau_of_memories: [
+    { id: 'plateau-cache', label: 'Памятный сундук', description: 'Сундук, оставленный у плато теми, кто пришёл раньше.', rewards: { gold: 130, healingFruit: 1 } },
+  ],
+  aira_space: [
+    { id: 'aira-cache', label: 'Ларец снов', description: 'Предмет, выпавший из мира грёз Аиры.', rewards: { gold: 110, eyeDrops: 2, lumirFlower: 1 } },
+  ],
+  valmars_womb: [
+    { id: 'womb-cache', label: 'Пульсирующий ларец', description: 'Схрон на границе чрева Луны.', rewards: { gold: 200, magicalMedicine: 1 } },
+  ],
+  underground_control_room: [
+    { id: 'control-room-cache', label: 'Контрольный сейф', description: 'Ящик с техно-лутом главного зала завода.', rewards: { gold: 140, electrumStone: 1, manaCrystal: 1 } },
+  ],
+  liligue_temple_ruins: [
+    { id: 'temple-ruins-cache', label: 'Руинный алтарь', description: 'Приношение, оставленное древним храмом под Лилигом.', rewards: { gold: 100, icefangStone: 1 } },
+  ],
+  garmia_tower_top: [
+    { id: 'garmia-top-cache', label: 'Верхняя сокровищница', description: 'Тайник на руинах верхней площадки башни.', rewards: { gold: 80, hyperMogayBomb: 1 } },
+  ],
+  garden_of_dream: [
+    { id: 'dream-garden-cache', label: 'Цветок сада грёз', description: 'Необычный цветок, который светится изнутри.', rewards: { lumirFlower: 2, gold: 40 } },
+  ],
+  boat_50_50: [
+    { id: 'boat-cache', label: 'Матросский сундук', description: 'Любимый тайник капитана Бакалы.', rewards: { gold: 120, magicalMedicine: 1 } },
+  ],
+  ghoss_forest_west: [
+    { id: 'ghoss-west-cache', label: 'Лесной тайник', description: 'Схрон в корнях старого дерева.', rewards: { gold: 90, slowpokeNut: 1 } },
+  ],
+  ghoss_forest_east: [
+    { id: 'ghoss-east-cache', label: 'Восточный схрон', description: 'Запас, спрятанный у выхода к Разлому.', rewards: { gold: 100, galeStone: 1 } },
+  ],
+  new_valmar_room_of_chaos: [
+    { id: 'chaos-room-cache', label: 'Ларец лжи', description: 'Сундук, который, кажется, притворяется сундуком.', rewards: { gold: 150, quakeStone: 1 } },
+  ],
   new_valmar_core: [
 
     { id: 'core-meteor-cache', label: 'Архивный терминал ядра', description: 'Последний ящик снабжения перед финальной развязкой.', rewards: { meteorScroll: 1, yomisElixir: 1 } },
@@ -1532,6 +1581,11 @@ const WORLD_TRAVEL_ENCOUNTERS = {
     { id: 'enc-raul-ruins', label: 'Развалины Raul Hills', description: 'Land Cougar и Giga Mantis делают развалины более похожими на опасный дикий фронтир, а не на generic encounter-зону.', enemyKeys: ['landCougar', 'gigaMantis'], theme: 'ruins', openingAdvantage: 'players', rewards: { gold: 100, experience: 40, skillCoins: 10, magicCoins: 7, medicinalHerb: 2, antidote: 1, blueberry: 1 } },
     { id: 'enc-raul-ogres', label: 'Руинные стражи холмов', description: 'Twin Ogre и Land Cougar стерегут башни лабиринта Raul Hills.', enemyKeys: ['twinOgre', 'landCougar'], theme: 'ruins', openingAdvantage: 'neutral', rewards: { gold: 115, experience: 44, skillCoins: 11, magicCoins: 8, mogayBomb: 1, seedOfPsyche: 1 } },
     { id: 'enc-raul-dragonoid', label: 'Дракониды развалин', description: 'Dragonoid выдыхает пламя из-за рухнувших колонн, прикрываясь отрядами ящеров.', enemyKeys: ['dragonoid', 'twinOgre'], theme: 'ruins', openingAdvantage: 'neutral', rewards: { gold: 110, experience: 42, skillCoins: 10, magicCoins: 8, firebomb: 1, seedOfLife: 1 } },
+  ],
+  raul_hills_special: [
+    { id: 'enc-special-snow-leopard', label: 'Снежный барс башни', description: 'Snow Leopard стережёт вершину башни лабиринта Раул Хиллс.', enemyKeys: ['snowLeopard'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 180, experience: 70, skillCoins: 16, magicCoins: 12, paralysisSalve: 1, manaCrystal: 1 } },
+    { id: 'enc-special-devil', label: 'Демон развалин', description: 'Devil хозяйничает в глубинах скрытой части лабиринта.', enemyKeys: ['devil', 'snowLeopard'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 220, experience: 84, skillCoins: 18, magicCoins: 14, demonAsh: 1, scarletPotion: 1 } },
+    { id: 'enc-special-dragon-knight', label: 'Драконий рыцарь башни', description: 'Dragon Knight и Devil охраняют нижние ярусы скрытого лабиринта.', enemyKeys: ['dragonKnight', 'devil'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 240, experience: 88, skillCoins: 18, magicCoins: 14, dragonZap: 0, manaCrystal: 1 } },
   ],
   cyrum_secret_passage: [
     { id: 'enc-cyrum-secret', label: 'Охрана тайного прохода', description: 'В скрытом проходе остаются враждебные защитные группы.', enemyKeys: ['guardian', 'wingEye'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 125, experience: 46, skillCoins: 11, magicCoins: 8, medicinalHerb: 1, antidote: 1 } },
@@ -1918,155 +1972,232 @@ const EXIT_REQUIREMENTS = {
   st_heim_forbidden_room: { valmars_moon: ['flag_zera_reveal_path'] },
   valmars_moon: { valmars_womb: ['flag_moon_surface'] },
   cyrum_kingdom_south: { birthplace_of_the_gods: ['flag_cyrum_war_room'] },
+  raul_hills: { raul_hills_special: ['flag_cyrum_war_room'] },
   birthplace_of_the_gods: { inner_trial: ['flag_birthplace_truth'], new_valmar: ['flag_birthplace_truth', 'flag_birthplace_red'] },
   new_valmar: { new_valmar_room_of_chaos: ['flag_new_valmar_outer'], new_valmar_core: ['flag_new_valmar_chaos'] },
 };
 
 const ADDITIONAL_WORLD_EVENTS_BY_LOCATION = {
   carbo_inn: [
+
     { id: 'carbo-inn-meeting', label: 'Встретиться с Кариусом в трактире', text: 'Кариус объясняет, почему сопровождение Елены — уже не обычный контракт, а опасный путь к ритуалу.', requiresFlags: ['flag_carbo_briefed'], setFlags: ['flag_carbo_inn_meeting'], rewards: { experience: 10, skillCoins: 2, magicCoins: 2, setFlags: ['flag_carbo_inn_meeting'] } },
     { id: 'carbo-night-watch', label: 'Остаться на ночной страже', text: 'Тревога нарастает, и ночь в Карбо уже не кажется безопасной. Именно сейчас в воздухе чувствуется присутствие Миллении.', allowedBeatIds: ['millenia_first_attack'], requiresFlags: ['flag_carbo_departure'], setFlags: ['flag_carbo_night_watch'], rewards: { experience: 12, skillCoins: 2, magicCoins: 3, setFlags: ['flag_carbo_night_watch'] } },
+  
   ],
   carbo_village: [
+
     { id: 'carbo-departure', label: 'Подготовить выход из деревни', text: 'После разговора с Кариусом, песни Елены, quiet-паузы в лавке и короткого взгляда на обычную жизнь Карбо деревня остаётся позади — пора идти в Black Forest.', requiresFlags: ['flag_carbo_briefed', 'flag_carbo_song_heard', 'flag_scene_carbo_store_hush', 'flag_scene_carbo_house_farewell', 'flag_carbo_inn_meeting'], setFlags: ['flag_carbo_departure'], rewards: { experience: 12, skillCoins: 2, magicCoins: 2, setFlags: ['flag_carbo_departure'] } },
     { id: 'carbo-millenia-sign', label: 'Почуять вмешательство Миллении', text: 'Даже до прямой атаки становится ясно: в Карбо появилась чужая, насмешливая и слишком сильная воля.', allowedBeatIds: ['millenia_first_attack'], requiresFlags: ['flag_carbo_night_watch'], setFlags: ['flag_millenia_presence'], rewards: { experience: 14, skillCoins: 2, magicCoins: 4, setFlags: ['flag_millenia_presence'] } },
+  ,
+    { id: 'carbo-herb-garden', label: 'Собрать травы у забора', text: 'За деревенским забором растут дикие лечебные травы — редкая удача для такого места.', rewards: { medicinalHerb: 1, poffNut: 1 } },
+  
   ],
   garmia_tower: [
+
     { id: 'garmia-lower-floors', label: 'Пробиться через нижние этажи', text: 'Первые этажи башни уже потеряны. Партия поднимается выше сквозь хаос.', setFlags: ['flag_garmia_floor1'], rewards: { experience: 14, skillCoins: 3, magicCoins: 2, setFlags: ['flag_garmia_floor1'] } },
     { id: 'garmia-window-route', label: 'Найти путь через разбитое окно', text: 'Обычный путь наверх сорван, остаётся только опасный маршрут к верхней площадке.', requiresFlags: ['flag_garmia_floor1'], setFlags: ['flag_garmia_window'], rewards: { experience: 14, skillCoins: 3, magicCoins: 3, setFlags: ['flag_garmia_window'] } },
+  
   ],
   agear_town: [
+
     { id: 'agear-roan-plea', label: 'Услышать о Роане и медали', text: 'Становится ясно: Роан уже ушёл в Durham Cave, и оставлять его там нельзя.', requiresFlags: ['flag_agear_briefed'], setFlags: ['flag_agear_roan_plea'], rewards: { experience: 12, skillCoins: 2, magicCoins: 2, setFlags: ['flag_agear_roan_plea'] } },
+  ,
+    { id: 'agear-poff-stranger', label: 'Взять орех у странника на руинах', text: 'Странник у разрушенного дома молча протягивает орех Poff и кивает в сторону пещеры.', rewards: { poffNut: 1 } },
+  
   ],
   durham_cave_entrance: [
+
     { id: 'durham-bridges', label: 'Разблокировать мосты пещеры', text: 'Партия находит рычаги и начинает вскрывать пещеру слой за слоем.', requiresFlags: ['flag_agear_roan_plea'], setFlags: ['flag_durham_bridge'], rewards: { experience: 14, skillCoins: 3, magicCoins: 2, setFlags: ['flag_durham_bridge'] } },
     { id: 'durham-roan-trail', label: 'Найти след Роана', text: 'Следы и чудовища ведут всё глубже. Роан действительно впереди.', requiresFlags: ['flag_durham_bridge'], setFlags: ['flag_durham_roan_found'], rewards: { experience: 16, skillCoins: 3, magicCoins: 3, setFlags: ['flag_durham_roan_found'] } },
+    { id: 'carro-feed-1', label: 'Покормить Карро (орех 1/3)', text: 'Странный грызун Карро смотрит на тебя голодными глазами. Он явно хочет орех Poff.', consumeItems: { poffNut: 1 }, rewards: { experience: 6, gold: 10 } },
+    { id: 'carro-feed-2', label: 'Покормить Карро (орех 2/3)', text: 'Карро довольно хрустит вторым орехом и начинает вилять хвостом. Кажется, он узнаёт Рюдо.', consumeItems: { poffNut: 1 }, rewards: { experience: 8, gold: 15 } },
+    { id: 'carro-feed-3', label: 'Покормить Карро (орех 3/3)', text: 'Третий орех — и Карро счастлив как никогда. Грызун приносит находку, которую прятал в норе.', consumeItems: { poffNut: 1 }, rewards: { experience: 12, gold: 30, equipmentIds: ['roan-multiple-knife'] } },
+  
   ],
   liligue_cave: [
+
     { id: 'liligue-seals', label: 'Активировать руинные печати', text: 'Чтобы пройти дальше, нужно понять и открыть древние механизмы пещеры.', requiresFlags: ['flag_liligue_gadan'], setFlags: ['flag_liligue_seals'], rewards: { experience: 20, skillCoins: 4, magicCoins: 4, setFlags: ['flag_liligue_seals'] } },
+  
   ],
   st_heim_inn: [
+
     { id: 'stheim-inn-stay', label: 'Переночевать в священном городе', text: 'Ночь в St. Heim меняет тон всей истории: теперь поход касается не только Елены, но и судьбы мира.', setFlags: ['flag_stheim_inn_stay'], rewards: { experience: 16, skillCoins: 2, magicCoins: 4, setFlags: ['flag_stheim_inn_stay'] } },
+  
   ],
   st_heim_audience_chamber: [
+
     { id: 'stheim-first-audience', label: 'Первая аудиенция у Зеры', text: 'Зера формально даёт направление, но оставляет слишком много скрытых смыслов.', requiresFlags: ['flag_stheim_inn_stay', 'flag_scene_stheim_inn_arrival'], setFlags: ['flag_stheim_first_audience'], rewards: { experience: 18, skillCoins: 2, magicCoins: 4, setFlags: ['flag_stheim_first_audience'] } },
     { id: 'stheim-second-audience', label: 'Вернуться к Зере после библиотеки и балкона', text: 'После quiet-паузы в гостевой комнате, маленьких человеческих штрихов святого города и дополнительных разговоров план похода утверждается, и партия может двигаться дальше.', requiresFlags: ['flag_stheim_library', 'flag_scene_stheim_bakery_facade', 'flag_scene_stheim_guestroom_evening', 'flag_stheim_balcony'], setFlags: ['flag_stheim_second_audience'], rewards: { experience: 20, skillCoins: 3, magicCoins: 4, setFlags: ['flag_stheim_second_audience'] } },
+  
   ],
   st_heim_guestroom: [
+
     { id: 'stheim-guestroom-reflection', label: 'Поговорить в гостевой комнате', text: 'Ночь в гостевой комнате подчёркивает, что путь в St. Heim уже меняет отношения внутри партии и повышает ставки.', requiresFlags: ['flag_stheim_first_audience'], rewards: { experience: 12, skillCoins: 1, magicCoins: 3 } },
+  
   ],
   st_heim_balcony: [
+
     { id: 'stheim-balcony-talk', label: 'Поговорить на балконе о настоящей цене пути', text: 'Вдали от официальных речей становится понятно, что задание Зеры опаснее, чем звучит.', requiresFlags: ['flag_stheim_first_audience', 'flag_stheim_library', 'flag_scene_stheim_guestroom_evening'], setFlags: ['flag_stheim_balcony'], rewards: { experience: 16, skillCoins: 2, magicCoins: 4, setFlags: ['flag_stheim_balcony'] } },
+  
   ],
   cyrum_inn: [
+
     { id: 'cyrum-inn-stay', label: 'Провести вечер в Цайруме', text: 'Ночь в Цайруме становится частью местной политической интриги и открывает новые сцены.', setFlags: ['flag_cyrum_inn'], rewards: { experience: 18, skillCoins: 3, magicCoins: 3, setFlags: ['flag_cyrum_inn'] } },
+  
   ],
   cyrum_castle_square: [
+
     { id: 'cyrum-hemble-duel', label: 'Сцена с Хемблом на площади', text: 'Площадь Цайрума служит театром для безобидной с виду, но сюжетно важной городской сцены.', requiresFlags: ['flag_cyrum_inn', 'flag_scene_cyrum_inn_evening'], setFlags: ['flag_cyrum_hemble'], rewards: { experience: 18, skillCoins: 3, magicCoins: 3, setFlags: ['flag_cyrum_hemble'] } },
     { id: 'cyrum-juice-scene', label: 'Вернуться с напитком и закончить сцену', text: 'Мелкая бытовая сцена оказывается обязательной частью раскрытия местного ритма и состава партии.', requiresFlags: ['flag_cyrum_hemble'], setFlags: ['flag_cyrum_juice'], rewards: { experience: 18, skillCoins: 2, magicCoins: 4, setFlags: ['flag_cyrum_juice'] } },
+  
+  ],
+  hemble_tent: [
+
+    { id: 'hemble-arm-wrestle', label: 'Сыграть с Хемблом в армрестлинг', text: 'Хембл вызывает на руку. Три раунда: сила Рюдо против удачи и хватки чемпиона палатки. Две победы — и приз твой.', minigameArmWrestle: true, rewards: { experience: 30, skillCoins: 6, magicCoins: 4 } },
+  
   ],
   cyrum_port: [
+
     { id: 'cyrum-port-brief', label: 'Подойти к порту и стражникам', text: 'Путь в secret passage подтверждён. Дальше начинается не городской эпизод, а вторжение внутрь замка.', requiresFlags: ['flag_cyrum_juice', 'flag_scene_cyrum_kings_burden'], setFlags: ['flag_cyrum_port'], rewards: { experience: 18, skillCoins: 2, magicCoins: 3, setFlags: ['flag_cyrum_port'] } },
     { id: 'cyrum-war-room-port', label: 'Собрать позднюю оборону Цайрума через порт', text: 'Поздний Цайрум уже не про праздник и дворцовую игру — это военный тыл, который надо организовать перед следующим походом.', allowedBeatIds: ['cyrum_defense'], requiresFlags: ['flag_zera_reveal_path', 'flag_scene_cyrum_front_command'], setFlags: ['flag_cyrum_war_room'], rewards: { experience: 26, skillCoins: 4, magicCoins: 4, setFlags: ['flag_cyrum_war_room'] } },
+  ,
+    { id: 'cyrum-firebomb-trade', label: 'Выменять бомбу у моряка', text: 'Моряк меняет пару огненных бомб на обещание «доложить, что творится под дворцом».', rewards: { firebomb: 1 } },
+  
   ],
   cyrum_secret_passage: [
+
     { id: 'cyrum-passage-levers', label: 'Открыть тайный проход глубже', text: 'Лестницы, рычаги и скрытые двери ведут к нижним уровням замка.', requiresFlags: ['flag_cyrum_port'], setFlags: ['flag_cyrum_passage'], rewards: { experience: 20, skillCoins: 4, magicCoins: 3, setFlags: ['flag_cyrum_passage'] } },
+  
   ],
   underground_plant: [
+
     { id: 'plant-terminals', label: 'Активировать терминалы', text: 'Механический комплекс подчиняется только после серии включений и обходных путей.', requiresFlags: ['flag_cyrum_passage'], setFlags: ['flag_plant_terminal'], rewards: { experience: 22, skillCoins: 4, magicCoins: 4, setFlags: ['flag_plant_terminal'] } },
     { id: 'plant-pipe-route', label: 'Перенастроить трубы и лифты', text: 'После терминалов партия строит реальный путь к control room.', requiresFlags: ['flag_plant_terminal'], setFlags: ['flag_plant_pipe'], rewards: { experience: 24, skillCoins: 4, magicCoins: 5, setFlags: ['flag_plant_pipe'] } },
+  
   ],
   garlan_tombs: [
+
     { id: 'garlan-tombs-memory', label: 'Посетить могилы деревни', text: 'У могил атмосфера Гарлана чувствуется сильнее всего: вина и память здесь почти физически давят на Рюдо.', requiresFlags: ['flag_garlan_past'], rewards: { experience: 14, skillCoins: 3, magicCoins: 2 } },
+  
   ],
   garlan_inn: [
+
     { id: 'garlan-night', label: 'Переночевать в Гарлане', text: 'Только после разговора со старостой, холодной бытовой сцены в лавке и тяжёлой ночи прошлое окончательно догоняет Рюдо.', allowedBeatIds: ['garlan_return'], requiresFlags: ['flag_garlan_past', 'flag_scene_garlan_chief_resentment', 'flag_scene_garlan_store_cold_trade'], setFlags: ['flag_garlan_night'], rewards: { experience: 20, skillCoins: 4, magicCoins: 2, setFlags: ['flag_garlan_night'] } },
+  
   ],
   grail_mountain: [
+
     { id: 'grail-shrine-trace', label: 'Дойти до святилища и уловить след Мелфиса', text: 'Подъём к святилищу Грайл даёт партии не только высоту, но и более чёткое понимание, где произойдёт решающая встреча.', allowedBeatIds: ['melfice_duel'], requiresFlags: ['flag_garlan_night', 'flag_scene_grail_vow'], setFlags: ['flag_grail_shrine'], rewards: { experience: 22, skillCoins: 4, magicCoins: 3, setFlags: ['flag_grail_shrine'] } },
+  
   ],
   plateau_of_memories: [
+
     { id: 'plateau-memory-step', label: 'Выйти на Plateau of Memories', text: 'Путь доведён до точки, где воспоминания и вина Рюдо больше нельзя отложить. Дальше уже только сама дуэль.', allowedBeatIds: ['melfice_duel'], requiresFlags: ['flag_grail_shrine', 'flag_scene_plateau_hush'], setFlags: ['flag_plateau_memory'], rewards: { experience: 24, skillCoins: 4, magicCoins: 4, setFlags: ['flag_plateau_memory'] } },
+  
   ],
   ghoss_forest_east: [
+
     { id: 'ghoss-scout', label: 'Разведать путь к Разлому', text: 'Лес открывает маршрут к Великому Разлому только после внимательного поиска и совета Нанана.', requiresFlags: ['flag_nanan_edge', 'flag_scene_nanan_clan_council'], setFlags: ['flag_rift_cross'], rewards: { experience: 22, skillCoins: 4, magicCoins: 3, setFlags: ['flag_rift_cross'] } },
+  
   ],
   great_rift: [
+
     { id: 'rift-demons-law', label: 'Открыть путь к Demons Law', text: 'Через ветер, мосты и древние структуры партия находит путь к следующему механизму.', requiresFlags: ['flag_rift_cross'], setFlags: ['flag_demons_law'], rewards: { experience: 24, skillCoins: 5, magicCoins: 4, setFlags: ['flag_demons_law'] } },
+  
   ],
   demons_law: [
+
     { id: 'demons-law-control', label: 'Добраться до control room Demons Law', text: 'Партия продавливает древний комплекс глубже и глубже, пока не находит путь дальше, к новому слою ужаса.', requiresFlags: ['flag_demons_law'], rewards: { experience: 26, skillCoins: 5, magicCoins: 5 } },
+  ,
+    { id: 'demons-law-crystal', label: 'Извлечь кристалл маны из консоли', text: 'Из треснувшей консоли древней системы можно вытащить кристалл чистой маны.', rewards: { manaCrystal: 1, magicCoins: 4 } },
+  ,
+    { id: 'demons-law-medicine', label: 'Взять магическое снадобье', text: 'В сундуке контрольного зала лежит запас магической медицины старой экспедиции.', rewards: { magicalMedicine: 1, magicCoins: 4 } },
+  
   ],
   valmar_body: [
+
     { id: 'valmar-body-core', label: 'Прорваться к сердцевине Тела Вальмара', text: 'После длинного органического маршрута партия доходит до сердцевины Тела Вальмара и получает право двигаться к следующей крупной развязке.', allowedBeatIds: ['granasaber_ship'], requiresFlags: ['flag_demons_law', 'flag_scene_demons_law_console'], setFlags: ['flag_valmar_body_core'], rewards: { experience: 28, skillCoins: 5, magicCoins: 5, setFlags: ['flag_valmar_body_core'] } },
+  
   ],
   birthplace_of_the_gods: [
+
     { id: 'birthplace-blue', label: 'Активировать синий механизм', text: 'Первый древний механизм отвечает и перестраивает маршрут.', requiresFlags: ['flag_birthplace_truth', 'flag_scene_birthplace_truth_hall'], setFlags: ['flag_birthplace_blue'], rewards: { experience: 26, skillCoins: 4, magicCoins: 5, setFlags: ['flag_birthplace_blue'] } },
     { id: 'birthplace-yellow', label: 'Активировать жёлтый механизм', text: 'Второй древний блок открывает новые проходы ниже.', requiresFlags: ['flag_birthplace_blue', 'flag_scene_birthplace_blue'], setFlags: ['flag_birthplace_yellow'], rewards: { experience: 26, skillCoins: 4, magicCoins: 5, setFlags: ['flag_birthplace_yellow'] } },
     { id: 'birthplace-red', label: 'Активировать красный механизм', text: 'Третий и последний ключ делает доступным путь ещё глубже.', requiresFlags: ['flag_birthplace_yellow', 'flag_scene_birthplace_yellow'], setFlags: ['flag_birthplace_red'], rewards: { experience: 28, skillCoins: 5, magicCoins: 5, setFlags: ['flag_birthplace_red'] } },
+  ,
+    { id: 'birthplace-archive-seed', label: 'Ответить архиву и получить семя магии', text: 'Архив распознаёт исследователя и выдаёт семя магии из хранилища припасов.', rewards: { seedOfMagic: 1, magicCoins: 4 } },
+    { id: 'birthplace-tickle-elmo', label: 'Пощекотать Эльмо', text: 'Маленький механический Эльмо в Истоке богов заливается смехом и выплёвывает редкий припас: «Ещё! Ещё!»', rewards: { heroElixir: 1, magicCoins: 6 } },
+  
   ],
   inner_trial: [
+
     { id: 'inner-trial-accept', label: 'Принять внутреннее испытание', text: 'Рюдо больше не бежит от себя. Он входит в испытание уже как человек, который осознанно выбирает пройти через собственную тьму.', allowedBeatIds: ['inner_trial'], requiresFlags: ['flag_birthplace_truth'], setFlags: ['flag_inner_trial_accept'], rewards: { experience: 30, skillCoins: 6, magicCoins: 6, setFlags: ['flag_inner_trial_accept'] } },
+  
   ],
   st_heim_cathedral_lobby: [
+
     { id: 'stheim-massacre-entry', label: 'Войти в Собор в день резни', text: 'Теперь St. Heim — уже не город визита, а место катастрофы. Этот вход открывает поздний церковный этап.', allowedBeatIds: ['cathedral_massacre'], setFlags: ['flag_stheim_massacre_entry'], rewards: { experience: 26, skillCoins: 4, magicCoins: 5, setFlags: ['flag_stheim_massacre_entry'] } },
+  
   ],
   st_heim_forbidden_room: [
+
     { id: 'stheim-zera-reveal', label: 'Открыть путь к разоблачению Зеры', text: 'После позднего аудиенционного зала и личной комнаты Зеры становится ясно, кто и как управлял всей ложью этого мира.', allowedBeatIds: ['zera_revealed'], requiresFlags: ['flag_stheim_massacre_entry', 'flag_scene_stheim_audience_ruin', 'flag_scene_zera_room_truth'], setFlags: ['flag_zera_reveal_path'], rewards: { experience: 30, skillCoins: 5, magicCoins: 6, setFlags: ['flag_zera_reveal_path'] } },
+  
   ],
   valmars_moon: [
+
     { id: 'moon-surface-push', label: 'Пройти поверхность Луны', text: 'Партия продавливает внешний слой Луны Вальмара и открывает путь глубже.', allowedBeatIds: ['moon_assault'], requiresFlags: ['flag_zera_reveal_path'], setFlags: ['flag_moon_surface'], rewards: { experience: 30, skillCoins: 5, magicCoins: 6, setFlags: ['flag_moon_surface'] } },
     { id: 'moon-womb-route', label: 'Открыть путь к Чреву Луны', text: 'После нескольких прорывов и защитных систем маршрут к внутреннему узлу Луны становится доступен.', allowedBeatIds: ['moon_assault'], requiresFlags: ['flag_moon_surface'], setFlags: ['flag_moon_womb_route'], rewards: { experience: 32, skillCoins: 6, magicCoins: 6, setFlags: ['flag_moon_womb_route'] } },
+  
   ],
   cyrum_kingdom: [
+
     { id: 'cyrum-war-room', label: 'Собрать оборону позднего Цайрума', text: 'Поздний Цайрум уже действует как военный штаб, а не как обычная столица. Партия подготавливает следующий этап похода.', requiresFlags: ['flag_zera_reveal_path', 'flag_scene_cyrum_front_command'], setFlags: ['flag_cyrum_war_room'], rewards: { experience: 26, skillCoins: 4, magicCoins: 4, setFlags: ['flag_cyrum_war_room'] } },
+  
   ],
   new_valmar: [
+
     { id: 'newvalmar-outer', label: 'Пробить внешний барьер Нового Вальмара', text: 'Органическая оболочка данжа отступает только после того, как партия выдержит уже не один, а два навязанных хора воли этого места и всё равно пойдёт дальше.', allowedBeatIds: ['zera_inside_valmar'], requiresFlags: ['flag_new_valmar_will', 'flag_scene_new_valmar_vein_whisper', 'flag_scene_new_valmar_vein_choir'], setFlags: ['flag_new_valmar_outer'], rewards: { experience: 30, skillCoins: 5, magicCoins: 6, setFlags: ['flag_new_valmar_outer'] } },
     { id: 'newvalmar-chaos', label: 'Открыть Room of Chaos', text: 'После первого прорыва партия добирается до узла, ведущего к главной внутренней лжи Зеры.', allowedBeatIds: ['zera_inside_valmar'], requiresFlags: ['flag_new_valmar_outer'], setFlags: ['flag_new_valmar_chaos'], rewards: { experience: 32, skillCoins: 6, magicCoins: 6, setFlags: ['flag_new_valmar_chaos'] } },
-  ],
-  new_valmar_room_of_chaos: [
-    { id: 'newvalmar-false-masks', label: 'Пройти зал ложных образов', text: 'Даже в Room of Chaos Зера воюет не только силой, но и ложью, подменой личности и давлением на волю.', allowedBeatIds: ['zera_inside_valmar'], requiresFlags: ['flag_new_valmar_chaos', 'flag_scene_room_of_chaos_echo'], rewards: { experience: 20, skillCoins: 4, magicCoins: 5 } },
-  ],
-  new_valmar_core: [
-    { id: 'true-finale-core', label: 'Подготовить ядро финальной развязки', text: 'Финальный проход к ядру Нового Вальмара открыт. Дальше — уже только последняя развязка.', allowedBeatIds: ['true_finale'], requiresFlags: ['flag_new_valmar_chaos', 'flag_scene_new_valmar_core_judgement'], setFlags: ['flag_true_finale_core'], rewards: { experience: 36, skillCoins: 7, magicCoins: 7, setFlags: ['flag_true_finale_core'] } },
-  ],
-  carbo_church: [
-    { id: 'carbo-elder-blessing', label: 'Получить благословение старушки', text: 'Пожилая прихожанка благословляет партию на дорогу и делится последним запасом семян.', rewards: { experience: 8, skillCoins: 2, magicCoins: 2, seedOfLife: 1 } },
-  ],
-  carbo_village: [
-    { id: 'carbo-herb-garden', label: 'Собрать травы у забора', text: 'За деревенским забором растут дикие лечебные травы — редкая удача для такого места.', rewards: { medicinalHerb: 1, poffNut: 1 } },
-  ],
-  agear_town: [
-    { id: 'agear-poff-stranger', label: 'Взять орех у странника на руинах', text: 'Странник у разрушенного дома молча протягивает орех Poff и кивает в сторону пещеры.', rewards: { poffNut: 1 } },
-  ],
-  liligue_city: [
-    { id: 'liligue-bomb-trader', label: 'Поторговаться с инженером-взрывником', text: 'Инженер Лилига продаёт «настоящую могейскую взрывчатку» по цене дружбы.', rewards: { mogayBomb: 1, experience: 8 } },
-  ],
-  mirumu_village: [
-    { id: 'mirumu-seed-gift', label: 'Принять семя жизни от знахарки', text: 'Знахарка Мирумы отдаёт семя жизни: «Для того, кто идёт в разлом. Оно согреет лучше любой песни».', rewards: { seedOfLife: 1, experience: 10 } },
-  ],
-  st_heim_library: [
-    { id: 'stheim-lost-index', label: 'Найти «потерянный» индекс', text: 'Между страницами книги застрял индекс запретных текстов — и свиток алхимии, служивший закладкой.', rewards: { scrollOfAlheal: 1, magicCoins: 3 } },
-  ],
-  cyrum_port: [
-    { id: 'cyrum-firebomb-trade', label: 'Выменять бомбу у моряка', text: 'Моряк меняет пару огненных бомб на обещание «доложить, что творится под дворцом».', rewards: { firebomb: 1 } },
-  ],
-  nanan_store: [
-    { id: 'nanan-scroll-offer', label: 'Взять свиток урагана', text: 'Торговец Нанана вручает свиток урагана: «На краю мира такие вещи не продают. Их отдают тем, кто идёт в бурю».', rewards: { whirlwindScroll: 1, experience: 12 } },
-  ],
-  demons_law: [
-    { id: 'demons-law-crystal', label: 'Извлечь кристалл маны из консоли', text: 'Из треснувшей консоли древней системы можно вытащить кристалл чистой маны.', rewards: { manaCrystal: 1, magicCoins: 4 } },
-  ],
-  birthplace_of_the_gods: [
-    { id: 'birthplace-archive-seed', label: 'Ответить архиву и получить семя магии', text: 'Архив распознаёт исследователя и выдаёт семя магии из хранилища припасов.', rewards: { seedOfMagic: 1, magicCoins: 4 } },
-  ],
-  new_valmar: [
+  ,
     { id: 'new-valmar-nut-memory', label: 'Найти орех в живой стене', text: 'В складке живой стены застрял орех сочувствия — кто-то прятал его здесь, чтобы вернуться.', rewards: { sympathyNut: 1, experience: 10 } },
     { id: 'new-valmar-ash-memory', label: 'Собрать пепел демона', text: 'Тёмный пепел на стенах — остатки того, кто пытался пройти этот путь раньше.', rewards: { demonAsh: 1, experience: 12 } },
+  
   ],
-  demons_law: [
-    { id: 'demons-law-medicine', label: 'Взять магическое снадобье', text: 'В сундуке контрольного зала лежит запас магической медицины старой экспедиции.', rewards: { magicalMedicine: 1, magicCoins: 4 } },
+  new_valmar_room_of_chaos: [
+
+    { id: 'newvalmar-false-masks', label: 'Пройти зал ложных образов', text: 'Даже в Room of Chaos Зера воюет не только силой, но и ложью, подменой личности и давлением на волю.', allowedBeatIds: ['zera_inside_valmar'], requiresFlags: ['flag_new_valmar_chaos', 'flag_scene_room_of_chaos_echo'], rewards: { experience: 20, skillCoins: 4, magicCoins: 5 } },
+  
+  ],
+  new_valmar_core: [
+
+    { id: 'true-finale-core', label: 'Подготовить ядро финальной развязки', text: 'Финальный проход к ядру Нового Вальмара открыт. Дальше — уже только последняя развязка.', allowedBeatIds: ['true_finale'], requiresFlags: ['flag_new_valmar_chaos', 'flag_scene_new_valmar_core_judgement'], setFlags: ['flag_true_finale_core'], rewards: { experience: 36, skillCoins: 7, magicCoins: 7, setFlags: ['flag_true_finale_core'] } },
+  
+  ],
+  carbo_church: [
+
+    { id: 'carbo-elder-blessing', label: 'Получить благословение старушки', text: 'Пожилая прихожанка благословляет партию на дорогу и делится последним запасом семян.', rewards: { experience: 8, skillCoins: 2, magicCoins: 2, seedOfLife: 1 } },
+  
+  ],
+  liligue_city: [
+
+    { id: 'liligue-bomb-trader', label: 'Поторговаться с инженером-взрывником', text: 'Инженер Лилига продаёт «настоящую могейскую взрывчатку» по цене дружбы.', rewards: { mogayBomb: 1, experience: 8 } },
+  
+  ],
+  mirumu_village: [
+
+    { id: 'mirumu-seed-gift', label: 'Принять семя жизни от знахарки', text: 'Знахарка Мирумы отдаёт семя жизни: «Для того, кто идёт в разлом. Оно согреет лучше любой песни».', rewards: { seedOfLife: 1, experience: 10 } },
+  
+  ],
+  st_heim_library: [
+
+    { id: 'stheim-lost-index', label: 'Найти «потерянный» индекс', text: 'Между страницами книги застрял индекс запретных текстов — и свиток алхимии, служивший закладкой.', rewards: { scrollOfAlheal: 1, magicCoins: 3 } },
+  
+  ],
+  nanan_store: [
+
+    { id: 'nanan-scroll-offer', label: 'Взять свиток урагана', text: 'Торговец Нанана вручает свиток урагана: «На краю мира такие вещи не продают. Их отдают тем, кто идёт в бурю».', rewards: { whirlwindScroll: 1, experience: 12 } },
+  
   ],
 };
 
@@ -7776,8 +7907,31 @@ function triggerWorldEvent(eventId) {
   if (!location || !event) {
     return;
   }
+  for (const [itemKey, amount] of Object.entries(event.consumeItems ?? {})) {
+    if ((state.campaignRun.inventory[itemKey] ?? 0) < amount) {
+      state.campaignRun.travelMessage = `Нужен предмет: ${inventoryLabel(itemKey)} (${amount} шт.).`;
+      saveCampaignStateToLocalStorage();
+      render();
+      return;
+    }
+  }
+  for (const [itemKey, amount] of Object.entries(event.consumeItems ?? {})) {
+    state.campaignRun.inventory[itemKey] = Math.max(0, (state.campaignRun.inventory[itemKey] ?? 0) - amount);
+  }
   state.campaignRun.seenWorldEventIds.push(event.id);
-  const reward = grantCampaignRewards(event.rewards ?? { experience: 8, skillCoins: 2, magicCoins: 2, setFlags: event.setFlags ?? [] }, { sourceLabel: `World event: ${event.label}` });
+  let rewards = event.rewards ?? { experience: 8, skillCoins: 2, magicCoins: 2, setFlags: event.setFlags ?? [] };
+  if (event.minigameArmWrestle) {
+    const rounds = 3;
+    const wins = Array.from({ length: rounds }, () => Math.random() < 0.55).filter(Boolean).length;
+    pushCampaignJournalEntry(`Армрестлинг с Хемблом: ${wins}/${rounds} раундов.`);
+    if (wins >= 2) {
+      rewards = { ...rewards, equipmentIds: [...(rewards.equipmentIds ?? []), 'ryudo-silver-freeze'] };
+      state.campaignRun.travelMessage = `Хембл: «Ну ты и силён!» — ${wins}/3 раундов. Приз — ${EQUIPMENT_CATALOG.find((entry) => entry.id === 'ryudo-silver-freeze')?.label ?? 'Silver Freeze'}!`;
+    } else {
+      state.campaignRun.travelMessage = `Хембл: «Рука дрогнула!» — ${wins}/3 раундов. Попробуй ещё раз.`;
+    }
+  }
+  const reward = grantCampaignRewards(rewards, { sourceLabel: `World event: ${event.label}` });
   if (event.setFlags?.length) {
     applyQuestFlags(event.setFlags);
   }

@@ -12,7 +12,7 @@
 - ✅ **Все основные играбельные герои партии:** да; Ryudo, Elena, Millenia, Tio, Roan, Mareg присутствуют.
 - ❌ **Все оригинальные мобы/боссы:** нет; есть 74 enemy presets (52 с drop tables), это заметный curated subset, но не вся энциклопедия оригинала.
 - ❌ **Все оригинальные предметы/экипировка:** нет; есть 57 inventory items, 53 shop SKUs и 126 equipment entries, это не весь original item database.
-- ❌ **Все оригинальные секреты:** нет; есть 39 treasure nodes, 40 travel encounters и 96 world/event nodes, но это не полный secret compendium оригинала.
+- ❌ **Все оригинальные секреты:** нет; есть 54 treasure nodes, 43 travel encounters и 103 world/event nodes, но это не полный secret compendium оригинала.
 - 🟡 **Все оригинальные диалоги:** нет; story/dialogue coverage большая (234 dialogue blocks + 70 narration blocks + 30 optional NPC dialogues), но не весь original script.
 
 ## Что реально на 100%
@@ -21,7 +21,7 @@
 - Все 9 арок и все 19 сюжетных битов закрыты по текущему internal audit.
 - Для campaign-слоя есть **46** location scenes и **17** setpiece battle overrides.
 - Основная играбельная партия присутствует полностью: ryudo, elena, tio, millenia, roan, mareg.
-- World/campaign layer покрывает **99** локаций.
+- World/campaign layer покрывает **100** локаций.
 
 ## Что не является 100% полной оригинальной Grandia II
 
@@ -57,10 +57,10 @@
 - Inventory item catalog: **57**.
 - Shop catalog: **53**.
 - Equipment catalog: **126**.
-- Treasure nodes: **39**.
-- Travel encounter nodes: **40**.
-- World event nodes: **39**.
-- Additional scripted world events: **57**.
+- Treasure nodes: **54**.
+- Travel encounter nodes: **43**.
+- World event nodes: **41**.
+- Additional scripted world events: **62**.
 - Optional NPC dialogues: **30** (31 страниц).
 - Это хороший campaign layer, но не полный original item/secret/dialogue completionist layer.
 

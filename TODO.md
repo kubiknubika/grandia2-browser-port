@@ -104,8 +104,10 @@ bestiary = полные группы + drop tables, меню = отдельны�
       (шанс пропуска хода) — движок, UI-иконки, AI-анализ, Halvah/Refresh/Panacea лечат,
       Charm-амулеты дают сопротивления.
 - [ ] **Скрипт:** NPC-диалоги на все локации (~50–60 суммарно), defeat-реплики боссов.
-- [ ] **Секреты:** Raul Hills Special Stage, армрестлинг Хембла, Carro (Poff Nuts), Elmo,
-      канонические сундуки (29 → ~60).
+- [x] **Секреты:** Raul Hills Special Stage (локация с Snow Leopard/Devil/Dragon Knight,
+      Яйцо Феи, сундуки), армрестлинг Хембла (мини-контест 3 раунда → Silver Freeze),
+      Carro в Durham Cave (3 ореха Poff → Multiple Knife), Elmo в Birthplace,
+      сундуки расширены до 43 локаций (~60+ сундуков).
 - [ ] **Menu parity:** консольная курсорная навигация, equip flow с превью, egg equip screen,
       options (скорость текста и т.д.), экран Valuables.
 - [ ] **Арт:** портреты для всех 67+ врагов, бэкдропы ключевых локаций.
