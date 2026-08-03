@@ -21,7 +21,7 @@
 - позиционка на поле и line-of-hit для вражеской линейной атаки;
 - **ручное управление героями в браузере** через командную панель на COM;
 - более JRPG-подобная структура команд: `Combo / Critical / Moves / Magic / Items / Defend`;
-- **главное меню** с входом в игру, story campaign, дебаг и replay compare lab;
+- **главное меню** с входом в игру, story campaign, дебаг, replay compare lab и «Меню и энциклопедия»;
 - **story campaign** как отдельный линейный режим: chapter cards, катсцены, interstitial-сцены, переходы по миру, overworld-переезды между регионами, города с подлокациями, кликабельный canvas-route view, аватар с перемещением по town/field scene, простые коллизии, точки дверей/NPC, wandering encounters, сундуки/лут, quest flags, многошаговые городские и данжевые цепочки, carryover инвентарь, золото, магазины расходников, persistent party state, слоты `weapon/armor/accessory`, EXP/levels, `SC/MC`, skill books и mana eggs, а также bespoke setpiece-сегменты для ключевых сцен;
 - **seeded scenario browser**, encounter templates, battlefield themes и opening advantage;
 - **balance vector editor** прямо в UI;
@@ -91,6 +91,7 @@ python3 -m http.server
 - вести **persistent состояние партии** по HP/MP/SP между боями и восстанавливать его в гостиницах / лагерях / safe точках;
 - получать честную **placeholder-заглушку**, если на каком-то узле пока нет отдельного encounter-а;
 - сохранять и загружать весь текущий campaign run через localStorage;
+- разговаривать с **optional NPC dialogues** прямо в локациях (кнопки «Поговорить», комнатные сцены, награды и флаги);
 - параллельно пользоваться ручной навигацией по `arc / beat` в sandbox-блоке;
 - автоматически тащить в экспорт `storyArcId`, `storyBeatId`, `storyBeatTitle`, `campaignRunId`, `campaignBeatIndex`, `campaignLocationId` и `campaignGold`.
 
@@ -140,6 +141,14 @@ python3 -m http.server
 - видеть **step diff** между левым и правым replay;
 - экспортировать compare diff в **JSON** и **TXT**.
 
+#### Вкладка «Меню» (menu parity)
+- смотреть **original-like hero/status screen**: портреты, статы, слоты weapon/armor/accessory, состояние партии;
+- листать **skill screen** — все действия каждого героя, сгруппированные как в оригинальных меню;
+- открыть **magic egg screen** со всеми 8 каноничными Mana Eggs (Holy, Chaos, Mist, Gravity, Soul, Fairy, Dragon, Star), уровнями изучения и MC-ценами;
+- смотреть **item/bag/equipment screen**: каталог расходников (28 позиций), магазинов и экипировки (60 позиций);
+- пользоваться **bestiary encyclopedia**: портреты врагов, статы, сопротивления, регионы и drop tables (30 врагов с дропами);
+- настраивать игру через **options screen** (AI по умолчанию, поле боя, подсказки, скорость replay) — сохраняется в localStorage.
+
 ## CLI-команды
 
 ### Быстрый баланс-снапшот
@@ -179,10 +188,16 @@ npm run balance:save-artifact-full
 Артефакт хранится в `artifacts/ga_weights.json` и автоматически подхватывается `npm run balance`, если файл существует.
 
 ## Структура
-- `index.html` — браузерный интерфейс с вкладками «Игра» и «Дебаг-меню»;
-- `src/entities/combat.js` — логика боя, IP Gauge, ручные команды, decision log и симуляции;
+- `index.html` — браузерный интерфейс с вкладками «Игра», «Кампания», «Дебаг-меню», «Replay compare» и «Меню»;
+- `src/entities/combat.js` — логика боя, IP Gauge, ручные команды, decision log, оффенсивные предметы и симуляции;
 - `src/entities/balance.js` — novice/veteran AI, genetic search и balance evaluation;
-- `src/main.js` — UI, режимы игры/дебага, запуск тренировок и экспорт лога;
+- `src/main.js` — UI, режимы игры/дебага/кампании, menu parity, NPC-диалоги и экспорт лога;
+- `src/world_map.js` — локации, магазины, экипировка и расходники;
+- `src/mana_eggs.js` — каталог Mana Eggs;
+- `src/npc_dialogue.js` — optional NPC dialogue layer;
+- `src/drop_data.js` — drop tables для bestiary;
+- `src/bestiary_data.js` — региональные bestiary-группы;
 - `bot.js` — консольный отчёт по балансу;
 - `balance_artifact.js` — сохранение/загрузка JSON-артефакта весов;
-- `artifacts/ga_weights.json` — текущий сохранённый артефакт обучения.
+- `artifacts/ga_weights.json` — текущий сохранённый артефакт обучения;
+- `TODO.md` — единый туду-лист по аудитам.

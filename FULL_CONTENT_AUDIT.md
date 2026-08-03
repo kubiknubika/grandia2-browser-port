@@ -6,14 +6,14 @@
 
 - ✅ **Кампания / story spine:** 19/19 битов, story audit = 100/100.
 - ❌ **Все оригинальные катсцены:** нет покадровой 1:1 реплики всего оригинала; есть 19 beat intro/victory flows, 46 location scenes и 17 bespoke setpieces.
-- ❌ **Все оригинальные скиллы/магия:** нет; реализовано 85 боевых actions, но это не полный original move/magic list Grandia II.
-- 🟡 **Все оригинальные меню:** нет; полного 1:1 menu parity нет, но menu layer заметно усилен через handbook-панели, richer command menu и отдельный menu audit.
-- 🟡 **Все спрайты/арт-ассеты:** нет; полный 1:1 арт-порт отсутствует, но теперь в репозитории есть стартовый sprite/backdrop pipeline на 61 image assets.
+- ❌ **Все оригинальные скиллы/магия:** нет; реализовано 102 боевых actions, но это не полный original move/magic list Grandia II.
+- 🟡 **Все оригинальные меню:** нет; полного консольного 1:1 menu parity нет, но есть отдельные original-like screens: status / skills / mana eggs / items / bestiary / config — плюс handbook-панели и richer command menu.
+- 🟡 **Все спрайты/арт-ассеты:** нет; полный 1:1 арт-порт отсутствует, но теперь в репозитории есть sprite/backdrop pipeline на 73 image assets.
 - ✅ **Все основные играбельные герои партии:** да; Ryudo, Elena, Millenia, Tio, Roan, Mareg присутствуют.
-- ❌ **Все оригинальные мобы/боссы:** нет; есть 39 enemy presets, это лишь curated subset.
-- ❌ **Все оригинальные предметы/экипировка:** нет; есть 12 inventory items, 15 shop SKUs и 33 equipment entries, это не весь original item database.
-- ❌ **Все оригинальные секреты:** нет; есть 19 treasure nodes и 83 world/event nodes, но это не полный secret compendium оригинала.
-- 🟡 **Все оригинальные диалоги:** нет; story/dialogue coverage большая (234 dialogue blocks + 70 narration blocks), но не весь original script.
+- ❌ **Все оригинальные мобы/боссы:** нет; есть 51 enemy presets (31 с drop tables), это заметный curated subset, но не вся энциклопедия оригинала.
+- ❌ **Все оригинальные предметы/экипировка:** нет; есть 29 inventory items, 36 shop SKUs и 66 equipment entries, это не весь original item database.
+- ❌ **Все оригинальные секреты:** нет; есть 29 treasure nodes, 28 travel encounters и 94 world/event nodes, но это не полный secret compendium оригинала.
+- 🟡 **Все оригинальные диалоги:** нет; story/dialogue coverage большая (234 dialogue blocks + 70 narration blocks + 30 optional NPC dialogues), но не весь original script.
 
 ## Что реально на 100%
 
@@ -31,32 +31,37 @@
 - Это много для browser-port prototype, но это не полноценная покадровая реконструкция original script/cutscene direction.
 
 ### 2. Скиллы, магия, умения
-- Сейчас реализовано **85** боевых actions: combo, critical, endure, evade, tenseiken, impactBomb, nightmareBall, heal, medicinalHerb, antidote, woundSalve, healingHerb, eyeDrops, moveBlessing, magicBlessing, panacea, yomisElixir, blueberry, lumirFlower, healingIncense, wow, diggin, speedy, stram, cold, burn, zap, wingSlice, fallenWings, earthQuake, tornadoHorn, lotusFlower, webTrap, beastFangCut, poisonSpit, killerVoltage, destructionRay, spellbindDust, flyingTenseiken, purpleLightning, skyDragonSlash, dropletsOfLife, whiteApocalypse, goldenHammer, dragonRise, snowballFight, vitalityMarch, trueDragonRise, icePrison, beastKingSmash, beastKingBlast, lionsRoar, fastDanceWhirl, tornado, whisperToStars, arrowShot, heelCrush, starvingTongue, spellbindingEye, grudgingClaws, healer, healerPlus, alhealer, tremor, quake, crackle, crackling, snooze, shhh, fiora, gravity, cure, refresh, runner, burnflame, burnstrike, hellburner, howl, howlslash, howlnado, zapAll, dragonZap, freeze, defLoss, resurrect.
+- Сейчас реализовано **102** боевых actions: combo, critical, endure, evade, tenseiken, impactBomb, nightmareBall, heal, medicinalHerb, antidote, woundSalve, healingHerb, eyeDrops, moveBlessing, magicBlessing, panacea, yomisElixir, blueberry, lumirFlower, healingIncense, wow, diggin, speedy, stram, cold, burn, zap, wingSlice, fallenWings, earthQuake, tornadoHorn, lotusFlower, webTrap, beastFangCut, poisonSpit, killerVoltage, destructionRay, spellbindDust, flyingTenseiken, purpleLightning, skyDragonSlash, dropletsOfLife, whiteApocalypse, goldenHammer, dragonRise, snowballFight, vitalityMarch, trueDragonRise, icePrison, beastKingSmash, beastKingBlast, lionsRoar, fastDanceWhirl, tornado, whisperToStars, arrowShot, heelCrush, starvingTongue, spellbindingEye, grudgingClaws, healer, healerPlus, alhealer, tremor, quake, crackle, crackling, snooze, shhh, fiora, gravity, cure, refresh, runner, burnflame, burnstrike, hellburner, howl, howlslash, howlnado, zapAll, dragonZap, freeze, defLoss, resurrect, scarletPotion, purifyingHerb, poffNut, seedOfLife, seedOfPsyche, seedOfMagic, manaCrystal, caterpillarSoup, paralysisSalve, firebomb, mogayBomb, handGrenade, meteorScroll, whirlwindScroll, scrollOfAlheal, sympathyNut, seedOfRunning.
+- Добавлен каталог **Mana Eggs** (8 яиц) с уровнями изучения и MC-ценами — magic egg layer теперь представим в UI.
 - Это рабочая и уже богатая combat-система, но не полный original database всех skills / spells / special moves Grandia II.
 
 ### 3. Меню и UX оригинала
 - Есть top-level browser sections: menu-screen, play-section, campaign-section, debug-section, compare-section.
 - Есть play/campaign/debug/compare, replay viewer, compare lab, scenario browser, balance editor, stat editor, growth/equipment/quest/audit panels.
 - Есть отдельные handbook/menu-style summaries для skills/magic, items, bestiary и progression внутри campaign UI.
-- Но это **не** все оригинальные menu screens 1:1 (например full original skill UI, magic egg UI, bestiary-style encyclopedia screens, exact console-style party/menu flow).
+- Добавлен отдельный **menu parity tab** с original-like screens: hero/status, skill screen, magic egg screen, item/bag/equipment screen, bestiary encyclopedia с drop tables и options screen.
+- Но это **не** покадровый console-style 1:1 оригинала (нет консольной навигации курсором и полного набора оригинальных опций).
 
 ### 4. Спрайты и art pipeline
-- Реальных image assets в репозитории: **61**.
-- В battle/campaign presentation теперь есть стартовый SVG-based art pipeline для юнитов, backdrops и menu hero.
+- Реальных image assets в репозитории: **73**.
+- В battle/campaign presentation теперь есть SVG-based art pipeline для юнитов (включая новых), backdrops и menu hero.
 - Но это всё ещё не полный 1:1 спрайтовый и иллюстрационный порт оригинала.
 
 ### 5. Герои, NPC, мобы
 - Playable party presets: **6** → ryudo, elena, tio, millenia, roan, mareg.
-- Enemy presets: **39** → milleniaShade, granasaberWarden, innerShadowRyudo, valmarCoreHerald, garmiaRuinCore, moonWombSentinel, melficeEcho, cathedralExecutioner, troglodyte, wingEye, guardian, tongueValmar, clawsValmar, heartValmar, zeraAvatar, durhamMinotaur, cragSnake, frostFrog, gargoyle, giantMantis, ghoul, hammerhead, hugeCaterpillar, hellHound, giantCrab, landCougar, fennyBird, manEatingTree, gigaMantis, salamadile, nyarmot, dragonKnight, evilManeuver, immuneCell, killerTree, mindEater, valmarMoth, valmarMagna, mottledSpider.
+- Enemy presets: **51** → milleniaShade, granasaberWarden, innerShadowRyudo, valmarCoreHerald, garmiaRuinCore, moonWombSentinel, melficeEcho, cathedralExecutioner, troglodyte, wingEye, guardian, tongueValmar, clawsValmar, heartValmar, zeraAvatar, durhamMinotaur, cragSnake, frostFrog, gargoyle, giantMantis, ghoul, hammerhead, hugeCaterpillar, hellHound, giantCrab, landCougar, fennyBird, manEatingTree, gigaMantis, salamadile, nyarmot, dragonKnight, evilManeuver, immuneCell, killerTree, mindEater, valmarMoth, valmarMagna, mottledSpider, sandman, pitViper, scalyWarrior, skullSnail, twinOgre, warpWarrior, veinBrain, starMirage, tarantula, valmarFly, valmarYoung, yeti.
+- Drop tables: **31** enemy presets из 51 имеют авторские drop tables (по каноничным гайдам).
 - Главная играбельная шестерка есть, но весь NPC roster и весь bestiary оригинала не закрыты.
 
 ### 6. Предметы, экипировка, секреты
-- Inventory item catalog: **12**.
-- Shop catalog: **15**.
-- Equipment catalog: **33**.
-- Treasure nodes: **19**.
+- Inventory item catalog: **29**.
+- Shop catalog: **36**.
+- Equipment catalog: **66**.
+- Treasure nodes: **29**.
+- Travel encounter nodes: **28**.
 - World event nodes: **39**.
-- Additional scripted world events: **44**.
+- Additional scripted world events: **55**.
+- Optional NPC dialogues: **30** (31 страниц).
 - Это хороший campaign layer, но не полный original item/secret/dialogue completionist layer.
 
 ## Итоговая честная оценка

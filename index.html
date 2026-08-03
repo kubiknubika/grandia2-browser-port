@@ -241,6 +241,21 @@
         font-weight: 700;
       }
 
+      .mp-entry {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid #475569;
+        border-radius: 10px;
+        padding: 6px 10px;
+        background: rgba(30, 41, 59, 0.8);
+      }
+
+      .mp-entry img {
+        border-radius: 8px;
+        display: block;
+      }
+
       @media (max-width: 1100px) {
         .grid, .two-col, .three-col { grid-template-columns: 1fr; }
       }
@@ -259,6 +274,7 @@
           <button id="menu-open-campaign" class="secondary">Сюжетная кампания</button>
           <button id="menu-open-debug" class="secondary">Открыть дебаг-меню</button>
           <button id="menu-open-compare" class="secondary">Replay compare lab</button>
+          <button id="menu-open-parity" class="secondary">Меню и энциклопедия</button>
         </div>
       </section>
 
@@ -269,6 +285,7 @@
           <button id="tab-campaign" class="secondary" data-active="false">Кампания</button>
           <button id="tab-debug" class="secondary" data-active="false">Дебаг-меню</button>
           <button id="tab-compare" class="secondary" data-active="false">Replay compare</button>
+          <button id="tab-parity" class="secondary" data-active="false">Меню</button>
         </div>
 
         <div class="panel toolbar">
@@ -568,6 +585,59 @@
                 </div>
                 <p id="replay-status" class="muted">Replay не загружен.</p>
                 <pre id="replay-info"></pre>
+              </div>
+            </section>
+
+            <section id="menu-parity-section" hidden>
+              <div class="panel">
+                <h2>Меню и энциклопедия (menu parity)</h2>
+                <p class="muted">
+                  Original-like экраны, которых раньше не хватало: статус героя, экран навыков,
+                  экран Mana Eggs, предметы/снаряжение, энциклопедия врагов с drop tables и настройки.
+                </p>
+                <div class="inline-form">
+                  <button id="mp-status" class="secondary">Статус / герой</button>
+                  <button id="mp-skills" class="secondary">Навыки и магия</button>
+                  <button id="mp-eggs" class="secondary">Mana Eggs</button>
+                  <button id="mp-items" class="secondary">Предметы и снаряжение</button>
+                  <button id="mp-bestiary" class="secondary">Энциклопедия врагов</button>
+                  <button id="mp-config" class="secondary">Настройки</button>
+                </div>
+                <div id="mp-images" class="tag-list" style="margin-top:12px;"></div>
+                <pre id="mp-output" style="margin-top:12px;"></pre>
+              </div>
+
+              <div class="panel">
+                <h3>Настройки</h3>
+                <div class="inline-form">
+                  <label>
+                    AI врага по умолчанию:
+                    <select id="mp-config-ai">
+                      <option value="novice">Novice AI</option>
+                      <option value="veteran">Veteran AI</option>
+                    </select>
+                  </label>
+                  <label>
+                    Поле боя по умолчанию:
+                    <select id="mp-config-theme">
+                      <option value="forest">forest</option>
+                      <option value="cavern">cavern</option>
+                      <option value="ruins">ruins</option>
+                      <option value="volcano">volcano</option>
+                    </select>
+                  </label>
+                  <label>
+                    Скорость replay по умолчанию:
+                    <select id="mp-config-speed">
+                      <option value="900">0.5x</option>
+                      <option value="550">1x</option>
+                      <option value="300">2x</option>
+                      <option value="160">4x</option>
+                    </select>
+                  </label>
+                  <label><input id="mp-config-hints" type="checkbox" checked /> Показывать подсказки в командном меню</label>
+                  <button id="mp-config-save" class="secondary">Сохранить настройки</button>
+                </div>
               </div>
             </section>
 

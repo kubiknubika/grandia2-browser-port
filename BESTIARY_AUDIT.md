@@ -2,7 +2,7 @@
 
 Этот файл фиксирует текущее состояние **enemy / bestiary pass** внутри browser-порта Grandia II.
 
-- Всего enemy presets в боевом движке: **39**
+- Всего enemy presets в боевом движке: **51**
 - Покрытых bestiary-групп: **5**
 
 ## Общий вывод
@@ -14,7 +14,7 @@
 
 ### Chapter I — South Silesia roads and ruins
 - Локации: Witt Forest, Carbo outskirts, Black Forest, Garmia Tower, Inor Mountains, Agear, Durham Cave, Baked Plains, Liligue Cave
-- Покрыто врагов: 9/9
+- Покрыто врагов: 10/10
 - Нота: Первый набор диких тварей, руинной живности и ранних valmar-corruption форм вокруг Карбо, Агира и Лилига.
 - Mottled Spider [mottledSpider] — role: status harasser
 - Crag Snake [cragSnake] — role: poison-striker
@@ -23,29 +23,38 @@
 - Frost Frog [frostFrog] — role: ice-harasser
 - Hammerhead [hammerhead] — role: smash-liner
 - Ghoul [ghoul] — role: sleep-caster
+- Sandman [sandman] — role: sand-harasser
 - Durham Minotaur [durhamMinotaur] — role: mini-boss bruiser
 - Tongue of Valmar [tongueValmar] — role: corrupted devourer
 
 ### Chapter II — East Silesia, St. Heim, Cyrum
-- Локации: Lumir Forest, Mirumu, Mysterious Fissure, St. Heim Mountains, Raul Hills, Cyrum, Underground Plant
-- Покрыто врагов: 8/8
+- Локации: Lumir Forest, Mirumu, Mysterious Fissure, Aira's Space, St. Heim Mountains, Pilgrim Road, Raul Hills, Cyrum, Underground Plant
+- Покрыто врагов: 13/13
 - Нота: Среднеигровой bestiary: снежный лес, церковные горы, царские руины и техно-стражи Цайрума.
 - Huge Caterpillar [hugeCaterpillar] — role: sticky-tank
 - Giant Crab [giantCrab] — role: shell-tank
 - Hell Hound [hellHound] — role: fire-rusher
 - Land Cougar [landCougar] — role: field-hunter
 - Giga Mantis [gigaMantis] — role: elite-slash
+- Twin Ogre [twinOgre] — role: twin-bruiser
+- Star Mirage [starMirage] — role: star-flier
+- Skull Snail [skullSnail] — role: shell-tank
+- Warp Warrior [warpWarrior] — role: warp-slasher
+- Vein Brain [veinBrain] — role: vein-caster
 - Guardian [guardian] — role: elite-caster
 - Claws of Valmar [clawsValmar] — role: assault core
 - Cathedral Executioner [cathedralExecutioner] — role: fanatic-bruiser
 
 ### Chapter III — Garlan, Nanan, Great Rift, Demons Law
-- Локации: Ceceile Reef, Garlan Village, Grail Mountain, Ghoss Forest, Nanan Village, Great Rift, Demon's Law
-- Покрыто врагов: 7/7
+- Локации: Ceceile Reef, Garlan Village, Grail Mountain, Ghoss Forest, Nanan Village, Great Rift, Valmar's Body, Demon's Law
+- Покрыто врагов: 10/10
 - Нота: Маршрут к Гранасаберу получает более узнаваемый набор рифовых, лесных, рифтовых и древнемеханических противников.
 - Fenny Bird [fennyBird] — role: storm-flier
 - Man-Eating Tree [manEatingTree] — role: root-controller
 - Salamadile [salamadile] — role: flame-lizard
+- Scaly Warrior [scalyWarrior] — role: scaled-vanguard
+- Pit Viper [pitViper] — role: poison-striker
+- Tarantula [tarantula] — role: venom-brute
 - Melfice [melficeEcho] — role: blade-echo
 - Ancient Granasaber Warden [granasaberWarden] — role: ancient-warden
 - Valmar Moth [valmarMoth] — role: organic-flier
@@ -53,7 +62,7 @@
 
 ### Chapter IV — Moon, Birthplace, New Valmar
 - Локации: Valmar's Moon, Cyrum South, Birthplace of the Gods, New Valmar
-- Покрыто врагов: 9/9
+- Покрыто врагов: 12/12
 - Нота: Позднеигровой bestiary с лунными формами, древними военными сущностями и внутренностями Нового Вальмара.
 - Nyarmot [nyarmot] — role: moon-stalker
 - Evil Maneuver [evilManeuver] — role: late-schemer
@@ -61,6 +70,9 @@
 - Valmar Magna [valmarMagna] — role: late-valmar-core
 - Killer Tree [killerTree] — role: late-rooted-tank
 - Mind Eater [mindEater] — role: late-mind-caster
+- Valmar Fly [valmarFly] — role: organic-flier
+- Valmar Young [valmarYoung] — role: valmar-youngling
+- Yeti [yeti] — role: ice-bruiser
 - Moon Womb Sentinel [moonWombSentinel] — role: moon-sentinel
 - Shadow Ryudo [innerShadowRyudo] — role: shadow-duelist
 - Valmar Core Herald [valmarCoreHerald] — role: apex-core
@@ -118,4 +130,16 @@
 - Valmar Moth [valmarMoth] — role: organic-flier
 - Valmar Magna [valmarMagna] — role: late-valmar-core
 - Mottled Spider [mottledSpider] — role: status harasser
+- Sandman [sandman] — role: sand-harasser
+- Pit Viper [pitViper] — role: poison-striker
+- Scaly Warrior [scalyWarrior] — role: scaled-vanguard
+- Skull Snail [skullSnail] — role: shell-tank
+- Twin Ogre [twinOgre] — role: twin-bruiser
+- Warp Warrior [warpWarrior] — role: warp-slasher
+- Vein Brain [veinBrain] — role: vein-caster
+- Star Mirage [starMirage] — role: star-flier
+- Tarantula [tarantula] — role: venom-brute
+- Valmar Fly [valmarFly] — role: organic-flier
+- Valmar Young [valmarYoung] — role: valmar-youngling
+- Yeti [yeti] — role: ice-bruiser
 

@@ -53,6 +53,18 @@ export const UNIT_ART = {
   valmarMoth: './assets/units/valmarMoth.svg',
   valmarMagna: './assets/units/valmarMagna.svg',
   mottledSpider: './assets/units/mottledSpider.svg',
+  sandman: './assets/units/sandman.svg',
+  pitViper: './assets/units/pitViper.svg',
+  scalyWarrior: './assets/units/scalyWarrior.svg',
+  skullSnail: './assets/units/skullSnail.svg',
+  twinOgre: './assets/units/twinOgre.svg',
+  warpWarrior: './assets/units/warpWarrior.svg',
+  veinBrain: './assets/units/veinBrain.svg',
+  starMirage: './assets/units/starMirage.svg',
+  tarantula: './assets/units/tarantula.svg',
+  valmarFly: './assets/units/valmarFly.svg',
+  valmarYoung: './assets/units/valmarYoung.svg',
+  yeti: './assets/units/yeti.svg',
 };
 
 const CAMPAIGN_REGION_ART = {
@@ -99,7 +111,11 @@ export function unitArtPathForFighter(fighter) {
     return null;
   }
   const key = fighter.sourceKey ?? fighter.id ?? null;
-  return UNIT_ART[key] ?? null;
+  if (UNIT_ART[key]) {
+    return UNIT_ART[key];
+  }
+  const camelKey = String(key ?? '').replace(/-([a-z])/g, (_, letter) => letter.toUpperCase());
+  return UNIT_ART[camelKey] ?? null;
 }
 
 export function battlefieldArtPath(theme) {

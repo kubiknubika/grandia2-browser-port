@@ -1151,6 +1151,197 @@ export const ACTION_LIBRARY = {
     costMp: 40,
     animationSeconds: 1.0,
   },
+  scarletPotion: {
+    id: 'scarletPotion',
+    label: 'Scarlet Potion',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'scarletPotion',
+    healBase: 150,
+  },
+  purifyingHerb: {
+    id: 'purifyingHerb',
+    label: 'Purifying Herb',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'purifyingHerb',
+    healBase: 22,
+    cureStatuses: ['poison'],
+  },
+  poffNut: {
+    id: 'poffNut',
+    label: 'Poff Nut',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'poffNut',
+    healBase: 35,
+  },
+  seedOfLife: {
+    id: 'seedOfLife',
+    label: 'Seed of Life',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'seedOfLife',
+    healBase: 70,
+  },
+  seedOfPsyche: {
+    id: 'seedOfPsyche',
+    label: 'Seed of Psyche',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'seedOfPsyche',
+    restoreSp: 24,
+  },
+  seedOfMagic: {
+    id: 'seedOfMagic',
+    label: 'Seed of Magic',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'seedOfMagic',
+    restoreMp: 16,
+  },
+  manaCrystal: {
+    id: 'manaCrystal',
+    label: 'Mana Crystal',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'manaCrystal',
+    restoreMp: 26,
+  },
+  caterpillarSoup: {
+    id: 'caterpillarSoup',
+    label: 'Caterpillar Soup',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'all-allies',
+    instant: true,
+    inventoryKey: 'caterpillarSoup',
+    healBase: 55,
+    cureStatuses: ['poison'],
+  },
+  paralysisSalve: {
+    id: 'paralysisSalve',
+    label: 'Paralysis Salve',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'paralysisSalve',
+    cureStatuses: ['moveBlock'],
+  },
+  firebomb: {
+    id: 'firebomb',
+    label: 'Firebomb',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'single',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'firebomb',
+    spellPower: 1.12,
+    spellBase: 14,
+    ipDamage: 34,
+    element: 'fire',
+  },
+  mogayBomb: {
+    id: 'mogayBomb',
+    label: 'Mogay Bomb',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-enemies',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'mogayBomb',
+    spellPower: 0.82,
+    spellBase: 8,
+    ipDamage: 24,
+    element: 'fire',
+  },
+  handGrenade: {
+    id: 'handGrenade',
+    label: 'Hand Grenade',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-enemies',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'handGrenade',
+    spellPower: 0.96,
+    spellBase: 12,
+    ipDamage: 28,
+    element: 'fire',
+  },
+  meteorScroll: {
+    id: 'meteorScroll',
+    label: 'Meteor Scroll',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-enemies',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'meteorScroll',
+    spellPower: 1.26,
+    spellBase: 22,
+    ipDamage: 42,
+    element: 'fire',
+  },
+  whirlwindScroll: {
+    id: 'whirlwindScroll',
+    label: 'Whirlwind Scroll',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-enemies',
+    instant: true,
+    offensive: true,
+    inventoryKey: 'whirlwindScroll',
+    spellPower: 1.06,
+    spellBase: 14,
+    ipDamage: 36,
+  },
+  scrollOfAlheal: {
+    id: 'scrollOfAlheal',
+    label: 'Scroll of Alheal',
+    kind: 'magic',
+    commandType: 'item',
+    targeting: 'all-allies',
+    instant: true,
+    inventoryKey: 'scrollOfAlheal',
+    healBase: 90,
+  },
+  sympathyNut: {
+    id: 'sympathyNut',
+    label: 'Sympathy Nut',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'sympathyNut',
+    healBase: 45,
+  },
+  seedOfRunning: {
+    id: 'seedOfRunning',
+    label: 'Seed of Running',
+    kind: 'item',
+    commandType: 'item',
+    targeting: 'single-ally',
+    instant: true,
+    inventoryKey: 'seedOfRunning',
+    restoreSp: 12,
+  },
 };
 
 export class IPGaugeTimeline {
@@ -2986,6 +3177,280 @@ export const PRESETS = {
     statusResistances: { sleep: 0.8, moveBlock: 1, magicBlock: 0.9, poison: 0.1 },
     loadout: { statusMoves: ['poisonSpit', 'spellbindDust'] },
   },
+  sandman: {
+    id: 'sandman',
+    name: 'Sandman',
+    team: 'enemies',
+    role: 'sand-harasser',
+    maxHp: 360,
+    maxSp: 100,
+    maxMp: 22,
+    startSp: 22,
+    startMp: 14,
+    str: 26,
+    vit: 18,
+    agi: 25,
+    spd: 24,
+    mag: 16,
+    men: 14,
+    color: '#eab308',
+    resistances: { fire: 1.05, lightning: 0.95 },
+    statusResistances: { sleep: 0.45, moveBlock: 1, magicBlock: 1, poison: 0.8 },
+    loadout: { statusMoves: ['snooze', 'nightmareBall'], debuffMagics: ['cold'] },
+  },
+  pitViper: {
+    id: 'pit-viper',
+    name: 'Pit Viper',
+    team: 'enemies',
+    role: 'poison-striker',
+    maxHp: 640,
+    maxSp: 110,
+    maxMp: 0,
+    startSp: 28,
+    startMp: 0,
+    str: 38,
+    vit: 22,
+    agi: 26,
+    spd: 26,
+    mag: 8,
+    men: 14,
+    color: '#65a30d',
+    resistances: { fire: 1.1, lightning: 0.95 },
+    statusResistances: { sleep: 0.8, moveBlock: 1, magicBlock: 1, poison: 0.12 },
+    loadout: { statusMoves: ['poisonSpit'], singleMoves: ['beastFangCut'], lineMove: 'wingSlice' },
+  },
+  scalyWarrior: {
+    id: 'scaly-warrior',
+    name: 'Scaly Warrior',
+    team: 'enemies',
+    role: 'scaled-vanguard',
+    maxHp: 900,
+    maxSp: 120,
+    maxMp: 0,
+    startSp: 34,
+    startMp: 0,
+    str: 42,
+    vit: 30,
+    agi: 24,
+    spd: 22,
+    mag: 8,
+    men: 18,
+    color: '#94a3b8',
+    radius: 22,
+    resistances: { fire: 1.05, lightning: 0.9 },
+    statusResistances: { sleep: 0.7, moveBlock: 0.85, magicBlock: 0.95, poison: 0.5 },
+    loadout: { cancelMove: 'beastFangCut', singleMoves: ['critical', 'beastKingSmash'] },
+  },
+  skullSnail: {
+    id: 'skull-snail',
+    name: 'Skull Snail',
+    team: 'enemies',
+    role: 'shell-tank',
+    maxHp: 1100,
+    maxSp: 110,
+    maxMp: 0,
+    startSp: 24,
+    startMp: 0,
+    str: 30,
+    vit: 34,
+    agi: 14,
+    spd: 14,
+    mag: 12,
+    men: 22,
+    color: '#cbd5e1',
+    radius: 24,
+    resistances: { fire: 1.15, lightning: 1 },
+    statusResistances: { sleep: 0.85, moveBlock: 0.7, magicBlock: 0.9, poison: 0.3 },
+    loadout: { statusMoves: ['webTrap', 'poisonSpit'], supportMagics: ['diggin'] },
+  },
+  twinOgre: {
+    id: 'twin-ogre',
+    name: 'Twin Ogre',
+    team: 'enemies',
+    role: 'twin-bruiser',
+    maxHp: 800,
+    maxSp: 110,
+    maxMp: 0,
+    startSp: 30,
+    startMp: 0,
+    str: 40,
+    vit: 26,
+    agi: 22,
+    spd: 20,
+    mag: 6,
+    men: 12,
+    color: '#f87171',
+    radius: 22,
+    resistances: { fire: 0.95, lightning: 1.05 },
+    statusResistances: { sleep: 0.8, moveBlock: 0.85, magicBlock: 1, poison: 0.75 },
+    loadout: { singleMoves: ['critical', 'beastKingSmash'], lineMove: 'tornadoHorn' },
+  },
+  warpWarrior: {
+    id: 'warp-warrior',
+    name: 'Warp Warrior',
+    team: 'enemies',
+    role: 'warp-slasher',
+    maxHp: 780,
+    maxSp: 120,
+    maxMp: 0,
+    startSp: 36,
+    startMp: 0,
+    str: 38,
+    vit: 24,
+    agi: 30,
+    spd: 30,
+    mag: 10,
+    men: 16,
+    color: '#a78bfa',
+    radius: 22,
+    resistances: { fire: 1, lightning: 0.9 },
+    statusResistances: { sleep: 0.6, moveBlock: 0.8, magicBlock: 0.85, poison: 0.6 },
+    loadout: { cancelMove: 'beastFangCut', singleMoves: ['fastDanceWhirl', 'critical'] },
+  },
+  veinBrain: {
+    id: 'vein-brain',
+    name: 'Vein Brain',
+    team: 'enemies',
+    role: 'vein-caster',
+    maxHp: 850,
+    maxSp: 120,
+    maxMp: 44,
+    startSp: 24,
+    startMp: 26,
+    str: 20,
+    vit: 22,
+    agi: 20,
+    spd: 22,
+    mag: 30,
+    men: 24,
+    color: '#f472b6',
+    radius: 24,
+    resistances: { fire: 1, lightning: 0.95 },
+    statusResistances: { sleep: 0.6, moveBlock: 0.85, magicBlock: 0.7, poison: 0.4 },
+    loadout: { offensiveMagics: ['cold', 'zap', 'crackle'], healMagics: ['healer'], statusMoves: ['spellbindDust'] },
+  },
+  starMirage: {
+    id: 'star-mirage',
+    name: 'Star Mirage',
+    team: 'enemies',
+    role: 'star-flier',
+    maxHp: 780,
+    maxSp: 110,
+    maxMp: 30,
+    startSp: 26,
+    startMp: 18,
+    str: 24,
+    vit: 20,
+    agi: 28,
+    spd: 30,
+    mag: 30,
+    men: 22,
+    color: '#facc15',
+    radius: 22,
+    resistances: { fire: 1.1, lightning: 0.8 },
+    statusResistances: { sleep: 0.7, moveBlock: 0.9, magicBlock: 0.85, poison: 0.7 },
+    loadout: { lineMove: 'wingSlice', offensiveMagics: ['zap', 'zapAll', 'crackle'], statusMoves: ['snooze'] },
+  },
+  tarantula: {
+    id: 'tarantula',
+    name: 'Tarantula',
+    team: 'enemies',
+    role: 'venom-brute',
+    maxHp: 1050,
+    maxSp: 120,
+    maxMp: 0,
+    startSp: 30,
+    startMp: 0,
+    str: 38,
+    vit: 28,
+    agi: 22,
+    spd: 22,
+    mag: 10,
+    men: 16,
+    color: '#3f6212',
+    radius: 24,
+    resistances: { fire: 1.2, lightning: 1 },
+    statusResistances: { sleep: 0.75, moveBlock: 0.8, magicBlock: 1, poison: 0.08 },
+    loadout: { statusMoves: ['poisonSpit', 'webTrap'], singleMoves: ['beastFangCut'] },
+  },
+  valmarFly: {
+    id: 'valmar-fly',
+    name: 'Valmar Fly',
+    team: 'enemies',
+    role: 'organic-flier',
+    maxHp: 1150,
+    maxSp: 130,
+    maxMp: 20,
+    startSp: 28,
+    startMp: 10,
+    str: 30,
+    vit: 24,
+    agi: 30,
+    spd: 30,
+    mag: 16,
+    men: 18,
+    color: '#ec4899',
+    radius: 22,
+    resistances: { fire: 0.95, lightning: 0.85 },
+    statusResistances: { sleep: 0.6, moveBlock: 0.85, magicBlock: 0.9, poison: 0.25 },
+    loadout: { lineMove: 'wingSlice', aoeMove: 'fallenWings', statusMoves: ['webTrap', 'poisonSpit'] },
+  },
+  valmarYoung: {
+    id: 'valmar-young',
+    name: 'Valmar Young',
+    team: 'enemies',
+    role: 'valmar-youngling',
+    maxHp: 1450,
+    maxSp: 160,
+    maxMp: 44,
+    startSp: 44,
+    startMp: 24,
+    str: 34,
+    vit: 28,
+    agi: 26,
+    spd: 26,
+    mag: 28,
+    men: 24,
+    color: '#d946ef',
+    radius: 26,
+    resistances: { fire: 0.95, lightning: 0.9 },
+    statusResistances: { sleep: 0.45, moveBlock: 0.75, magicBlock: 0.65, poison: 0.2 },
+    loadout: { aoeMove: 'destructionRay', offensiveMagics: ['quake', 'zapAll'], statusMoves: ['spellbindDust', 'snooze'] },
+    bossPatterns: [
+      ['critical', 'destructionRay', 'snooze'],
+      ['quake', 'spellbindDust', 'critical'],
+    ],
+    bossPhases: [
+      {
+        threshold: 0.5,
+        message: 'The Valmar Young sheds its shell and rages with newborn chaos!',
+        buffs: { atk: 1, act: 1 },
+        grants: { offensiveMagic: 'zapAll' },
+      },
+    ],
+  },
+  yeti: {
+    id: 'yeti',
+    name: 'Yeti',
+    team: 'enemies',
+    role: 'ice-bruiser',
+    maxHp: 1350,
+    maxSp: 130,
+    maxMp: 26,
+    startSp: 34,
+    startMp: 14,
+    str: 42,
+    vit: 30,
+    agi: 20,
+    spd: 18,
+    mag: 16,
+    men: 20,
+    color: '#e0f2fe',
+    radius: 26,
+    resistances: { fire: 1.25, lightning: 0.95 },
+    statusResistances: { sleep: 0.7, moveBlock: 0.75, magicBlock: 0.85, poison: 0.7 },
+    loadout: { singleMoves: ['beastKingSmash', 'critical'], statusMoves: ['freeze'], debuffMagics: ['cold'], lineMove: 'tornadoHorn' },
+  },
 };
 
 function defaultPlayersEncounter() {
@@ -3295,6 +3760,18 @@ export function getAvailableActions(battle, fighter) {
       if (count <= 0) {
         continue;
       }
+      if (definition.offensive) {
+        if (definition.targeting === 'all-enemies') {
+          if (opponents.length > 0) {
+            actions.push(buildAction(battle, fighter, definition.id));
+          }
+        } else {
+          for (const opponent of opponents) {
+            actions.push(buildAction(battle, fighter, definition.id, opponent));
+          }
+        }
+        continue;
+      }
       if (definition.targeting === 'all-allies') {
         actions.push(buildAction(battle, fighter, definition.id));
         continue;
@@ -3453,6 +3930,11 @@ export function analyzeActionChoice(battle, fighter, action) {
     targetCount = 1;
     statusNames = action.definition.cureStatuses ?? [];
     itemCureScore = statusNames.reduce((score, name) => score + ((target.statuses?.[name] ?? 0) > 0 ? 1 : 0), 0) + (action.definition.revive && !target.isAlive ? 2 : 0);
+  } else if (action.definition.commandType === 'item' && action.definition.offensive) {
+    const targetList = action.definition.targeting === 'all-enemies' ? opponents : (target ? [target] : []);
+    targetCount = targetList.length;
+    totalEstimatedDamage = targetList.reduce((sum, opponent) => sum + Math.max(1, Math.round(fighter.mag * (action.definition.spellPower ?? 0.9) - opponent.men * 0.35 + (action.definition.spellBase ?? 0))), 0);
+    totalTargetMaxHp = targetList.reduce((sum, opponent) => sum + opponent.maxHp, 0);
   } else if (action.definition.commandType === 'item' && target) {
     targetCount = 1;
     healAmount = Math.min(target.maxHp - target.hp, action.definition.healBase ?? 0);
@@ -5452,9 +5934,13 @@ function resolveHeal(battle, actor, action) {
 
 function resolveItemAction(battle, actor, action) {
   const definition = action.definition;
-  const targets = definition.targeting === 'all-allies'
-    ? battleTeam(battle, actor).filter((fighter) => fighter.isAlive)
-    : [retargetSingleAlly(battle, actor, action.targetId, { includeDowned: Boolean(definition.revive), preferDowned: Boolean(definition.revive) })].filter(Boolean);
+  const targets = definition.offensive
+    ? (definition.targeting === 'all-enemies'
+      ? livingOpponents(battle, actor)
+      : [retargetSingleOpponent(battle, actor, action.targetId)].filter(Boolean))
+    : definition.targeting === 'all-allies'
+      ? battleTeam(battle, actor).filter((fighter) => fighter.isAlive)
+      : [retargetSingleAlly(battle, actor, action.targetId, { includeDowned: Boolean(definition.revive), preferDowned: Boolean(definition.revive) })].filter(Boolean);
 
   if (targets.length === 0) {
     finishTurn(actor);
@@ -5484,6 +5970,15 @@ function resolveItemAction(battle, actor, action) {
     let revived = false;
     let restoredSp = 0;
     let restoredMp = 0;
+    let damage = 0;
+    if (definition.offensive) {
+      damage = calcMagicDamage(actor, target, definition.spellPower ?? 0.9, definition.spellBase ?? 0, battle.rng, definition.element ?? null);
+      const result = applyHitEffects(battle, actor, target, definition, damage);
+      damage = result.damage;
+      if (target.hp <= 0) {
+        markDown(target);
+      }
+    }
     if (!target.isAlive && definition.revive) {
       const hp = Math.max(1, Math.round(target.maxHp * (definition.reviveRatio ?? 0.35)));
       target.hp = Math.min(target.maxHp, hp);
@@ -5509,14 +6004,15 @@ function resolveItemAction(battle, actor, action) {
         cured.push(status);
       }
     }
-    impacts.push({ targetId: target.id, heal: healed, revived, restoreSp: restoredSp, restoreMp: restoredMp, statuses: cured });
+    impacts.push({ targetId: target.id, heal: healed, revived, restoreSp: restoredSp, restoreMp: restoredMp, statuses: cured, damage, defeated: !target.isAlive });
   }
 
   finishTurn(actor);
   const impactText = impacts.map((impact) => {
-    const target = battleTeam(battle, actor).find((fighter) => fighter.id === impact.targetId);
+    const target = allCombatants(battle).find((fighter) => fighter.id === impact.targetId);
     const parts = [];
     if (impact.revived) parts.push('revive');
+    if ((impact.damage ?? 0) > 0) parts.push(`${impact.damage}${impact.defeated ? ' (KO)' : ''}`);
     if ((impact.heal ?? 0) > 0) parts.push(`heal ${impact.heal}`);
     if ((impact.restoreSp ?? 0) > 0) parts.push(`SP +${impact.restoreSp}`);
     if ((impact.restoreMp ?? 0) > 0) parts.push(`MP +${impact.restoreMp}`);

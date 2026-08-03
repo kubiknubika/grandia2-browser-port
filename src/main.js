@@ -74,6 +74,16 @@ import {
   buildBestiaryGroupSnapshot,
 } from './bestiary_data.js';
 import {
+  NPC_DIALOGUES,
+  npcDialoguesForLocation,
+} from './npc_dialogue.js';
+import {
+  MANA_EGGS,
+} from './mana_eggs.js';
+import {
+  dropEntriesForPresetKey,
+} from './drop_data.js';
+import {
   ALL_ART_PATHS,
   battlefieldArtPath,
   campaignBackdropPathForLocation,
@@ -299,6 +309,7 @@ function createEmptyCampaignRun() {
     growthUnlockIds: [],
     activeLocationSceneId: null,
     seenLocationSceneIds: [],
+    seenNpcDialogueIds: [],
     roster: createDefaultCampaignRoster(),
     equipmentLoadout: createDefaultEquipmentLoadout(),
     journal: [],
@@ -710,9 +721,33 @@ function applyScenarioSource(source) {
   }
 }
 
+const SETTINGS_STORAGE_KEY = 'grandia2-settings';
+
+const DEFAULT_SETTINGS = {
+  defaultPlayEnemyAi: 'novice',
+  defaultBattlefieldTheme: 'forest',
+  showCommandHints: true,
+  replaySpeedMs: 550,
+};
+
+function loadPersistedSettings() {
+  try {
+    const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+    return { ...DEFAULT_SETTINGS, ...(raw ? JSON.parse(raw) : {}) };
+  } catch (error) {
+    return { ...DEFAULT_SETTINGS };
+  }
+}
+
+function savePersistedSettings() {
+  localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(state.settings ?? DEFAULT_SETTINGS));
+}
+
 const state = {
   appScreen: 'menu',
   activeTab: 'play',
+  settings: loadPersistedSettings(),
+  menuParityScreen: 'status',
   battle: null,
   replay: null,
   replayAutoplayTimer: null,
@@ -782,10 +817,26 @@ const elements = {
   tabCampaign: document.querySelector('#tab-campaign'),
   tabDebug: document.querySelector('#tab-debug'),
   tabCompare: document.querySelector('#tab-compare'),
+  tabParity: document.querySelector('#tab-parity'),
   playSection: document.querySelector('#play-section'),
   campaignSection: document.querySelector('#campaign-section'),
   debugSection: document.querySelector('#debug-section'),
   compareSection: document.querySelector('#compare-section'),
+  paritySection: document.querySelector('#menu-parity-section'),
+  menuOpenParity: document.querySelector('#menu-open-parity'),
+  mpStatus: document.querySelector('#mp-status'),
+  mpSkills: document.querySelector('#mp-skills'),
+  mpEggs: document.querySelector('#mp-eggs'),
+  mpItems: document.querySelector('#mp-items'),
+  mpBestiary: document.querySelector('#mp-bestiary'),
+  mpConfig: document.querySelector('#mp-config'),
+  mpOutput: document.querySelector('#mp-output'),
+  mpImages: document.querySelector('#mp-images'),
+  mpConfigAi: document.querySelector('#mp-config-ai'),
+  mpConfigTheme: document.querySelector('#mp-config-theme'),
+  mpConfigHints: document.querySelector('#mp-config-hints'),
+  mpConfigSpeed: document.querySelector('#mp-config-speed'),
+  mpConfigSave: document.querySelector('#mp-config-save'),
   battleLabel: document.querySelector('#battle-label'),
   status: document.querySelector('#status'),
   summary: document.querySelector('#summary'),
@@ -919,6 +970,15 @@ const elements = {
   compareCanvasRight: document.querySelector('#compare-canvas-right'),
   canvas: document.querySelector('#battle-view'),
 };
+
+const MP_SCREENS = [
+  { key: 'status', label: 'Статус / герой', button: 'mpStatus' },
+  { key: 'skills', label: 'Навыки и магия', button: 'mpSkills' },
+  { key: 'eggs', label: 'Mana Eggs', button: 'mpEggs' },
+  { key: 'items', label: 'Предметы и снаряжение', button: 'mpItems' },
+  { key: 'bestiary', label: 'Энциклопедия врагов', button: 'mpBestiary' },
+  { key: 'config', label: 'Настройки', button: 'mpConfig' },
+];
 
 const context = elements.canvas.getContext('2d');
 const compareContextLeft = elements.compareCanvasLeft.getContext('2d');
@@ -1079,6 +1139,9 @@ const WORLD_LOCATION_EVENTS = {
 };
 
 const WORLD_LOCATION_TREASURES = {
+  carbo_village: [
+    { id: 'carbo-garden-cache', label: 'Садовая грядка', description: 'Кто-то припрятал запас в корнях старого дерева.', rewards: { gold: 20, poffNut: 1 } },
+  ],
   black_forest: [
     { id: 'black-forest-cache', label: 'Корни у тропы', description: 'Старая сумка, брошенная кем-то в спешке.', rewards: { gold: 30, medicinalHerb: 1 } },
   ],
@@ -1088,14 +1151,28 @@ const WORLD_LOCATION_TREASURES = {
   inor_mountains: [
     { id: 'inor-cliff-chest', label: 'Сундук на уступе', description: 'Тайник у опасного горного прохода.', rewards: { gold: 55, medicinalHerb: 1, antidote: 1 } },
   ],
+  agear_town: [
+    { id: 'agear-ruin-cache', label: 'Развалины на окраине', description: 'Осколки арсенала, уцелевшие после налёта.', rewards: { gold: 25, firebomb: 1 } },
+  ],
   durham_cave_entrance: [
     { id: 'durham-rock-cache', label: 'Тайник за валуном', description: 'Пещерный схрон возле старого рычага.', rewards: { gold: 70, medicinalHerb: 2 } },
   ],
   baked_plains: [
     { id: 'baked-smoke-cache', label: 'Сундук у паровых трещин', description: 'Потрёпанный сундук среди горячих камней.', rewards: { gold: 65, antidote: 1 } },
+    { id: 'baked-sandman-sack', label: 'Мешок песчаного духа', description: 'То, что песчаный дух не успел унести с собой.', rewards: { gold: 30, seedOfPsyche: 1 } },
   ],
   liligue_cave: [
     { id: 'liligue-ruin-cache', label: 'Тайник руин', description: 'Спрятанный сундук у храмовой стены.', rewards: { gold: 90, medicinalHerb: 1, antidote: 1 } },
+    { id: 'liligue-reflection-cache', label: 'Зеркальная ниша', description: 'Древняя шкатулка с ювелирным кольцом.', rewards: { gold: 40, equipmentIds: ['roan-reflection-ring'] } },
+  ],
+  mirumu_shed: [
+    { id: 'mirumu-shed-cache', label: 'Полка в сарае', description: 'Запас того, кто собирался спускаться в разлом.', rewards: { eyeDrops: 1, paralysisSalve: 1 } },
+  ],
+  st_heim_library: [
+    { id: 'stheim-lost-tome-cache', label: 'Потерянный том', description: 'Книга, которую библиотекарь «потерял» — с закладкой из свитка.', rewards: { scrollOfAlheal: 1, magicCoins: 4 } },
+  ],
+  raul_hills: [
+    { id: 'raul-star-cache', label: 'Звёздная расселина', description: 'Ящик, оставленный старыми охотниками за сокровищами.', rewards: { gold: 60, mogayBomb: 1 } },
   ],
   lumir_forest: [
     { id: 'lumir-snow-cache', label: 'Снежный тайник', description: 'Запорошенный ящик под елью.', rewards: { gold: 75, medicinalHerb: 1 } },
@@ -1126,6 +1203,10 @@ const WORLD_LOCATION_TREASURES = {
   ],
   valmar_body: [
     { id: 'valmar-flesh-cache', label: 'Странный биотайник', description: 'Слишком органичный сундук внутри тела Вальмара.', rewards: { gold: 190, medicinalHerb: 2, antidote: 2, panacea: 1 } },
+    { id: 'valmar-vein-cache', label: 'Пульсирующая железа', description: 'Внутри плоти застряли припасы прежней экспедиции.', rewards: { gold: 60, caterpillarSoup: 1, manaCrystal: 1 } },
+  ],
+  cyrum_kingdom_south: [
+    { id: 'cyrum-front-cache', label: 'Фронтовой схрон', description: 'Боезапас, спрятанный защитниками линии.', rewards: { scarletPotion: 1, handGrenade: 1 } },
   ],
   valmars_moon: [
     { id: 'moon-core-cache', label: 'Лунный контейнер', description: 'Схрон у розовых колонн.', rewards: { gold: 220, medicinalHerb: 2, antidote: 2, healingHerb: 1, magicBlessing: 1 } },
@@ -1135,6 +1216,9 @@ const WORLD_LOCATION_TREASURES = {
   ],
   new_valmar: [
     { id: 'new-valmar-core-cache', label: 'Сердцевинный тайник', description: 'Награда у последнего рывка.', rewards: { gold: 320, medicinalHerb: 3, antidote: 2, yomisElixir: 1, healingIncense: 1, equipmentIds: ['ryudo-geohound-mail'] } },
+  ],
+  new_valmar_core: [
+    { id: 'core-meteor-cache', label: 'Архивный терминал ядра', description: 'Последний ящик снабжения перед финальной развязкой.', rewards: { meteorScroll: 1, yomisElixir: 1 } },
   ],
 };
 
@@ -1150,6 +1234,7 @@ const WORLD_TRAVEL_ENCOUNTERS = {
   ],
   baked_plains: [
     { id: 'enc-baked-plain-heat', label: 'Жара Baked Plains', description: 'Giant Mantis и Crag Snake используют раскалённые равнины как идеальную засаду.', enemyKeys: ['giantMantis', 'cragSnake'], theme: 'volcano', openingAdvantage: 'neutral', rewards: { gold: 55, experience: 20, skillCoins: 5, magicCoins: 4, medicinalHerb: 1, antidote: 0 } },
+    { id: 'enc-baked-sandmen', label: 'Песчаные духи', description: 'Sandman крадётся по горячим трещинам и усыпляет путников перед ударом.', enemyKeys: ['sandman', 'giantMantis'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 60, experience: 24, skillCoins: 6, magicCoins: 4, seedOfPsyche: 1, paralysisSalve: 1 } },
   ],
   liligue_cave: [
     { id: 'enc-liligue-corruption', label: 'Порча под Лилигом', description: 'Gargoyle, Ghoul и Giant Mantis уже выглядят как настоящая испорченная экосистема руин под городом.', enemyKeys: ['gargoyle', 'ghoul', 'giantMantis'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 75, experience: 28, skillCoins: 7, magicCoins: 5, medicinalHerb: 1, antidote: 1, eyeDrops: 1 } },
@@ -1159,36 +1244,45 @@ const WORLD_TRAVEL_ENCOUNTERS = {
   ],
   mysterious_fissure: [
     { id: 'enc-fissure-depth', label: 'Твари разлома', description: 'Hammerhead, Giant Crab и Hell Hound делают разлом более тяжёлым и разнородным по тону.', enemyKeys: ['hammerhead', 'giantCrab', 'hellHound'], theme: 'cavern', openingAdvantage: 'neutral', rewards: { gold: 85, experience: 32, skillCoins: 8, magicCoins: 6, medicinalHerb: 1, antidote: 2, moveBlessing: 1 } },
+    { id: 'enc-fissure-ogres', label: 'Близнецы-огры', description: 'Twin Ogre держат нижний ярус разлома и отбрасывают чужаков к стенам.', enemyKeys: ['twinOgre', 'hammerhead'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 95, experience: 38, skillCoins: 9, magicCoins: 7, handGrenade: 1, woundSalve: 1 } },
   ],
   st_heim_mountains: [
     { id: 'enc-stheim-climb', label: 'Горная стычка', description: 'Giant Mantis, Hammerhead и Huge Caterpillar превращают путь к святому городу в более узнаваемую late-midgame climb pressure.', enemyKeys: ['giantMantis', 'hammerhead', 'hugeCaterpillar'], theme: 'cavern', openingAdvantage: 'neutral', rewards: { gold: 90, experience: 36, skillCoins: 9, magicCoins: 6, medicinalHerb: 1, antidote: 1, eyeDrops: 1 } },
+    { id: 'enc-stheim-snails', label: 'Черепа у святой тропы', description: 'Skull Snail и Twin Ogre преграждают паломнический подъём к папскому государству.', enemyKeys: ['skullSnail', 'twinOgre'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 105, experience: 42, skillCoins: 10, magicCoins: 8, poffNut: 1, seedOfLife: 1 } },
   ],
   raul_hills: [
     { id: 'enc-raul-ruins', label: 'Развалины Raul Hills', description: 'Land Cougar и Giga Mantis делают развалины более похожими на опасный дикий фронтир, а не на generic encounter-зону.', enemyKeys: ['landCougar', 'gigaMantis'], theme: 'ruins', openingAdvantage: 'players', rewards: { gold: 100, experience: 40, skillCoins: 10, magicCoins: 7, medicinalHerb: 2, antidote: 1, blueberry: 1 } },
+    { id: 'enc-raul-ogres', label: 'Руинные стражи холмов', description: 'Twin Ogre и Land Cougar стерегут башни лабиринта Raul Hills.', enemyKeys: ['twinOgre', 'landCougar'], theme: 'ruins', openingAdvantage: 'neutral', rewards: { gold: 115, experience: 44, skillCoins: 11, magicCoins: 8, mogayBomb: 1, seedOfPsyche: 1 } },
   ],
   cyrum_secret_passage: [
     { id: 'enc-cyrum-secret', label: 'Охрана тайного прохода', description: 'В скрытом проходе остаются враждебные защитные группы.', enemyKeys: ['guardian', 'wingEye'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 125, experience: 46, skillCoins: 11, magicCoins: 8, medicinalHerb: 1, antidote: 1 } },
   ],
   underground_plant: [
     { id: 'enc-plant-sentries', label: 'Сентри underground plant', description: 'Механический комплекс выпускает новую волну защитников.', enemyKeys: ['guardian', 'mottledSpider'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 140, experience: 52, skillCoins: 12, magicCoins: 9, medicinalHerb: 1, antidote: 2 } },
+    { id: 'enc-plant-warp', label: 'Варп-патруль завода', description: 'Warp Warrior и Vein Brain охраняют глубинные узлы комплекса.', enemyKeys: ['warpWarrior', 'veinBrain'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 150, experience: 56, skillCoins: 13, magicCoins: 10, manaCrystal: 1, magicBlessing: 1 } },
   ],
   ceceile_reef: [
     { id: 'enc-reef-claws', label: 'Стычка на рифе', description: 'Giant Crab, Salamadile и Fenny Bird лучше держат морской и прибрежный тон маршрута к Гарлану.', enemyKeys: ['giantCrab', 'salamadile', 'fennyBird'], theme: 'forest', openingAdvantage: 'neutral', rewards: { gold: 120, experience: 48, skillCoins: 11, magicCoins: 8, medicinalHerb: 2, antidote: 1, lumirFlower: 1 } },
+    { id: 'enc-reef-scaly', label: 'Чешуйчатые воины рифа', description: 'Scaly Warrior и Giant Crab встречают прибывающих на риф путников.', enemyKeys: ['scalyWarrior', 'giantCrab'], theme: 'forest', openingAdvantage: 'neutral', rewards: { gold: 135, experience: 52, skillCoins: 12, magicCoins: 9, woundSalve: 1, scarletPotion: 1 } },
   ],
   grail_mountain: [
     { id: 'enc-grail-slope', label: 'Путь по Grail Mountain', description: 'Hell Hound, Man-Eating Tree и Fenny Bird дают подъёму к Мелфису более оригинально-опасный характер.', enemyKeys: ['hellHound', 'manEatingTree', 'fennyBird'], theme: 'ruins', openingAdvantage: 'neutral', rewards: { gold: 130, experience: 54, skillCoins: 12, magicCoins: 9, medicinalHerb: 2, antidote: 1, moveBlessing: 1 } },
+    { id: 'enc-grail-vipers', label: 'Ядовитые тропы Грайла', description: 'Pit Viper и Hell Hound контролируют грязевые склоны над святилищем.', enemyKeys: ['pitViper', 'hellHound'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 140, experience: 58, skillCoins: 13, magicCoins: 9, purifyingHerb: 1, antidote: 2 } },
   ],
   great_rift: [
     { id: 'enc-rift-prowl', label: 'Хищники Великого Разлома', description: 'Giga Mantis и Fenny Bird помогают Разлому ощущаться последним диким краем мира перед Demons Law.', enemyKeys: ['gigaMantis', 'fennyBird'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 160, experience: 60, skillCoins: 14, magicCoins: 10, medicinalHerb: 2, antidote: 2, healingHerb: 1 } },
   ],
   valmar_body: [
     { id: 'enc-valmar-body', label: 'Живые ткани Вальмара', description: 'Immune Cell и Valmar Moth лучше передают органический внутренний бестиарий этого late-midgame данжа.', enemyKeys: ['immuneCell', 'valmarMoth', 'valmarMoth'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 180, experience: 68, skillCoins: 15, magicCoins: 11, medicinalHerb: 2, antidote: 2, panacea: 1 } },
+    { id: 'enc-body-hunt', label: 'Охотники живой плоти', description: 'Tarantula и Immune Cell выходят на охоту в венах тела Вальмара.', enemyKeys: ['tarantula', 'immuneCell'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 200, experience: 74, skillCoins: 16, magicCoins: 12, purifyingHerb: 1, caterpillarSoup: 1 } },
   ],
   valmars_moon: [
     { id: 'enc-moon-guard', label: 'Стражи Луны', description: 'Nyarmot, Salamadile и Evil Maneuver лучше соответствуют экосистеме Луны Вальмара и позднему давлению маршрута.', enemyKeys: ['nyarmot', 'salamadile', 'evilManeuver'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 210, experience: 74, skillCoins: 16, magicCoins: 12, medicinalHerb: 2, antidote: 2, yomisElixir: 1 } },
+    { id: 'enc-moon-young', label: 'Молодь Вальмара', description: 'Valmar Fly и Valmar Young роятся у лунных колонн, защищая внутренние узлы.', enemyKeys: ['valmarFly', 'valmarYoung'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 240, experience: 84, skillCoins: 18, magicCoins: 14, scarletPotion: 1, meteorScroll: 1 } },
   ],
   birthplace_of_the_gods: [
     { id: 'enc-birthplace-guardians', label: 'Древние хранители', description: 'Dragon Knight и Valmar Magna делают Исток богов более похожим на поздний древний bestiary-порог, а не на generic guardian room.', enemyKeys: ['dragonKnight', 'valmarMagna'], theme: 'ruins', openingAdvantage: 'neutral', rewards: { gold: 240, experience: 82, skillCoins: 18, magicCoins: 14, medicinalHerb: 2, antidote: 2, healingIncense: 1 } },
+    { id: 'enc-birthplace-yeti', label: 'Ледяные стражи истока', description: 'Yeti и Dragon Knight охраняют цветные механизмы древнего комплекса.', enemyKeys: ['yeti', 'dragonKnight'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 260, experience: 90, skillCoins: 20, magicCoins: 16, paralysisSalve: 1, manaCrystal: 1 } },
   ],
   new_valmar: [
     { id: 'enc-new-valmar-vanguard', label: 'Передовые ужасы Нового Вальмара', description: 'Killer Tree, Mind Eater и Valmar Moth превращают финальный данж в более оригинально-чужой late-game bestiary слой.', enemyKeys: ['killerTree', 'mindEater', 'valmarMoth'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 280, experience: 92, skillCoins: 20, magicCoins: 16, medicinalHerb: 3, antidote: 2, panacea: 1, yomisElixir: 1 } },
@@ -1649,6 +1743,39 @@ const ADDITIONAL_WORLD_EVENTS_BY_LOCATION = {
   new_valmar_core: [
     { id: 'true-finale-core', label: 'Подготовить ядро финальной развязки', text: 'Финальный проход к ядру Нового Вальмара открыт. Дальше — уже только последняя развязка.', allowedBeatIds: ['true_finale'], requiresFlags: ['flag_new_valmar_chaos', 'flag_scene_new_valmar_core_judgement'], setFlags: ['flag_true_finale_core'], rewards: { experience: 36, skillCoins: 7, magicCoins: 7, setFlags: ['flag_true_finale_core'] } },
   ],
+  carbo_church: [
+    { id: 'carbo-elder-blessing', label: 'Получить благословение старушки', text: 'Пожилая прихожанка благословляет партию на дорогу и делится последним запасом семян.', rewards: { experience: 8, skillCoins: 2, magicCoins: 2, seedOfLife: 1 } },
+  ],
+  carbo_village: [
+    { id: 'carbo-herb-garden', label: 'Собрать травы у забора', text: 'За деревенским забором растут дикие лечебные травы — редкая удача для такого места.', rewards: { medicinalHerb: 1, poffNut: 1 } },
+  ],
+  agear_town: [
+    { id: 'agear-poff-stranger', label: 'Взять орех у странника на руинах', text: 'Странник у разрушенного дома молча протягивает орех Poff и кивает в сторону пещеры.', rewards: { poffNut: 1 } },
+  ],
+  liligue_city: [
+    { id: 'liligue-bomb-trader', label: 'Поторговаться с инженером-взрывником', text: 'Инженер Лилига продаёт «настоящую могейскую взрывчатку» по цене дружбы.', rewards: { mogayBomb: 1, experience: 8 } },
+  ],
+  mirumu_village: [
+    { id: 'mirumu-seed-gift', label: 'Принять семя жизни от знахарки', text: 'Знахарка Мирумы отдаёт семя жизни: «Для того, кто идёт в разлом. Оно согреет лучше любой песни».', rewards: { seedOfLife: 1, experience: 10 } },
+  ],
+  st_heim_library: [
+    { id: 'stheim-lost-index', label: 'Найти «потерянный» индекс', text: 'Между страницами книги застрял индекс запретных текстов — и свиток алхимии, служивший закладкой.', rewards: { scrollOfAlheal: 1, magicCoins: 3 } },
+  ],
+  cyrum_port: [
+    { id: 'cyrum-firebomb-trade', label: 'Выменять бомбу у моряка', text: 'Моряк меняет пару огненных бомб на обещание «доложить, что творится под дворцом».', rewards: { firebomb: 1 } },
+  ],
+  nanan_store: [
+    { id: 'nanan-scroll-offer', label: 'Взять свиток урагана', text: 'Торговец Нанана вручает свиток урагана: «На краю мира такие вещи не продают. Их отдают тем, кто идёт в бурю».', rewards: { whirlwindScroll: 1, experience: 12 } },
+  ],
+  demons_law: [
+    { id: 'demons-law-crystal', label: 'Извлечь кристалл маны из консоли', text: 'Из треснувшей консоли древней системы можно вытащить кристалл чистой маны.', rewards: { manaCrystal: 1, magicCoins: 4 } },
+  ],
+  birthplace_of_the_gods: [
+    { id: 'birthplace-archive-seed', label: 'Ответить архиву и получить семя магии', text: 'Архив распознаёт исследователя и выдаёт семя магии из хранилища припасов.', rewards: { seedOfMagic: 1, magicCoins: 4 } },
+  ],
+  new_valmar: [
+    { id: 'new-valmar-nut-memory', label: 'Найти орех в живой стене', text: 'В складке живой стены застрял орех сочувствия — кто-то прятал его здесь, чтобы вернуться.', rewards: { sympathyNut: 1, experience: 10 } },
+  ],
 };
 
 function encounterTemplateIdByLabel(label) {
@@ -1793,6 +1920,7 @@ function normalizeCampaignRun(run) {
     growthUnlockIds: Array.isArray(run?.growthUnlockIds) ? [...run.growthUnlockIds] : [],
     activeLocationSceneId: run?.activeLocationSceneId ?? null,
     seenLocationSceneIds: Array.isArray(run?.seenLocationSceneIds) ? [...run.seenLocationSceneIds] : [],
+    seenNpcDialogueIds: Array.isArray(run?.seenNpcDialogueIds) ? [...run.seenNpcDialogueIds] : [],
     roster: cloneCampaignRoster(run?.roster),
     equipmentLoadout: cloneCampaignEquipmentLoadout(run?.equipmentLoadout),
     checkpointInventory: createBaseInventory({
@@ -2621,6 +2749,7 @@ function renderTabs() {
   const campaignActive = state.activeTab === 'campaign';
   const debugActive = state.activeTab === 'debug';
   const compareActive = state.activeTab === 'compare';
+  const parityActive = state.activeTab === 'parity';
 
   elements.menuScreen.hidden = state.appScreen !== 'menu';
   elements.appScreen.hidden = state.appScreen !== 'app';
@@ -2629,11 +2758,13 @@ function renderTabs() {
   elements.campaignSection.hidden = !campaignActive;
   elements.debugSection.hidden = !debugActive;
   elements.compareSection.hidden = !compareActive;
+  elements.paritySection.hidden = !parityActive;
 
   elements.tabPlay.dataset.active = String(playActive);
   elements.tabCampaign.dataset.active = String(campaignActive);
   elements.tabDebug.dataset.active = String(debugActive);
   elements.tabCompare.dataset.active = String(compareActive);
+  elements.tabParity.dataset.active = String(parityActive);
 }
 
 function toCanvasPoint(point) {
@@ -4447,7 +4578,7 @@ function drawCampaignSceneCanvas() {
   context.textAlign = 'left';
   context.fillStyle = '#93c5fd';
   context.font = '12px system-ui';
-  context.fillText(state.campaignRun.phase === 'setpiece' ? 'Bespoke setpiece' : state.campaignRun.phase === 'location-scene' ? 'Location scene' : page?.kind === 'dialogue' ? 'Dialogue scene' : 'Story scene', 76, 78);
+  context.fillText(state.campaignRun.phase === 'setpiece' ? 'Bespoke setpiece' : state.campaignRun.phase === 'location-scene' ? 'Location scene' : state.campaignRun.phase === 'npc-dialogue' ? 'NPC dialogue' : page?.kind === 'dialogue' ? 'Dialogue scene' : 'Story scene', 76, 78);
 
   context.fillStyle = '#f8fafc';
   context.font = 'bold 28px system-ui';
@@ -4603,10 +4734,12 @@ function renderCommandPanel() {
       button.className = 'action-button';
       button.textContent = describeAction(action);
 
-      const hint = document.createElement('small');
-      hint.textContent = actionHint(action);
-      button.appendChild(document.createElement('br'));
-      button.appendChild(hint);
+      if (state.settings.showCommandHints) {
+        const hint = document.createElement('small');
+        hint.textContent = actionHint(action);
+        button.appendChild(document.createElement('br'));
+        button.appendChild(hint);
+      }
 
       button.addEventListener('click', () => {
         const accepted = queueManualAction(state.battle, awaiting.fighterId, action);
@@ -4861,6 +4994,213 @@ function renderGraphsPanel() {
     : `Actions considered: ${filtered.length}. Run balance snapshot or debug winrate for metrics.`;
 }
 
+function renderMenuParityPanel() {
+  if (!elements.mpOutput) {
+    return;
+  }
+
+  for (const screen of MP_SCREENS) {
+    const button = elements[screen.button];
+    if (button) {
+      button.className = state.menuParityScreen === screen.key ? '' : 'secondary';
+    }
+  }
+
+  elements.mpImages.innerHTML = '';
+  switch (state.menuParityScreen) {
+    case 'skills':
+      renderMpSkillsScreen();
+      break;
+    case 'eggs':
+      renderMpEggsScreen();
+      break;
+    case 'items':
+      renderMpItemsScreen();
+      break;
+    case 'bestiary':
+      renderMpBestiaryScreen();
+      break;
+    case 'config':
+      renderMpConfigScreen();
+      break;
+    case 'status':
+    default:
+      renderMpStatusScreen();
+      break;
+  }
+}
+
+function mpPartyPortraitBlock(key) {
+  const preset = PRESETS[key];
+  const rosterEntry = state.campaignRun.roster[key] ?? null;
+  const hp = rosterEntry?.hp ?? preset.maxHp;
+  return `<div class="mp-entry"><img src="${unitArtPathForFighter(preset)}" alt="${preset.name}" width="48" height="48"/> <span>${preset.name} — HP ${hp}/${preset.maxHp}</span></div>`;
+}
+
+function renderMpStatusScreen() {
+  const lines = [
+    'Статус партии (original-like hero screen)',
+    `Уровень кампании: ${state.campaignRun.partyLevel} | EXP ${state.campaignRun.experience} | SC ${state.campaignRun.skillCoins} | MC ${state.campaignRun.magicCoins}`,
+    '',
+  ];
+  for (const key of CAMPAIGN_PLAYABLE_UNITS) {
+    const preset = buildCampaignPresetForKey(key);
+    const rosterEntry = state.campaignRun.roster[key] ?? null;
+    const loadout = state.campaignRun.equipmentLoadout?.[key] ?? {};
+    const weapon = EQUIPMENT_CATALOG.find((entry) => entry.id === loadout.weapon)?.label ?? '—';
+    const armor = EQUIPMENT_CATALOG.find((entry) => entry.id === loadout.armor)?.label ?? '—';
+    const accessory = EQUIPMENT_CATALOG.find((entry) => entry.id === loadout.accessory)?.label ?? '—';
+    lines.push(
+      `${preset.name} [${preset.role}]${rosterEntry?.available ? '' : ' (не в активной партии)'}`,
+      `  HP ${rosterEntry?.hp ?? preset.maxHp}/${preset.maxHp} | SP ${rosterEntry?.sp ?? preset.startSp}/${preset.maxSp} | MP ${rosterEntry?.mp ?? preset.startMp}/${preset.maxMp}`,
+      `  STR ${preset.str} VIT ${preset.vit} AGI ${preset.agi} SPD ${preset.spd} MAG ${preset.mag} MEN ${preset.men}`,
+      `  Оружие: ${weapon} | Броня: ${armor} | Аксессуар: ${accessory}`,
+      '',
+    );
+  }
+  elements.mpOutput.textContent = lines.join('\n');
+  elements.mpImages.innerHTML = CAMPAIGN_PLAYABLE_UNITS.map(mpPartyPortraitBlock).join('');
+}
+
+function renderMpSkillsScreen() {
+  const lines = [
+    'Навыки и магия (skill screen)',
+    'Полный список действий героев из ACTION_LIBRARY, сгруппированный как в оригинальных меню.',
+    '',
+  ];
+  for (const key of CAMPAIGN_PLAYABLE_UNITS) {
+    const preset = PRESETS[key];
+    const groups = groupedActionDefinitions(loadoutActionIds(preset.loadout));
+    lines.push(`— ${preset.name} —`);
+    if (groups.length === 0) {
+      lines.push('  (нет закреплённых действий)');
+    }
+    for (const group of groups) {
+      lines.push(`  ${group.label}:`);
+      for (const definition of group.definitions) {
+        const cost = [];
+        if (definition.costSp) cost.push(`${definition.costSp} SP`);
+        if (definition.costMp) cost.push(`${definition.costMp} MP`);
+        const costText = cost.length ? ` [${cost.join(', ')}]` : '';
+        lines.push(`    - ${definition.label}${costText} — ${definition.targeting}`);
+      }
+    }
+    lines.push('');
+  }
+  elements.mpOutput.textContent = lines.join('\n');
+}
+
+function renderMpEggsScreen() {
+  const lines = [
+    'Mana Eggs (magic egg screen)',
+    'Каноничные яйца маны Grandia II: школа, уровни изучения и стоимость прокачки в MC.',
+    '',
+  ];
+  for (const egg of MANA_EGGS) {
+    lines.push(`◆ ${egg.label} — ${egg.type}`);
+    lines.push(`  Элементы: ${egg.elements.join(' / ')}`);
+    lines.push(`  Где получить: ${egg.location}`);
+    lines.push(`  ${egg.description}`);
+    for (const spell of egg.spells) {
+      const mc = spell.mcCost.join(' / ');
+      lines.push(`    - ${spell.label} (уровень яйца ${spell.level}, MC: ${mc})`);
+    }
+    lines.push('');
+  }
+  elements.mpOutput.textContent = lines.join('\n');
+}
+
+function renderMpItemsScreen() {
+  const lines = [
+    'Предметы и снаряжение (item / bag / equipment screen)',
+    '',
+    `Инвентарь партии сейчас: ${campaignInventoryString()}`,
+    `Золото: ${campaignGoldString()}`,
+    '',
+    '— Каталог расходников —',
+    ...ITEM_CATALOG.map((item) => `  ${item.label}: ${item.description}`),
+    '',
+    '— Каталог магазинов —',
+    ...SHOP_CATALOG.map((entry) => `  ${entry.label} (${entry.price} G): ${entry.description}`),
+    '',
+    '— Каталог экипировки —',
+    ...EQUIPMENT_CATALOG.map((entry) => `  ${entry.label} [${entry.slot}] → ${PRESETS[entry.targetKey]?.name ?? 'party'}: ${entry.description}`),
+    '',
+    '— Текущие слоты партии —',
+    ...campaignEquipmentLoadoutLines(),
+  ];
+  elements.mpOutput.textContent = lines.join('\n');
+}
+
+function renderMpBestiaryScreen() {
+  const enemyEntries = Object.entries(PRESETS).filter(([, preset]) => preset.team === 'enemies');
+  const groups = buildBestiaryGroupSnapshot(PRESETS);
+  const lines = [
+    'Энциклопедия врагов (bestiary encyclopedia)',
+    `Всего enemy presets: ${enemyEntries.length} | групп: ${groups.length}`,
+    'Сортировка по регионам оригинала; у каждого врага — роли, статы, сопротивления и drop table.',
+    '',
+  ];
+  const imageBlocks = [];
+  for (const group of groups) {
+    lines.push(`### ${group.label} (${group.resolvedEnemies.length}/${group.enemyKeys.length})`);
+    lines.push(`  Локации: ${group.locations.join(', ')}`);
+    for (const { key, preset } of group.resolvedEnemies) {
+      const drops = dropEntriesForPresetKey(key);
+      const dropText = drops.length
+        ? drops.map((drop) => {
+          const name = drop.equipment
+            ? EQUIPMENT_CATALOG.find((entry) => entry.id === drop.equipment)?.label ?? drop.equipment
+            : ITEM_CATALOG.find((entry) => entry.key === drop.key)?.label ?? drop.key;
+          return `${name} (${Math.round((drop.chance ?? 0) * 100)}%)`;
+        }).join(', ')
+        : '—';
+      lines.push(
+        `  • ${preset.name} — роль: ${preset.role}`,
+        `    HP ${preset.maxHp} | STR ${preset.str} VIT ${preset.vit} AGI ${preset.agi} SPD ${preset.spd} MAG ${preset.mag} MEN ${preset.men}`,
+        `    Сопр.: fire ${preset.resistances?.fire ?? 1} / lightning ${preset.resistances?.lightning ?? 1}`,
+        `    Drops: ${dropText}`,
+      );
+      imageBlocks.push(`<div class="mp-entry"><img src="${unitArtPathForFighter(preset)}" alt="${preset.name}" width="48" height="48"/> <span>${preset.name} [${preset.role}]</span></div>`);
+    }
+    lines.push('');
+  }
+  elements.mpOutput.textContent = lines.join('\n');
+  elements.mpImages.innerHTML = imageBlocks.join('');
+}
+
+function renderMpConfigScreen() {
+  elements.mpConfigAi.value = state.settings.defaultPlayEnemyAi;
+  elements.mpConfigTheme.value = state.settings.defaultBattlefieldTheme;
+  elements.mpConfigHints.checked = Boolean(state.settings.showCommandHints);
+  elements.mpConfigSpeed.value = String(state.settings.replaySpeedMs);
+  elements.mpOutput.textContent = [
+    'Настройки (options screen)',
+    'Эти значения сохраняются в localStorage и применяются к игре.',
+    '',
+    `AI врага по умолчанию: ${state.settings.defaultPlayEnemyAi}`,
+    `Поле боя по умолчанию: ${state.settings.defaultBattlefieldTheme}`,
+    `Подсказки в командном меню: ${state.settings.showCommandHints ? 'вкл' : 'выкл'}`,
+    `Скорость replay по умолчанию: ${state.settings.replaySpeedMs} мс`,
+  ].join('\n');
+}
+
+function saveMenuParityConfig() {
+  state.settings.defaultPlayEnemyAi = elements.mpConfigAi.value;
+  state.settings.defaultBattlefieldTheme = elements.mpConfigTheme.value;
+  state.settings.showCommandHints = Boolean(elements.mpConfigHints.checked);
+  state.settings.replaySpeedMs = Number(elements.mpConfigSpeed.value) || 550;
+  savePersistedSettings();
+  state.playEnemyAi = state.settings.defaultPlayEnemyAi;
+  state.battlefieldTheme = state.settings.defaultBattlefieldTheme;
+  if (elements.replaySpeed) {
+    elements.replaySpeed.value = String(state.settings.replaySpeedMs);
+  }
+  writeStateToForms();
+  state.debugOutput = 'Настройки сохранены в localStorage.';
+  render();
+}
+
 function renderStatusPanels() {
   if (isCampaignNarrativeMode()) {
     const beat = getCurrentCampaignBeat();
@@ -5006,6 +5346,7 @@ function render() {
   renderDecisionStatsPanel();
   renderGraphsPanel();
   renderComparePanel();
+  renderMenuParityPanel();
 }
 
 function stepBattle() {
@@ -5401,6 +5742,55 @@ function resolveLocationSceneCompletion() {
     openCurrentLocationScene(followUpScene);
     return;
   }
+  saveCampaignStateToLocalStorage();
+}
+
+function availableNpcDialoguesForCurrentLocation() {
+  const locationId = state.campaignRun.currentLocationId;
+  const beatId = state.campaignRun.currentBeatId ?? null;
+  return npcDialoguesForLocation(locationId, beatId)
+    .filter((entry) => !state.campaignRun.seenNpcDialogueIds?.includes(entry.id));
+}
+
+function activeNpcDialogue() {
+  if (!state.campaignRun.activeNpcDialogueId) {
+    return null;
+  }
+  return NPC_DIALOGUES.find((entry) => entry.id === state.campaignRun.activeNpcDialogueId) ?? null;
+}
+
+function openNpcDialogue(dialogueId) {
+  const dialogue = NPC_DIALOGUES.find((entry) => entry.id === dialogueId) ?? null;
+  if (!dialogue) {
+    return false;
+  }
+  state.campaignRun.activeNpcDialogueId = dialogue.id;
+  state.campaignRun.phase = 'npc-dialogue';
+  state.campaignRun.sceneIndex = 0;
+  state.campaignRun.lastResultSummary = `NPC dialogue: ${dialogue.label}`;
+  pushCampaignJournalEntry(`NPC-разговор: ${dialogue.label}.`);
+  saveCampaignStateToLocalStorage();
+  return true;
+}
+
+function resolveNpcDialogueCompletion() {
+  const dialogue = activeNpcDialogue();
+  if (!dialogue) {
+    return;
+  }
+  if (!state.campaignRun.seenNpcDialogueIds.includes(dialogue.id)) {
+    state.campaignRun.seenNpcDialogueIds.push(dialogue.id);
+  }
+  if (dialogue.setFlags?.length) {
+    applyQuestFlags(dialogue.setFlags);
+  }
+  if (dialogue.rewards) {
+    grantCampaignRewards(dialogue.rewards, { sourceLabel: `NPC: ${dialogue.label}` });
+  }
+  state.campaignRun.activeNpcDialogueId = null;
+  state.campaignRun.phase = 'travel';
+  state.campaignRun.sceneIndex = 0;
+  state.campaignRun.travelMessage = `${dialogue.label}: разговор завершён.`;
   saveCampaignStateToLocalStorage();
 }
 
@@ -5935,6 +6325,7 @@ function currentCampaignTravelPage() {
   const objectiveLocation = getWorldLocation(binding?.objectiveLocationId ?? null);
   const treasures = availableTreasuresForCurrentLocation();
   const encounters = availableTravelEncountersForCurrentLocation();
+  const npcDialogues = availableNpcDialoguesForCurrentLocation();
   const missingFlags = missingObjectiveFlagsForCurrentBeat();
   const nextChainStep = nextQuestChainStepForBeat(beat?.id ?? null);
   const pendingLocationScene = nextLocationSceneForCurrentContext();
@@ -5958,6 +6349,7 @@ function currentCampaignTravelPage() {
       nextChainStep ? `Ближайший конкретный шаг: ${nextChainStep.label} @ ${getWorldLocation(nextChainStep.locationId)?.title ?? nextChainStep.locationId}.` : 'Текущая цепочка уже почти закрыта.',
       treasures.length > 0 ? `В этой локации ещё осталось сундуков: ${treasures.length}.` : 'Сундуки этой локации уже вскрыты.',
       encounters.length > 0 ? `Здесь ещё бродят монстры: ${encounters.map((entry) => entry.label).join(', ')}.` : 'Бродячие encounter-ы этой локации уже очищены.',
+      npcDialogues.length > 0 ? `Есть невыслушанные NPC-разговоры: ${npcDialogues.map((entry) => entry.label).join(', ')}.` : 'Все доступные NPC-разговоры этой локации уже состоялись.',
       missingFlags.length > 0 ? `Чтобы продвинуть сюжет, ещё нужны флаги: ${missingFlags.map(questFlagLabel).join(', ')}.` : 'Все ключевые флаги текущего шага уже собраны.',
       pendingLocationScene
         ? `Прежде чем двигаться к бою или setpiece, здесь нужно отыграть локальную сцену: ${pendingLocationScene.title}. Это поддерживает оригинальный room-by-room pacing Grandia II.`
@@ -6065,6 +6457,10 @@ function currentCampaignScenePages() {
     case 'location-scene': {
       const scene = activeLocationScene();
       return scene?.pages ?? [];
+    }
+    case 'npc-dialogue': {
+      const dialogue = activeNpcDialogue();
+      return dialogue?.pages ?? [];
     }
     case 'travel':
       return [currentCampaignTravelPage()];
@@ -6331,6 +6727,8 @@ function advanceCampaignScene() {
     enterCampaignTravelPhase();
   } else if (state.campaignRun.phase === 'location-scene') {
     resolveLocationSceneCompletion();
+  } else if (state.campaignRun.phase === 'npc-dialogue') {
+    resolveNpcDialogueCompletion();
   } else if (state.campaignRun.phase === 'overworld') {
     completeCampaignOverworldTravel();
   } else if (state.campaignRun.phase === 'victory' || state.campaignRun.phase === 'placeholder-result') {
@@ -6842,19 +7240,23 @@ function renderCampaignEventsPanel() {
   const available = availableWorldEventsForCurrentLocation();
   const treasures = availableTreasuresForCurrentLocation();
   const encounters = availableTravelEncountersForCurrentLocation();
+  const npcDialogues = availableNpcDialoguesForCurrentLocation();
   const seen = state.campaignRun.seenWorldEventIds.slice(-12);
   const opened = (state.campaignRun.openedTreasureIds ?? []).slice(-12);
   const cleared = (state.campaignRun.clearedTravelEncounterIds ?? []).slice(-12);
+  const seenDialogues = (state.campaignRun.seenNpcDialogueIds ?? []).slice(-12);
   elements.campaignEventsSummary.textContent = [
     `Локация: ${location?.title ?? 'n/a'}`,
     `Осталось world events здесь: ${available.length}`,
     `Неоткрытых сундуков: ${treasures.length}`,
     `Неочищенных wandering encounters: ${encounters.length}`,
+    `Невыслушанных NPC-диалогов: ${npcDialogues.length}`,
     '',
     'Доступно сейчас:',
     ...(available.length ? available.map((entry) => `- EVENT: ${entry.label}`) : ['- EVENT: none']),
     ...(treasures.length ? treasures.map((entry) => `- TREASURE: ${entry.label}`) : ['- TREASURE: none']),
     ...(encounters.length ? encounters.map((entry) => `- ENCOUNTER: ${entry.label}`) : ['- ENCOUNTER: none']),
+    ...(npcDialogues.length ? npcDialogues.map((entry) => `- DIALOGUE: ${entry.label}`) : ['- DIALOGUE: none']),
     '',
     'Уже просмотрено в забеге:',
     ...(seen.length ? seen.map((entry) => `- ${entry}`) : ['- none']),
@@ -6864,6 +7266,9 @@ function renderCampaignEventsPanel() {
     '',
     'Очищенные encounter-ы:',
     ...(cleared.length ? cleared.map((entry) => `- ${entry}`) : ['- none']),
+    '',
+    'Прослушанные NPC-диалоги:',
+    ...(seenDialogues.length ? seenDialogues.map((entry) => `- ${entry}`) : ['- none']),
   ].join('\n');
 }
 
@@ -7369,6 +7774,10 @@ function renderCampaignTravelControls() {
     makeActionButton(event.label, () => triggerWorldEvent(event.id), 'сюжет / NPC');
   }
 
+  for (const dialogue of availableNpcDialoguesForCurrentLocation()) {
+    makeActionButton(`Поговорить: ${dialogue.label}`, () => openNpcDialogue(dialogue.id), 'NPC-диалог');
+  }
+
   const exits = campaignVisibleExitsForBeat(location.id, beat.id);
   exits.forEach((exitLocation) => {
     const button = document.createElement('button');
@@ -7632,7 +8041,7 @@ function renderCampaignPanel() {
   renderCampaignOriginalFlowPanel();
 
   const currentAction = effectiveRunPage?.action ?? null;
-  elements.campaignNextScene.hidden = !campaignRunActive() || !(state.campaignRun.phase === 'opening' || state.campaignRun.phase === 'intro' || state.campaignRun.phase === 'location-scene' || state.campaignRun.phase === 'overworld' || state.campaignRun.phase === 'setpiece' || state.campaignRun.phase === 'victory' || state.campaignRun.phase === 'placeholder-result' || state.campaignRun.phase === 'finished');
+  elements.campaignNextScene.hidden = !campaignRunActive() || !(state.campaignRun.phase === 'opening' || state.campaignRun.phase === 'intro' || state.campaignRun.phase === 'location-scene' || state.campaignRun.phase === 'npc-dialogue' || state.campaignRun.phase === 'overworld' || state.campaignRun.phase === 'setpiece' || state.campaignRun.phase === 'victory' || state.campaignRun.phase === 'placeholder-result' || state.campaignRun.phase === 'finished');
   elements.campaignNextScene.disabled = !campaignRunActive() || currentAction === 'launch-battle' || currentAction === 'launch-setpiece' || currentAction === 'complete-placeholder' || currentAction === 'retry-battle' || currentAction === 'restart-campaign' || currentAction === 'travel';
   elements.campaignLaunchBattle.hidden = !(campaignRunActive() && (currentAction === 'launch-battle' || currentAction === 'launch-setpiece'));
   elements.campaignContinueAfterBattle.hidden = !(campaignRunActive() && ['complete-placeholder', 'next-beat', 'finish-campaign', 'restart-campaign', 'return-travel'].includes(currentAction));
@@ -8595,6 +9004,33 @@ function bindEvents() {
   elements.tabCampaign.addEventListener('click', () => setActiveTab('campaign'));
   elements.tabDebug.addEventListener('click', () => setActiveTab('debug'));
   elements.tabCompare.addEventListener('click', () => setActiveTab('compare'));
+  elements.tabParity.addEventListener('click', () => setActiveTab('parity'));
+  elements.menuOpenParity.addEventListener('click', () => openWorkspace('parity'));
+  elements.mpStatus.addEventListener('click', () => {
+    state.menuParityScreen = 'status';
+    render();
+  });
+  elements.mpSkills.addEventListener('click', () => {
+    state.menuParityScreen = 'skills';
+    render();
+  });
+  elements.mpEggs.addEventListener('click', () => {
+    state.menuParityScreen = 'eggs';
+    render();
+  });
+  elements.mpItems.addEventListener('click', () => {
+    state.menuParityScreen = 'items';
+    render();
+  });
+  elements.mpBestiary.addEventListener('click', () => {
+    state.menuParityScreen = 'bestiary';
+    render();
+  });
+  elements.mpConfig.addEventListener('click', () => {
+    state.menuParityScreen = 'config';
+    render();
+  });
+  elements.mpConfigSave.addEventListener('click', saveMenuParityConfig);
   elements.canvas.addEventListener('click', handleCanvasClick);
   elements.canvas.addEventListener('mousemove', handleCanvasPointerMove);
   elements.canvas.addEventListener('mouseleave', () => {
@@ -8790,6 +9226,11 @@ function bindEvents() {
 async function init() {
   preloadArtAssets();
   populateDecisionActionFilterOptions();
+  state.playEnemyAi = state.settings.defaultPlayEnemyAi ?? state.playEnemyAi;
+  state.battlefieldTheme = state.settings.defaultBattlefieldTheme ?? state.battlefieldTheme;
+  if (elements.replaySpeed) {
+    elements.replaySpeed.value = String(state.settings.replaySpeedMs ?? 550);
+  }
   writeStateToForms();
   bindEvents();
   resetToPlayBattle();
