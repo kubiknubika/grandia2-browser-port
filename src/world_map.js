@@ -114,6 +114,7 @@ export const SHOP_STOCK_BY_LOCATION = {
   agear_guard_tent: ['herb', 'antidote', 'wound_salve', 'move_blessing', 'purifying_herb', 'firebomb', 'field_pack'],
   liligue_store: ['herb', 'antidote', 'wound_salve', 'blueberry', 'lumir_flower', 'seed_of_life', 'restoration_pack'],
   mirumu_store: ['herb', 'antidote', 'eye_drops', 'magic_blessing', 'lumir_flower', 'paralysis_salve', 'field_pack'],
+  cyrum_store: ['herb', 'wound_salve', 'healing_herb', 'blueberry', 'lumir_flower', 'magic_blessing', 'panacea', 'healing_incense', 'mana_crystal', 'seed_pack', 'restoration_pack'],
   st_heim_store: ['herb', 'antidote', 'wound_salve', 'healing_herb', 'eye_drops', 'move_blessing', 'magic_blessing', 'panacea', 'scarlet_potion', 'restoration_pack'],
   cyrum_store: ['herb', 'wound_salve', 'healing_herb', 'blueberry', 'lumir_flower', 'magic_blessing', 'panacea', 'healing_incense', 'mana_crystal', 'seed_pack', 'restoration_pack'],
   garlan_store: ['wound_salve', 'healing_herb', 'eye_drops', 'move_blessing', 'blueberry', 'seed_of_psyche', 'field_pack', 'restoration_pack'],
@@ -206,17 +207,25 @@ export const EQUIPMENT_CATALOG = [
   { id: 'millenia-thor-stone', label: 'Thor Stone', slot: 'accessory', targetKey: 'millenia', price: 0, bonuses: { mag: 5, maxMp: 10 }, description: 'Камень Тора: всплеск магической силы.' },
   { id: 'elena-pretty-ring', label: 'Pretty Ring', slot: 'accessory', targetKey: 'elena', price: 0, bonuses: { maxMp: 8, men: 2 }, description: 'Красивое кольцо с зеркальным блеском.' },
   { id: 'roan-reflection-ring', label: 'Reflection Ring', slot: 'accessory', targetKey: 'roan', price: 0, bonuses: { men: 3, maxMp: 6 }, description: 'Кольцо отражения из глубин Лилига.' },
+  { id: 'party-sleep-charm', label: 'Sleep Charm', slot: 'accessory', targetKey: null, price: 250, bonuses: { resistSleep: 0.5, men: 1 }, description: 'Амулет сна: устойчивость к sleep.' },
+  { id: 'party-poison-charm', label: 'Poison Charm', slot: 'accessory', targetKey: null, price: 250, bonuses: { resistPoison: 0.5, men: 1 }, description: 'Амулет яда: устойчивость к poison.' },
+  { id: 'party-confusion-charm', label: 'Confusion Charm', slot: 'accessory', targetKey: null, price: 250, bonuses: { resistConfusion: 0.5, men: 1 }, description: 'Амулет смятения: устойчивость к confusion.' },
+  { id: 'party-paralysis-charm', label: 'Paralysis Charm', slot: 'accessory', targetKey: null, price: 250, bonuses: { resistParalysis: 0.5, men: 1 }, description: 'Амулет паралича: устойчивость к paralysis.' },
+  { id: 'party-moveblock-charm', label: 'Move Block Charm', slot: 'accessory', targetKey: null, price: 400, bonuses: { resistMoveBlock: 0.5, vit: 1 }, description: 'Амулет блока движения: устойчивость к move-block.' },
+  { id: 'party-magicblock-charm', label: 'Magic Block Charm', slot: 'accessory', targetKey: null, price: 400, bonuses: { resistMagicBlock: 0.5, men: 2 }, description: 'Амулет блока магии: устойчивость к magic-block.' },
+  { id: 'party-healing-ring', label: 'Healing Ring', slot: 'accessory', targetKey: null, price: 500, bonuses: { maxHp: 24, men: 2 }, description: 'Кольцо исцеления: постоянная регенерация духа.' },
+  { id: 'party-relief-tag', label: 'Relief Tag', slot: 'accessory', targetKey: null, price: 4000, bonuses: { resistPoison: 0.7, resistSleep: 0.7, men: 3 }, description: 'Билет облегчения: сильная устойчивость к яду и сну.' },
 ];
 
 export const EQUIPMENT_STOCK_BY_LOCATION = {
   carbo_store: ['ryudo-hunter-blade', 'elena-songstaff', 'ryudo-falx', 'party-field-rations'],
   agear_guard_tent: ['ryudo-geohound-mail', 'ryudo-shamshir', 'ryudo-army-saber', 'party-bomb-rations', 'ryudo-viper-blade'],
   liligue_store: ['elena-vestment', 'mareg-horn-bracer', 'elena-prayer-bangle', 'elena-quilted-silk', 'roan-chain-mail', 'party-field-rations'],
-  mirumu_store: ['roan-court-saber', 'roan-royal-cloak', 'roan-signet', 'elena-guardian-robe', 'party-field-rations'],
-  st_heim_store: ['elena-holy-mace', 'elena-papal-dress', 'roan-ceremonial-sword', 'roan-snow-cloak', 'tio-signal-boots', 'ryudo-claymore', 'roan-shogun-brace', 'party-late-rations'],
-  cyrum_store: ['tio-aegis-frame', 'tio-whisper-core', 'tio-logic-shell', 'tio-star-module', 'mareg-warhide', 'mareg-beast-charm', 'mareg-plate-mail', 'tio-magical-brace', 'party-late-rations'],
+  mirumu_store: ['roan-court-saber', 'roan-royal-cloak', 'roan-signet', 'elena-guardian-robe', 'party-sleep-charm', 'party-poison-charm', 'party-field-rations'],
+  st_heim_store: ['elena-holy-mace', 'elena-papal-dress', 'roan-ceremonial-sword', 'roan-snow-cloak', 'tio-signal-boots', 'ryudo-claymore', 'roan-shogun-brace', 'party-sleep-charm', 'party-poison-charm', 'party-confusion-charm', 'party-paralysis-charm', 'party-moveblock-charm', 'party-magicblock-charm', 'party-late-rations'],
+  cyrum_store: ['tio-aegis-frame', 'tio-whisper-core', 'tio-logic-shell', 'tio-star-module', 'mareg-warhide', 'mareg-beast-charm', 'mareg-plate-mail', 'tio-magical-brace', 'party-healing-ring', 'party-late-rations'],
   garlan_store: ['ryudo-rift-mail', 'ryudo-pirates-ring', 'mareg-earth-fang', 'mareg-clan-hide', 'ryudo-samurai-blade', 'ryudo-fine-broadsword', 'mareg-swordfish-armor', 'party-seed-rations', 'party-late-rations'],
-  nanan_store: ['millenia-chaos-heels', 'millenia-feather-coat', 'millenia-valmar-silk', 'millenia-moon-brooch', 'elena-pixie-robe', 'party-late-rations'],
+  nanan_store: ['millenia-chaos-heels', 'millenia-feather-coat', 'millenia-valmar-silk', 'millenia-moon-brooch', 'elena-pixie-robe', 'party-relief-tag', 'party-late-rations'],
 };
 
 export const LOCATION_SCENE_LAYOUTS = {

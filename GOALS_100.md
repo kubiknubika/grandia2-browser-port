@@ -17,8 +17,8 @@
 
 ## 1. Бестиарий — 51 → 67+ врагов, полный канонический ростер
 
-Текущее: 51 preset, из них **35/51** канонических обычных врагов.
-Цель: **51/51** канонических обычных + **6–7** недостающих канонических боссов.
+Текущее: **74 preset — 51/51 канонических обычных врагов и 7 недостающих боссов закрыты (✅)**.
+Осталось: только полировка статов/дропов отдельных врагов под канон.
 
 | Враг (канон) | Где появляется в оригинале | Оценка |
 |---|---|---|
@@ -37,15 +37,14 @@
 | Emerald Bird | Birthplace of the Gods | S |
 | Flame Toad | Ceceile Reef, Grail Mt, Ghoss West | S |
 | Snow Leopard | Raul Hills Special Stage | S |
-| Venomous Larva | Valmar's Body | S |
+| Venomous Larva | Valmar's Body | ✅ |
 
-**Недостающие боссы (канон):** Eye of Valmar (Aira's Space), Crimson Tails (Ceceile Reef),
-Naga Queens (Demon's Law), Dual Fists (Birthplace), Birthplace Guardians, Egg Guardian
-(New Valmar), финальный Valmar (сейчас stand-in `valmarCoreHerald`) — ~6–7, по M каждый.
+**Боссы: ✅** Eye of Valmar, Crimson Tails, Naga Queens, Dual Fists, Birthplace Guardians,
+Egg Guardian и полноценный Final Valmar добавлены как presets с фазами/призывами +
+шаблоны и сценарии в песочнице (seeds 6767–7373).
 
-DoD: все враги в `PRESETS` с ролями/статами/дропами (по канону), внесены в bestiary-группы,
-подключены к wandering encounters, арт-портреты сгенерированы, `BESTIARY_AUDIT.md` = 100%.
-Приоритет: **P0**.
+DoD: **выполнено** — все 51/51 канонических обычных + 7 боссов в `PRESETS`, bestiary-группы,
+travel encounters, портреты (80 SVG), `BESTIARY_AUDIT.md` = 100% канон-покрытие.
 
 ---
 
@@ -76,10 +75,9 @@ DoD: новые предметы работают в бою/магазинах/�
 
 ## 3. Магия: недостающие заклинания + уровни магии/приёмов + экипировка Mana Eggs
 
-### 3.1 Недостающие канонические заклинания (7 шт., S–M)
-`BOOM!` (Explosion, some), `BA-BOOM!` (Explosion, all), `Meteor Strike` (Explosion, one),
-`GadZap` (Lightning, one), `Poizn` (Forest, poison AoE), `Craze` (Forest, confusion),
-`Halvah` (Forest, cure all status). После этого 42/42 канонических spell'а.
+### 3.1 Недостающие канонические заклинания — ✅ **42/42**
+`BOOM!`, `BA-BOOM!`, `Meteor Strike`, `GadZap`, `Poizn`, `Craze`, `Halvah` добавлены
+(+ `Paralysis Wave` для врагов). Все школы обновлены в mana_eggs.js.
 
 ### 3.2 Уровни магии и special moves (Lv 1–5) — M/L
 Сейчас приёмы/заклинания имеют фиксированную стоимость и силу. В оригинале:
@@ -99,7 +97,9 @@ Fairy — Raul Hills Special Stage, Dragon — Birthplace. Приоритет: *
 
 ---
 
-## 4. Статусы: добавить `confusion` и `paralysis` — M
+## 4. Статусы: `confusion` и `paralysis` — ✅
+`confusion` (случайная цель, включая союзников; снимается ударом), `paralysis` (50% пропуск хода).
+В движке, UI, AI-анализе, лечении (Halvah/Refresh/Panacea) и амулетах сопротивления.
 
 Сейчас в движке: `sleep`, `moveBlock`, `magicBlock`, `poison`.
 Канон добавляет: `confusion` (Craze — бьёт случайные цели/своих), `paralysis` (шанс пропуска хода).

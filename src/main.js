@@ -108,6 +108,13 @@ const UNIT_POSITIONS = {
   clawsValmar: { x: 730, y: 210 },
   heartValmar: { x: 730, y: 210 },
   zeraAvatar: { x: 730, y: 210 },
+  eyeOfValmar: { x: 730, y: 210 },
+  crimsonTails: { x: 730, y: 210 },
+  nagaQueens: { x: 730, y: 210 },
+  dualFists: { x: 730, y: 210 },
+  birthplaceGuardian: { x: 730, y: 210 },
+  eggGuardian: { x: 730, y: 210 },
+  finalValmar: { x: 730, y: 210 },
 };
 const STAT_FIELDS = ['maxHp', 'startSp', 'startMp', 'str', 'vit', 'agi', 'spd', 'mag', 'men'];
 
@@ -403,6 +410,48 @@ const ENCOUNTER_TEMPLATES = {
     players: ['ryudo', 'elena', 'millenia'],
     enemies: ['zeraAvatar'],
   },
+  eyeOfValmarBoss: {
+    label: 'Eye of Valmar',
+    description: 'Сюжетный босс Aira\'s Space: гравитационное око Вальмара.',
+    players: ['ryudo', 'elena', 'roan', 'mareg'],
+    enemies: ['eyeOfValmar'],
+  },
+  crimsonTailsBoss: {
+    label: 'Crimson Tails',
+    description: 'Двойной босс рифа Сесиль: две хвостовые сестры-охотницы.',
+    players: ['ryudo', 'elena', 'roan', 'mareg'],
+    enemies: ['crimsonTails'],
+  },
+  nagaQueensBoss: {
+    label: 'Naga Queens',
+    description: 'Королевы-наги из Demon\'s Law: молния, земля и ложная святость.',
+    players: ['ryudo', 'elena', 'mareg', 'tio'],
+    enemies: ['nagaQueens'],
+  },
+  dualFistsBoss: {
+    label: 'Dual Fists',
+    description: 'Суб-босс Birthplace: два кулака древнего стража.',
+    players: ['ryudo', 'elena', 'roan', 'tio'],
+    enemies: ['dualFists'],
+  },
+  birthplaceGuardianBoss: {
+    label: 'Birthplace Guardians',
+    description: 'Древние стражи Истока богов: пара архивных стражей.',
+    players: ['ryudo', 'elena', 'roan', 'tio'],
+    enemies: ['birthplaceGuardian', 'birthplaceGuardian'],
+  },
+  eggGuardianBoss: {
+    label: 'Egg Guardian',
+    description: 'Финальный страж Нового Вальмара с выводком битов.',
+    players: ['ryudo', 'elena', 'millenia'],
+    enemies: ['eggGuardian'],
+  },
+  finalValmarBoss: {
+    label: 'Final Valmar',
+    description: 'Полноценный финальный Вальмар: три фазы и ложные формы.',
+    players: ['ryudo', 'elena', 'millenia'],
+    enemies: ['finalValmar'],
+  },
 };
 
 const SCENARIO_PRESETS = {
@@ -653,6 +702,132 @@ const SCENARIO_PRESETS = {
       zeraAvatar: { maxHp: 880, startSp: 64, startMp: 0, str: 36, vit: 30, agi: 27, spd: 22, mag: 32, men: 24 },
     },
   },
+  'eye-of-valmar': {
+    label: 'Eye of Valmar',
+    description: 'Гравитационное око Вальмара из Aira\'s Space.',
+    encounterTemplate: 'eyeOfValmarBoss',
+    battlefieldTheme: 'cavern',
+    playEnemyAi: 'veteran',
+    debugPlayerAi: 'veteran',
+    debugEnemyAi: 'veteran',
+    trainingStyle: 'control',
+    battleSeed: 6767,
+    debugTrainingSeed: 6767,
+    debugEvalCount: 140,
+    enabledUnits: { tio: false, millenia: false, mottledSpider: false, guardian: false },
+    unitOverrides: {
+      ...createDefaultUnitFormState(),
+      eyeOfValmar: { maxHp: 1400, startSp: 52, startMp: 34, str: 28, vit: 26, agi: 26, spd: 24, mag: 34, men: 26 },
+    },
+  },
+  'crimson-tails': {
+    label: 'Crimson Tails',
+    description: 'Двойной босс рифа Сесиль.',
+    encounterTemplate: 'crimsonTailsBoss',
+    battlefieldTheme: 'forest',
+    playEnemyAi: 'veteran',
+    debugPlayerAi: 'veteran',
+    debugEnemyAi: 'veteran',
+    trainingStyle: 'control',
+    battleSeed: 6868,
+    debugTrainingSeed: 6868,
+    debugEvalCount: 140,
+    enabledUnits: { tio: false, millenia: false, mottledSpider: false, guardian: false },
+    unitOverrides: {
+      ...createDefaultUnitFormState(),
+      crimsonTails: { maxHp: 1300, startSp: 50, startMp: 0, str: 42, vit: 26, agi: 30, spd: 30, mag: 12, men: 18 },
+    },
+  },
+  'naga-queens': {
+    label: 'Naga Queens',
+    description: 'Королевы-наги из Demon\'s Law.',
+    encounterTemplate: 'nagaQueensBoss',
+    battlefieldTheme: 'ruins',
+    playEnemyAi: 'veteran',
+    debugPlayerAi: 'veteran',
+    debugEnemyAi: 'veteran',
+    trainingStyle: 'control',
+    battleSeed: 6969,
+    debugTrainingSeed: 6969,
+    debugEvalCount: 160,
+    enabledUnits: { tio: true, millenia: false, mottledSpider: false, guardian: false },
+    unitOverrides: {
+      ...createDefaultUnitFormState(),
+      nagaQueens: { maxHp: 1700, startSp: 58, startMp: 34, str: 38, vit: 30, agi: 26, spd: 24, mag: 34, men: 28 },
+    },
+  },
+  'dual-fists': {
+    label: 'Dual Fists',
+    description: 'Два кулака древнего стража Birthplace.',
+    encounterTemplate: 'dualFistsBoss',
+    battlefieldTheme: 'ruins',
+    playEnemyAi: 'veteran',
+    debugPlayerAi: 'veteran',
+    debugEnemyAi: 'veteran',
+    trainingStyle: 'control',
+    battleSeed: 7070,
+    debugTrainingSeed: 7070,
+    debugEvalCount: 140,
+    enabledUnits: { tio: true, millenia: false, mottledSpider: false, guardian: false },
+    unitOverrides: {
+      ...createDefaultUnitFormState(),
+      dualFists: { maxHp: 1600, startSp: 56, startMp: 0, str: 46, vit: 30, agi: 28, spd: 26, mag: 10, men: 20 },
+    },
+  },
+  'birthplace-guardians': {
+    label: 'Birthplace Guardians',
+    description: 'Пара архивных стражей Истока богов.',
+    encounterTemplate: 'birthplaceGuardianBoss',
+    battlefieldTheme: 'ruins',
+    playEnemyAi: 'veteran',
+    debugPlayerAi: 'veteran',
+    debugEnemyAi: 'veteran',
+    trainingStyle: 'control',
+    battleSeed: 7171,
+    debugTrainingSeed: 7171,
+    debugEvalCount: 140,
+    enabledUnits: { tio: true, millenia: false, mottledSpider: false, guardian: false },
+    unitOverrides: {
+      ...createDefaultUnitFormState(),
+      birthplaceGuardian: { maxHp: 1500, startSp: 54, startMp: 28, str: 40, vit: 32, agi: 24, spd: 22, mag: 30, men: 28 },
+    },
+  },
+  'egg-guardian': {
+    label: 'Egg Guardian',
+    description: 'Финальный страж Нового Вальмара.',
+    encounterTemplate: 'eggGuardianBoss',
+    battlefieldTheme: 'volcano',
+    playEnemyAi: 'veteran',
+    debugPlayerAi: 'veteran',
+    debugEnemyAi: 'veteran',
+    trainingStyle: 'control',
+    battleSeed: 7272,
+    debugTrainingSeed: 7272,
+    debugEvalCount: 160,
+    enabledUnits: { tio: false, millenia: true, mottledSpider: false, guardian: false },
+    unitOverrides: {
+      ...createDefaultUnitFormState(),
+      eggGuardian: { maxHp: 1900, startSp: 64, startMp: 38, str: 40, vit: 34, agi: 26, spd: 24, mag: 36, men: 30 },
+    },
+  },
+  'final-valmar': {
+    label: 'Final Valmar',
+    description: 'Полноценный финальный бог: три фазы и ложные формы.',
+    encounterTemplate: 'finalValmarBoss',
+    battlefieldTheme: 'volcano',
+    playEnemyAi: 'veteran',
+    debugPlayerAi: 'veteran',
+    debugEnemyAi: 'veteran',
+    trainingStyle: 'control',
+    battleSeed: 7373,
+    debugTrainingSeed: 7373,
+    debugEvalCount: 160,
+    enabledUnits: { tio: false, millenia: true, mottledSpider: false, guardian: false },
+    unitOverrides: {
+      ...createDefaultUnitFormState(),
+      finalValmar: { maxHp: 2600, startSp: 80, startMp: 44, str: 44, vit: 38, agi: 28, spd: 26, mag: 40, men: 34 },
+    },
+  },
 };
 
 const SCENARIO_RUN_LIBRARY = [
@@ -670,6 +845,13 @@ const SCENARIO_RUN_LIBRARY = [
   { id: 'claws-6363', label: 'Claws of Valmar #6363', scenario: 'claws-valmar', battleSeed: 6363, note: 'Быстрый заводской boss под арку Тио.' },
   { id: 'heart-6464', label: 'Heart of Valmar #6464', scenario: 'heart-valmar', battleSeed: 6464, note: 'Поздний сюжетный boss Дня Тьмы.' },
   { id: 'zera-6565', label: 'Zera finale #6565', scenario: 'zera-finale', battleSeed: 6565, note: 'Финальный сюжетный бой против Зеры.' },
+  { id: 'eye-6767', label: 'Eye of Valmar #6767', scenario: 'eye-of-valmar', battleSeed: 6767, note: 'Гравитационное око Вальмара.' },
+  { id: 'crimson-6868', label: 'Crimson Tails #6868', scenario: 'crimson-tails', battleSeed: 6868, note: 'Двойной босс рифа Сесиль.' },
+  { id: 'naga-6969', label: 'Naga Queens #6969', scenario: 'naga-queens', battleSeed: 6969, note: 'Королевы-наги Demon\'s Law.' },
+  { id: 'fists-7070', label: 'Dual Fists #7070', scenario: 'dual-fists', battleSeed: 7070, note: 'Кулаки древнего стража.' },
+  { id: 'guardians-7171', label: 'Birthplace Guardians #7171', scenario: 'birthplace-guardians', battleSeed: 7171, note: 'Пара архивных стражей.' },
+  { id: 'egg-7272', label: 'Egg Guardian #7272', scenario: 'egg-guardian', battleSeed: 7272, note: 'Страж с битами.' },
+  { id: 'valmar-7373', label: 'Final Valmar #7373', scenario: 'final-valmar', battleSeed: 7373, note: 'Полноценный финальный Вальмар.' },
 ];
 
 function resolveScenarioSource(key) {
@@ -1225,6 +1407,7 @@ const WORLD_LOCATION_TREASURES = {
 const WORLD_TRAVEL_ENCOUNTERS = {
   black_forest: [
     { id: 'enc-black-forest-spiders', label: 'Засада Crag Snake в Black Forest', description: 'Змея из каменных корней и паучий охотник перехватывают первый мрачный маршрут от Карбо к Гармии.', enemyKeys: ['cragSnake', 'mottledSpider'], theme: 'forest', openingAdvantage: 'enemies', rewards: { gold: 35, experience: 14, skillCoins: 4, magicCoins: 3, medicinalHerb: 1, antidote: 0 } },
+    { id: 'enc-black-forest-dodo', label: 'Додо на тропе', description: 'Глупая, но быстрая птица додо клюёт всё, что шевелится, в тёмном лесу.', enemyKeys: ['dodo', 'cragSnake'], theme: 'forest', openingAdvantage: 'neutral', rewards: { gold: 28, experience: 12, skillCoins: 3, magicCoins: 2, poffNut: 1 } },
   ],
   inor_mountains: [
     { id: 'enc-inor-snakes', label: 'Горная стая Inor Mountains', description: 'Crag Snake и Gargoyle держат узкую горную дорогу под постоянной угрозой срыва.', enemyKeys: ['cragSnake', 'gargoyle'], theme: 'cavern', openingAdvantage: 'neutral', rewards: { gold: 45, experience: 18, skillCoins: 5, magicCoins: 3, medicinalHerb: 1, antidote: 1 } },
@@ -1241,6 +1424,7 @@ const WORLD_TRAVEL_ENCOUNTERS = {
   ],
   lumir_forest: [
     { id: 'enc-lumir-ambush', label: 'Стычка в снегу', description: 'Huge Caterpillar и Giant Crab делают снежный лес более похожим на оригинальную северную фауну Grandia II.', enemyKeys: ['hugeCaterpillar', 'giantCrab'], theme: 'forest', openingAdvantage: 'enemies', rewards: { gold: 70, experience: 24, skillCoins: 6, magicCoins: 5, medicinalHerb: 1, antidote: 1, lumirFlower: 1 } },
+    { id: 'enc-lumir-bigfoot', label: 'Следы Бигфута', description: 'Огромный снежный зверь выходит из чащи и отбрасывает путников в сугробы.', enemyKeys: ['bigFoot', 'hugeCaterpillar'], theme: 'forest', openingAdvantage: 'enemies', rewards: { gold: 80, experience: 30, skillCoins: 7, magicCoins: 5, woundSalve: 1, lumirFlower: 1 } },
   ],
   mysterious_fissure: [
     { id: 'enc-fissure-depth', label: 'Твари разлома', description: 'Hammerhead, Giant Crab и Hell Hound делают разлом более тяжёлым и разнородным по тону.', enemyKeys: ['hammerhead', 'giantCrab', 'hellHound'], theme: 'cavern', openingAdvantage: 'neutral', rewards: { gold: 85, experience: 32, skillCoins: 8, magicCoins: 6, medicinalHerb: 1, antidote: 2, moveBlessing: 1 } },
@@ -1253,28 +1437,36 @@ const WORLD_TRAVEL_ENCOUNTERS = {
   raul_hills: [
     { id: 'enc-raul-ruins', label: 'Развалины Raul Hills', description: 'Land Cougar и Giga Mantis делают развалины более похожими на опасный дикий фронтир, а не на generic encounter-зону.', enemyKeys: ['landCougar', 'gigaMantis'], theme: 'ruins', openingAdvantage: 'players', rewards: { gold: 100, experience: 40, skillCoins: 10, magicCoins: 7, medicinalHerb: 2, antidote: 1, blueberry: 1 } },
     { id: 'enc-raul-ogres', label: 'Руинные стражи холмов', description: 'Twin Ogre и Land Cougar стерегут башни лабиринта Raul Hills.', enemyKeys: ['twinOgre', 'landCougar'], theme: 'ruins', openingAdvantage: 'neutral', rewards: { gold: 115, experience: 44, skillCoins: 11, magicCoins: 8, mogayBomb: 1, seedOfPsyche: 1 } },
+    { id: 'enc-raul-dragonoid', label: 'Дракониды развалин', description: 'Dragonoid выдыхает пламя из-за рухнувших колонн, прикрываясь отрядами ящеров.', enemyKeys: ['dragonoid', 'twinOgre'], theme: 'ruins', openingAdvantage: 'neutral', rewards: { gold: 110, experience: 42, skillCoins: 10, magicCoins: 8, firebomb: 1, seedOfLife: 1 } },
   ],
   cyrum_secret_passage: [
     { id: 'enc-cyrum-secret', label: 'Охрана тайного прохода', description: 'В скрытом проходе остаются враждебные защитные группы.', enemyKeys: ['guardian', 'wingEye'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 125, experience: 46, skillCoins: 11, magicCoins: 8, medicinalHerb: 1, antidote: 1 } },
+    { id: 'enc-cyrum-camo-squad', label: 'Камуфляжный патруль', description: 'Chameleon и Dragonoid охраняют рычаги тайного прохода.', enemyKeys: ['chameleon', 'dragonoid'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 130, experience: 48, skillCoins: 11, magicCoins: 8, purifyingHerb: 1, firebomb: 1 } },
   ],
   underground_plant: [
     { id: 'enc-plant-sentries', label: 'Сентри underground plant', description: 'Механический комплекс выпускает новую волну защитников.', enemyKeys: ['guardian', 'mottledSpider'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 140, experience: 52, skillCoins: 12, magicCoins: 9, medicinalHerb: 1, antidote: 2 } },
     { id: 'enc-plant-warp', label: 'Варп-патруль завода', description: 'Warp Warrior и Vein Brain охраняют глубинные узлы комплекса.', enemyKeys: ['warpWarrior', 'veinBrain'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 150, experience: 56, skillCoins: 13, magicCoins: 10, manaCrystal: 1, magicBlessing: 1 } },
+    { id: 'enc-plant-dragonoid', label: 'Огненный дозор завода', description: 'Dragonoid и Warp Warrior встречают нарушителей у терминалов.', enemyKeys: ['dragonoid', 'warpWarrior'], theme: 'cavern', openingAdvantage: 'enemies', rewards: { gold: 155, experience: 58, skillCoins: 13, magicCoins: 10, firebomb: 1, manaCrystal: 1 } },
   ],
   ceceile_reef: [
     { id: 'enc-reef-claws', label: 'Стычка на рифе', description: 'Giant Crab, Salamadile и Fenny Bird лучше держат морской и прибрежный тон маршрута к Гарлану.', enemyKeys: ['giantCrab', 'salamadile', 'fennyBird'], theme: 'forest', openingAdvantage: 'neutral', rewards: { gold: 120, experience: 48, skillCoins: 11, magicCoins: 8, medicinalHerb: 2, antidote: 1, lumirFlower: 1 } },
     { id: 'enc-reef-scaly', label: 'Чешуйчатые воины рифа', description: 'Scaly Warrior и Giant Crab встречают прибывающих на риф путников.', enemyKeys: ['scalyWarrior', 'giantCrab'], theme: 'forest', openingAdvantage: 'neutral', rewards: { gold: 135, experience: 52, skillCoins: 12, magicCoins: 9, woundSalve: 1, scarletPotion: 1 } },
+    { id: 'enc-reef-claws-boss', label: 'Красные когти рифа', description: 'Crimson Claw и Flame Toad охраняют подходы к гнезду рифовых охотников.', enemyKeys: ['crimsonClaw', 'flameToad'], theme: 'forest', openingAdvantage: 'enemies', rewards: { gold: 145, experience: 56, skillCoins: 13, magicCoins: 9, handGrenade: 1, firebomb: 1 } },
   ],
   grail_mountain: [
     { id: 'enc-grail-slope', label: 'Путь по Grail Mountain', description: 'Hell Hound, Man-Eating Tree и Fenny Bird дают подъёму к Мелфису более оригинально-опасный характер.', enemyKeys: ['hellHound', 'manEatingTree', 'fennyBird'], theme: 'ruins', openingAdvantage: 'neutral', rewards: { gold: 130, experience: 54, skillCoins: 12, magicCoins: 9, medicinalHerb: 2, antidote: 1, moveBlessing: 1 } },
     { id: 'enc-grail-vipers', label: 'Ядовитые тропы Грайла', description: 'Pit Viper и Hell Hound контролируют грязевые склоны над святилищем.', enemyKeys: ['pitViper', 'hellHound'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 140, experience: 58, skillCoins: 13, magicCoins: 9, purifyingHerb: 1, antidote: 2 } },
+    { id: 'enc-grail-clay', label: 'Глиняные стражи склона', description: 'Clay Bird и Flame Toad кружат над подъёмом к святилищу.', enemyKeys: ['clayBird', 'flameToad'], theme: 'ruins', openingAdvantage: 'neutral', rewards: { gold: 150, experience: 60, skillCoins: 14, magicCoins: 10, mogayBomb: 1, scarletPotion: 1 } },
   ],
   great_rift: [
     { id: 'enc-rift-prowl', label: 'Хищники Великого Разлома', description: 'Giga Mantis и Fenny Bird помогают Разлому ощущаться последним диким краем мира перед Demons Law.', enemyKeys: ['gigaMantis', 'fennyBird'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 160, experience: 60, skillCoins: 14, magicCoins: 10, medicinalHerb: 2, antidote: 2, healingHerb: 1 } },
+    { id: 'enc-rift-diver', label: 'Песчаные ныряльщики разлома', description: 'Desert Diver выныривает из горячих трещин и тащит путников вглубь шторма.', enemyKeys: ['desertDiver', 'gigaMantis'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 175, experience: 66, skillCoins: 15, magicCoins: 11, mogayBomb: 1, paralysisSalve: 1 } },
   ],
   valmar_body: [
     { id: 'enc-valmar-body', label: 'Живые ткани Вальмара', description: 'Immune Cell и Valmar Moth лучше передают органический внутренний бестиарий этого late-midgame данжа.', enemyKeys: ['immuneCell', 'valmarMoth', 'valmarMoth'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 180, experience: 68, skillCoins: 15, magicCoins: 11, medicinalHerb: 2, antidote: 2, panacea: 1 } },
     { id: 'enc-body-hunt', label: 'Охотники живой плоти', description: 'Tarantula и Immune Cell выходят на охоту в венах тела Вальмара.', enemyKeys: ['tarantula', 'immuneCell'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 200, experience: 74, skillCoins: 16, magicCoins: 12, purifyingHerb: 1, caterpillarSoup: 1 } },
+    { id: 'enc-body-bats', label: 'Рой мозговых летунов', description: 'Brain Bat и Venomous Larva защищают живые коридоры тела Вальмара.', enemyKeys: ['brainBat', 'venomousLarva'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 205, experience: 76, skillCoins: 16, magicCoins: 12, eyeDrops: 1, caterpillarSoup: 1 } },
+    { id: 'enc-body-freezer', label: 'Ледяной динозавр', description: 'Dino Freezer замораживает вены и преграждает путь своим ледяным дыханием.', enemyKeys: ['dinoFreezer', 'brainBat'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 215, experience: 80, skillCoins: 17, magicCoins: 13, paralysisSalve: 1, scarletPotion: 1 } },
   ],
   valmars_moon: [
     { id: 'enc-moon-guard', label: 'Стражи Луны', description: 'Nyarmot, Salamadile и Evil Maneuver лучше соответствуют экосистеме Луны Вальмара и позднему давлению маршрута.', enemyKeys: ['nyarmot', 'salamadile', 'evilManeuver'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 210, experience: 74, skillCoins: 16, magicCoins: 12, medicinalHerb: 2, antidote: 2, yomisElixir: 1 } },
@@ -1283,6 +1475,8 @@ const WORLD_TRAVEL_ENCOUNTERS = {
   birthplace_of_the_gods: [
     { id: 'enc-birthplace-guardians', label: 'Древние хранители', description: 'Dragon Knight и Valmar Magna делают Исток богов более похожим на поздний древний bestiary-порог, а не на generic guardian room.', enemyKeys: ['dragonKnight', 'valmarMagna'], theme: 'ruins', openingAdvantage: 'neutral', rewards: { gold: 240, experience: 82, skillCoins: 18, magicCoins: 14, medicinalHerb: 2, antidote: 2, healingIncense: 1 } },
     { id: 'enc-birthplace-yeti', label: 'Ледяные стражи истока', description: 'Yeti и Dragon Knight охраняют цветные механизмы древнего комплекса.', enemyKeys: ['yeti', 'dragonKnight'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 260, experience: 90, skillCoins: 20, magicCoins: 16, paralysisSalve: 1, manaCrystal: 1 } },
+    { id: 'enc-birthplace-ancients', label: 'Древние воины архива', description: 'Ancient Warrior и Death Doberman сторожат залы правды Истока богов.', enemyKeys: ['ancientWarrior', 'deathDoberman'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 270, experience: 94, skillCoins: 20, magicCoins: 16, scarletPotion: 1, meteorScroll: 1 } },
+    { id: 'enc-birthplace-emerald', label: 'Изумрудный дозор', description: 'Emerald Bird реет над цветными механизмами и срывает заклинания путников.', enemyKeys: ['emeraldBird', 'ancientWarrior'], theme: 'ruins', openingAdvantage: 'enemies', rewards: { gold: 280, experience: 98, skillCoins: 21, magicCoins: 17, healingIncense: 1, seedOfMagic: 1 } },
   ],
   new_valmar: [
     { id: 'enc-new-valmar-vanguard', label: 'Передовые ужасы Нового Вальмара', description: 'Killer Tree, Mind Eater и Valmar Moth превращают финальный данж в более оригинально-чужой late-game bestiary слой.', enemyKeys: ['killerTree', 'mindEater', 'valmarMoth'], theme: 'volcano', openingAdvantage: 'enemies', rewards: { gold: 280, experience: 92, skillCoins: 20, magicCoins: 16, medicinalHerb: 3, antidote: 2, panacea: 1, yomisElixir: 1 } },
@@ -3121,6 +3315,8 @@ function drawStatusIconsNearUnit(ctx, fighter, x, y) {
       moveBlock: '#f59e0b',
       magicBlock: '#22d3ee',
       poison: '#84cc16',
+      confusion: '#c084fc',
+      paralysis: '#facc15',
       atkUp: '#60a5fa',
       defUp: '#34d399',
       actUp: '#f472b6',
@@ -5939,7 +6135,31 @@ function buildCampaignPresetForKey(key) {
   for (const [field, amount] of Object.entries(growthBonuses)) {
     bonuses[field] = Number(bonuses[field] ?? 0) + Number(amount ?? 0);
   }
+  const partyAccessoryIds = (state.campaignRun.purchasedUpgradeIds ?? []).filter((upgradeId) => {
+    const entry = EQUIPMENT_CATALOG.find((item) => item.id === upgradeId);
+    return entry && !entry.targetKey && entry.slot && entry.slot !== 'consumable-pack';
+  });
+  for (const upgradeId of partyAccessoryIds) {
+    const entry = EQUIPMENT_CATALOG.find((item) => item.id === upgradeId);
+    for (const [field, amount] of Object.entries(entry.bonuses ?? {})) {
+      bonuses[field] = Number(bonuses[field] ?? 0) + Number(amount ?? 0);
+    }
+  }
+  const resistBonusMap = {
+    resistSleep: 'sleep',
+    resistPoison: 'poison',
+    resistConfusion: 'confusion',
+    resistParalysis: 'paralysis',
+    resistMoveBlock: 'moveBlock',
+    resistMagicBlock: 'magicBlock',
+  };
   for (const [field, amount] of Object.entries(bonuses)) {
+    const resistKey = resistBonusMap[field];
+    if (resistKey) {
+      const current = Number(preset.statusResistances?.[resistKey] ?? 1);
+      preset.statusResistances = { ...(preset.statusResistances ?? {}), [resistKey]: Math.max(0.05, Math.min(1, current * (1 - Number(amount)))) };
+      continue;
+    }
     if (field in preset) {
       preset[field] = Number(preset[field] ?? 0) + Number(amount ?? 0);
     }
@@ -6138,13 +6358,20 @@ function renderCampaignEquipmentPanel() {
   const availableItems = state.campaignRun.purchasedUpgradeIds
     .map((id) => EQUIPMENT_CATALOG.find((entry) => entry.id === id))
     .filter(Boolean)
-    .filter((entry) => entry.slot && entry.slot !== 'consumable-pack');
+    .filter((entry) => entry.slot && entry.slot !== 'consumable-pack' && entry.targetKey);
+  const partyAccessories = state.campaignRun.purchasedUpgradeIds
+    .map((id) => EQUIPMENT_CATALOG.find((entry) => entry.id === id))
+    .filter(Boolean)
+    .filter((entry) => entry.slot && entry.slot !== 'consumable-pack' && !entry.targetKey);
 
   elements.campaignEquipmentSummary.textContent = [
     `Золото: ${campaignGoldString()}`,
     `Куплено предметов: ${availableItems.length}`,
     'Текущие слоты:',
     ...campaignEquipmentLoadoutLines(),
+    '',
+    'Партийные аксессуары (действуют на всех):',
+    ...(partyAccessories.length ? partyAccessories.map((entry) => `- ${entry.label}: ${entry.description}`) : ['- none']),
     '',
     'Купленный инвентарь:',
     ...(campaignOwnedEquipmentLines().length ? campaignOwnedEquipmentLines() : ['none']),

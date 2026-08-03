@@ -77,17 +77,22 @@ bestiary = полные группы + drop tables, меню = отдельны�
 
 Полное определение и обоснование — в `GOALS_100.md`. Короткий чек-лист:
 
-- [ ] **Бестиарий:** 51 preset, но канонических обычных врагов 35/51 → добавить 16
-      (Ancient Warrior, Brain Bat, Big Foot, Chameleon, Clay Bird, Crimson Claw,
-      Death Doberman, Desert Diver, Devil, Dino Freezer, Dodo, Dragonoid, Emerald Bird,
-      Flame Toad, Snow Leopard, Venomous Larva) + 6–7 боссов (Eye of Valmar, Crimson Tails,
-      Naga Queens, Dual Fists, Birthplace Guardians, Egg Guardian, финальный Valmar).
-- [ ] **Предметы:** 29 → ~45 расходников; 66 → ~120 экипировки (канонический ассортимент).
-- [ ] **Магия:** добавить 7 заклинаний (BOOM!, BA-BOOM!, Meteor Strike, GadZap, Poizn, Craze, Halvah);
-      42/42 канон.
+- [x] **Бестиарий:** 51 → **74** preset; **51/51** канонических обычных врагов (16 добавлено:
+      Ancient Warrior, Brain Bat, Big Foot, Chameleon, Clay Bird, Crimson Claw, Death Doberman,
+      Desert Diver, Devil, Dino Freezer, Dodo, Dragonoid, Emerald Bird, Flame Toad,
+      Snow Leopard, Venomous Larva) + 7 боссов (Eye of Valmar, Crimson Tails, Naga Queens,
+      Dual Fists, Birthplace Guardians, Egg Guardian, Final Valmar) со сценариями/шаблонами
+      в песочнице и travel encounters.
+- [~] **Предметы:** 29 расходников; 66 → **74** экипировки (добавлены Charm-амулеты статусов,
+      Healing Ring, Relief Tag). Осталось: канонические расходники (Healing Fruit, Potion of
+      Azure, свитки, орехи, семена, бомбы) и полный ассортимент оружия/брони/аксессуаров.
+- [x] **Магия:** добавлены BOOM!, BA-BOOM!, Meteor Strike, GadZap, Poizn, Craze, Halvah +
+      Paralysis Wave — **42/42** канонических заклинаний (110 actions).
 - [ ] **Уровни приёмов и магии Lv1–5** за SC/MC (рост силы, снижение charge) — крупный системный кусок.
 - [ ] **Mana Eggs из каталога в бой:** экипировка яиц героям + получение за каноничных боссов.
-- [ ] **Статусы:** добавить `confusion` и `paralysis` (движок, UI, AI, предметы).
+- [x] **Статусы:** добавлены `confusion` (случайная цель, снимается ударом) и `paralysis`
+      (шанс пропуска хода) — движок, UI-иконки, AI-анализ, Halvah/Refresh/Panacea лечат,
+      Charm-амулеты дают сопротивления.
 - [ ] **Скрипт:** NPC-диалоги на все локации (~50–60 суммарно), defeat-реплики боссов.
 - [ ] **Секреты:** Raul Hills Special Stage, армрестлинг Хембла, Carro (Poff Nuts), Elmo,
       канонические сундуки (29 → ~60).

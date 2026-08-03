@@ -127,7 +127,88 @@ export const ENEMY_DROPS = {
     { key: 'manaCrystal', chance: 0.35, count: 1 },
     { key: 'panacea', chance: 0.2, count: 1 },
   ],
+
+  dodo: [
+    { key: 'medicinalHerb', chance: 0.5, count: 1 },
+    { key: 'poffNut', chance: 0.25, count: 1 },
+  ],
+  bigFoot: [
+    { key: 'lumirFlower', chance: 0.35, count: 1 },
+    { key: 'woundSalve', chance: 0.2, count: 1 },
+  ],
+  chameleon: [
+    { key: 'purifyingHerb', chance: 0.5, count: 1 },
+    { key: 'antidote', chance: 0.25, count: 1 },
+  ],
+  dragonoid: [
+    { key: 'firebomb', chance: 0.4, count: 1 },
+    { key: 'seedOfLife', chance: 0.2, count: 1 },
+  ],
+  flameToad: [
+    { key: 'firebomb', chance: 0.45, count: 1 },
+    { key: 'seedOfPsyche', chance: 0.2, count: 1 },
+  ],
+  clayBird: [
+    { key: 'magicBlessing', chance: 0.25, count: 1 },
+    { key: 'scarletPotion', chance: 0.2, count: 1 },
+  ],
+  crimsonClaw: [
+    { key: 'handGrenade', chance: 0.3, count: 1 },
+    { key: 'woundSalve', chance: 0.3, count: 1 },
+  ],
+  desertDiver: [
+    { key: 'mogayBomb', chance: 0.3, count: 1 },
+    { key: 'paralysisSalve', chance: 0.3, count: 1 },
+  ],
+  brainBat: [
+    { key: 'eyeDrops', chance: 0.4, count: 1 },
+    { key: 'manaCrystal', chance: 0.2, count: 1 },
+  ],
+  dinoFreezer: [
+    { key: 'paralysisSalve', chance: 0.35, count: 1 },
+    { key: 'scarletPotion', chance: 0.25, count: 1 },
+  ],
+  venomousLarva: [
+    { key: 'caterpillarSoup', chance: 0.3, count: 1 },
+    { key: 'purifyingHerb', chance: 0.4, count: 1 },
+  ],
+  devil: [
+    { key: 'manaCrystal', chance: 0.3, count: 1 },
+    { key: 'scarletPotion', chance: 0.3, count: 1 },
+  ],
+  snowLeopard: [
+    { key: 'paralysisSalve', chance: 0.35, count: 1 },
+    { key: 'seedOfMagic', chance: 0.3, count: 1 },
+  ],
+  emeraldBird: [
+    { key: 'healingIncense', chance: 0.2, count: 1 },
+    { key: 'seedOfRunning', chance: 0.3, count: 1 },
+  ],
+  ancientWarrior: [
+    { key: 'scarletPotion', chance: 0.35, count: 1 },
+    { key: 'meteorScroll', chance: 0.1, count: 1 },
+  ],
+  deathDoberman: [
+    { key: 'yomisElixir', chance: 0.15, count: 1 },
+    { key: 'handGrenade', chance: 0.3, count: 1 },
+  ],
+  eyeOfValmar: [
+    { key: 'manaCrystal', chance: 0.5, count: 1 },
+  ],
+  crimsonTails: [
+    { key: 'scarletPotion', chance: 0.5, count: 1 },
+  ],
+  nagaQueens: [
+    { key: 'yomisElixir', chance: 0.5, count: 1 },
+  ],
+  eggGuardian: [
+    { key: 'healingIncense', chance: 0.5, count: 1 },
+  ],
+  finalValmar: [
+    { key: 'yomisElixir', chance: 1, count: 1 },
+  ],
 };
+
 
 export function dropEntriesForPresetKey(presetKey) {
   return ENEMY_DROPS[presetKey] ?? [];
