@@ -5,10 +5,10 @@
 ## Что уже есть
 
 - Top-level sections: menu-screen, play-section, campaign-section, debug-section, compare-section, menu-parity-section.
-- Всего HTML ids / menu nodes: **263**.
+- Всего HTML ids / menu nodes: **265**.
 - Campaign-related menu nodes: **46**.
 - Debug / replay / compare menu nodes: **47**.
-- Menu-parity (original-like screens) menu nodes: **14**.
+- Menu-parity (original-like screens) menu nodes: **16**.
 - Боевых actions, которые теперь могут быть показаны в command menus и handbooks: **138**.
 - Inventory item catalog для menu/item layer: **57**.
 - Shop catalog: **53**.

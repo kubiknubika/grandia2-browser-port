@@ -84,6 +84,10 @@ import {
   valuablesList,
 } from './valuables.js';
 import {
+  mapEventTypeToSfx,
+  sound,
+} from './audio.js';
+import {
   EGG_LEVEL_COSTS,
   isMagicLevelable,
   isMoveLevelable,
@@ -931,6 +935,8 @@ const DEFAULT_SETTINGS = {
   defaultBattlefieldTheme: 'forest',
   showCommandHints: true,
   replaySpeedMs: 550,
+  soundEnabled: true,
+  musicEnabled: true,
 };
 
 function loadPersistedSettings() {
@@ -1040,6 +1046,8 @@ const elements = {
   mpConfigTheme: document.querySelector('#mp-config-theme'),
   mpConfigHints: document.querySelector('#mp-config-hints'),
   mpConfigSpeed: document.querySelector('#mp-config-speed'),
+  mpConfigSound: document.querySelector('#mp-config-sound'),
+  mpConfigMusic: document.querySelector('#mp-config-music'),
   mpConfigSave: document.querySelector('#mp-config-save'),
   battleLabel: document.querySelector('#battle-label'),
   status: document.querySelector('#status'),
@@ -2697,6 +2705,19 @@ function ensureAnimationLoop() {
 function triggerEventFx(event) {
   if (!event || event.type === 'awaiting-input') {
     return;
+  }
+
+  if (state.settings.soundEnabled) {
+    const sfx = mapEventTypeToSfx(event);
+    if (sfx) {
+      sound.playSfx(sfx);
+    }
+    for (const extra of event.supplementalEvents ?? []) {
+      const extraSfx = mapEventTypeToSfx(extra);
+      if (extraSfx) {
+        sound.playSfx(extraSfx);
+      }
+    }
   }
 
   const chain = [event, ...(event.supplementalEvents ?? [])].filter(Boolean);
@@ -5795,6 +5816,8 @@ function renderMpConfigScreen() {
   elements.mpConfigTheme.value = state.settings.defaultBattlefieldTheme;
   elements.mpConfigHints.checked = Boolean(state.settings.showCommandHints);
   elements.mpConfigSpeed.value = String(state.settings.replaySpeedMs);
+  elements.mpConfigSound.checked = Boolean(state.settings.soundEnabled);
+  elements.mpConfigMusic.checked = Boolean(state.settings.musicEnabled);
   elements.mpOutput.textContent = [
     'Настройки (options screen)',
     'Эти значения сохраняются в localStorage и применяются к игре.',
@@ -5803,10 +5826,18 @@ function renderMpConfigScreen() {
     `Поле боя по умолчанию: ${state.settings.defaultBattlefieldTheme}`,
     `Подсказки в командном меню: ${state.settings.showCommandHints ? 'вкл' : 'выкл'}`,
     `Скорость replay по умолчанию: ${state.settings.replaySpeedMs} мс`,
+    `Звуковые эффекты: ${state.settings.soundEnabled ? 'вкл' : 'выкл'}`,
+    `Музыка: ${state.settings.musicEnabled ? 'вкл' : 'выкл'}`,
     '',
     'Кнопка «Сбросить сохранения кампании» удаляет сохранённый забег и настройки.',
   ].join('\n');
   const buttons = [];
+  buttons.push(mpActionButton('▶ Послушать боевую тему', () => {
+    sound.init();
+    sound.setEnabled(true);
+    sound.startBattleTheme();
+  }));
+  buttons.push(mpActionButton('⏹ Остановить музыку', () => sound.stopBattleTheme()));
   buttons.push(mpActionButton('Сбросить сохранения кампании', () => {
     resetCampaignState();
     state.debugOutput = 'Сохранения кампании сброшены.';
@@ -5830,7 +5861,13 @@ function saveMenuParityConfig() {
   state.settings.defaultBattlefieldTheme = elements.mpConfigTheme.value;
   state.settings.showCommandHints = Boolean(elements.mpConfigHints.checked);
   state.settings.replaySpeedMs = Number(elements.mpConfigSpeed.value) || 550;
+  state.settings.soundEnabled = Boolean(elements.mpConfigSound.checked);
+  state.settings.musicEnabled = Boolean(elements.mpConfigMusic.checked);
   savePersistedSettings();
+  sound.setEnabled(state.settings.soundEnabled);
+  if (!state.settings.musicEnabled) {
+    sound.stopBattleTheme();
+  }
   state.playEnemyAi = state.settings.defaultPlayEnemyAi;
   state.battlefieldTheme = state.settings.defaultBattlefieldTheme;
   if (elements.replaySpeed) {
@@ -5975,6 +6012,7 @@ function renderToolbar() {
 
 function render() {
   finalizeCampaignBattleOutcome();
+  manageBattleTheme();
   renderTabs();
   renderToolbar();
   renderCanvas();
@@ -5987,6 +6025,20 @@ function render() {
   renderGraphsPanel();
   renderComparePanel();
   renderMenuParityPanel();
+}
+
+function manageBattleTheme() {
+  const inBattle = state.battle && !isBattleOver(state.battle.players, state.battle.enemies)
+    && state.appScreen === 'app' && (state.activeTab === 'play' || state.activeTab === 'debug' || (state.activeTab === 'campaign' && state.campaignRun.phase === 'battle'));
+  if (inBattle) {
+    if (state.settings.musicEnabled) {
+      sound.startBattleTheme();
+    } else {
+      sound.stopBattleTheme();
+    }
+  } else {
+    sound.stopBattleTheme();
+  }
 }
 
 function stepBattle() {
@@ -7790,6 +7842,9 @@ function finalizeCampaignBattleOutcome() {
   const meta = storyBeatImplementationMeta(beat);
   const winner = battleWinner(state.battle.players, state.battle.enemies);
   const battleContext = state.campaignRun.battleContext ?? { type: 'story', beatId: beat.id };
+  if (state.settings.soundEnabled) {
+    sound.playSfx(winner === 'players' ? 'victory' : 'defeat');
+  }
   state.campaignRun.lastBattleWinner = winner;
   state.activeTab = 'campaign';
 
@@ -10098,6 +10153,7 @@ async function init() {
   populateDecisionActionFilterOptions();
   state.playEnemyAi = state.settings.defaultPlayEnemyAi ?? state.playEnemyAi;
   state.battlefieldTheme = state.settings.defaultBattlefieldTheme ?? state.battlefieldTheme;
+  sound.setEnabled(Boolean(state.settings.soundEnabled));
   if (elements.replaySpeed) {
     elements.replaySpeed.value = String(state.settings.replaySpeedMs ?? 550);
   }
