@@ -1,0 +1,197 @@
+# GOALS_100 — оставшиеся цели до 100%
+
+Согласованное определение **«100%»** для этого проекта:
+
+> **Играбельный content-parity браузерного порта с оригинальной Grandia II**
+> в рамках текущей архитектуры: каждый каноничный враг, босс, предмет, заклинание,
+> статус, навык, меню, секрет и локация оригинала присутствуют и играбельны,
+> все аудиты (`npm run audit:*`) зелёные, баланс прогоняется без регрессий.
+
+Покадровая 1:1 реплика графики/консольной анимации оригинала **не** входит в 100%
+(это отдельная не-цель прототипа, зафиксирована в `FULL_CONTENT_AUDIT.md`).
+
+Статусы: `[ ]` — открыто, `[~]` — частично, `[x]` — сделано.
+Оценки: S ≤ 1 день, M 2–3 дня, L ~неделя, XL > недели (на одного разработчика).
+
+---
+
+## 1. Бестиарий — 51 → 67+ врагов, полный канонический ростер
+
+Текущее: 51 preset, из них **35/51** канонических обычных врагов.
+Цель: **51/51** канонических обычных + **6–7** недостающих канонических боссов.
+
+| Враг (канон) | Где появляется в оригинале | Оценка |
+|---|---|---|
+| Ancient Warrior | Birthplace of the Gods | S |
+| Brain Bat | Valmar's Body | S |
+| Big Foot | Lumir Forest, St. Heim Mtns, Pilgrim Road | S |
+| Chameleon | St. Heim Mtns, Pilgrim Rd, Raul Hills, Cyrum passage | S |
+| Clay Bird | Grail Mountain | S |
+| Crimson Claw | Ceceile Reef, Grail Mountain | S |
+| Death Doberman | Birthplace of the Gods | S |
+| Desert Diver | Great Rift | S |
+| Devil | Raul Hills Special Stage | S |
+| Dino Freezer | Valmar's Body | S |
+| Dodo | Black Forest, Inor Mtns, Baked Plains | S |
+| Dragonoid | Raul Hills, Cyrum passage, Underground Plant | S |
+| Emerald Bird | Birthplace of the Gods | S |
+| Flame Toad | Ceceile Reef, Grail Mt, Ghoss West | S |
+| Snow Leopard | Raul Hills Special Stage | S |
+| Venomous Larva | Valmar's Body | S |
+
+**Недостающие боссы (канон):** Eye of Valmar (Aira's Space), Crimson Tails (Ceceile Reef),
+Naga Queens (Demon's Law), Dual Fists (Birthplace), Birthplace Guardians, Egg Guardian
+(New Valmar), финальный Valmar (сейчас stand-in `valmarCoreHerald`) — ~6–7, по M каждый.
+
+DoD: все враги в `PRESETS` с ролями/статами/дропами (по канону), внесены в bestiary-группы,
+подключены к wandering encounters, арт-портреты сгенерированы, `BESTIARY_AUDIT.md` = 100%.
+Приоритет: **P0**.
+
+---
+
+## 2. Предметы и экипировка — 29 → ~45 расходников, 66 → ~120 экипировки
+
+Текущее: 29 расходников, 36 shop SKU, 66 экипировки.
+Цель: закрыть канонический ассортимент.
+
+**Недостающие расходники (примерный список, ~15–20):**
+Healing Fruit, Potion of Azure, Torte's Reedpipe, Smelling Salts, Blessing Scroll, Vaccine,
+Butter Roll, Fresh Sandwich, Holy Ashes, Myriad Power Nut, Patience Nut, Swiftness Nut,
+Slowpoke Nut, Sleep Charm, Confusion Charm, Paralysis Charm, Poison Charm, Move Block Charm,
+Magic Block Charm, Healing Ring, Relief Tag, Dynamite, Hyper Mogay Bomb, Super Mogay Bomb,
+Red Goblin Toad, Sandman Whiskers, Spiderweb, Snake Earrings, Toad Oil, Calming Harp,
+Seed of Defense/Power/Swift/Spells, All-Around Seed, Omnipotent Seed, Icefang Stone, Electrum Stone.
+
+**Недостающая экипировка (~50+):** оружие всех 6 героев по канону (Maken Valborg, Flamberge,
+Silver Freeze, Holy Soul Blade, Blazing/Thor/Icefang swords, все клинки Tio/Roan/Millenia…),
+headgear (Bandana, Guardian Hat, Iron Helm, Stone Head…), footwear (Elf King's Boots,
+Charming Heels, Goddess Hi-Heels…), armor (Ancient Cuirass, Halo Armor, Moonstone Armor,
+Sun Robe, Holy Clothes, Ninja Clothes…), аксессуары (Talisman, Phoenix Ring, Angel's Ring,
+King's Pride, Kojin Charm, Dark Ring…).
+
+DoD: новые предметы работают в бою/магазинах/экипировке, добавлены в shop stock и drop tables,
+`FULL_CONTENT_AUDIT.md` показывает закрытие каталога. Приоритет: **P0**.
+
+---
+
+## 3. Магия: недостающие заклинания + уровни магии/приёмов + экипировка Mana Eggs
+
+### 3.1 Недостающие канонические заклинания (7 шт., S–M)
+`BOOM!` (Explosion, some), `BA-BOOM!` (Explosion, all), `Meteor Strike` (Explosion, one),
+`GadZap` (Lightning, one), `Poizn` (Forest, poison AoE), `Craze` (Forest, confusion),
+`Halvah` (Forest, cure all status). После этого 42/42 канонических spell'а.
+
+### 3.2 Уровни магии и special moves (Lv 1–5) — M/L
+Сейчас приёмы/заклинания имеют фиксированную стоимость и силу. В оригинале:
+- special move: Lv1–5, прокачка за **SC** (250/500/1000/2000 и т.д.), рост силы и скорости;
+- magic: Lv1–5, прокачка за **MC** (60/30/45/75/120…), рост силы и скорости;
+- уровни завязаны на Mana Egg (для магии).
+
+DoD: у каждого move/magic есть `level` и таблица SC/MC, `chargeMultiplier` снижается,
+`power` растёт с уровнем; в UI (skill screen / egg screen) видна прокачка; трата SC/MC
+влияет на бой. Приоритет: **P1** (это самый крупный системный кусок).
+
+### 3.3 Mana Eggs: из каталога в бой — M
+Сейчас 8 яиц — каталог. Цель: экипировка яиц героям (слоты egg в меню героя),
+магия героя определяется надетым яйцом; получение яиц за боссов (канон):
+Mist — Durham Cave, Gravity — Eye of Valmar, Soul — Crimson Tails, Star — Naga Queens,
+Fairy — Raul Hills Special Stage, Dragon — Birthplace. Приоритет: **P1**.
+
+---
+
+## 4. Статусы: добавить `confusion` и `paralysis` — M
+
+Сейчас в движке: `sleep`, `moveBlock`, `magicBlock`, `poison`.
+Канон добавляет: `confusion` (Craze — бьёт случайные цели/своих), `paralysis` (шанс пропуска хода).
+
+DoD: оба статуса в `fighter.statuses`, в UI (иконки/баджи), в AI-анализе, в предметах
+(Sleep Charm → sleep, Confusion Charm → confusion, Paralysis Charm → paralysis, Halvah → снятие всех),
+в bestiary (сопротивления). Приоритет: **P1**.
+
+---
+
+## 5. Скрипт: расширение NPC-диалогов и room-покрытие — M
+
+Текущее: 30 optional NPC dialogues, 46 location scenes, beat-скрипт 156 страниц.
+Цель: у **каждой** локации кампании есть минимум 1–2 необязательных NPC/room-разговора
+(≈ 50–60 диалогов суммарно), у каждого босса — defeat-реплики, у каждого бита — вариант
+повторного прохождения (repeat-visit banter).
+
+DoD: `SCRIPT_AUDIT.md` показывает 100% покрытие локаций NPC-слоем. Приоритет: **P2**.
+
+---
+
+## 6. Секреты и опциональный контент — M/L
+
+- **Raul Hills Special Stage** — опциональный данж (Snow Leopard, Devil, Fairy Egg, богатые сундуки); карта/переход + 3–4 encounter-а. Приоритет: **P1**.
+- **Мини-игра: армрестлинг Хембла** (палатка в Цайруме) — мини-игра «угадай темп» + приз Silver Freeze. Приоритет: **P2**.
+- **Carro в Durham Cave** — кормление Poff Nuts (3 ореха → награда), easter egg по канону. Приоритет: **P2**.
+- **Elmo в Birthplace** — «пощекотать Эльмо» за ответы/награду. Приоритет: **P3**.
+- Расширение тайников/сундуков до полного канонического списка (сейчас 29; канон ≈ 60+). Приоритет: **P2**.
+
+---
+
+## 7. Menu parity: консольная навигация и недостающие экраны — L
+
+Текущее: 6 экранов (status/skills/eggs/items/bestiary/config) работают как лабы.
+Цель:
+- курсорная навигация (стрелки/Enter, списки-страницы) по всем экранам; **P1**
+- equip flow с превью статов до/после; **P1**
+- **magic egg equip screen** (надевание яиц на героев — см. 3.3); **P1**
+- options: имя партии/героя, скорость текста, громкость (заглушка), сброс сохранений; **P2**
+- экран «Valuables» (ключевые предметы — Roan's Medal, Book of Sages и т.д.); **P2**
+
+DoD: `MENU_AUDIT.md` = все экраны 1:1 по функциям (не по пикселям). Приоритет: **P1**.
+
+---
+
+## 8. Арт: портреты и бэкдропы до 100% покрытия — M/L
+
+Текущее: 57 unit-портретов, 4 battlefield, 11 region backdrops (остальные локации —
+процедурный canvas-арт).
+Цель:
+- портрет для **каждого** enemy preset (после п.1 — 67+) и всех 6 героев; **P1**
+- персональный backdrop-слой для всех ключевых локаций (99) — хотя бы 12 новых
+  region-групп, остальные процедурные стилизации по state-профилю; **P2**
+- босс-вариации портретов (фаза 2/3 — изменение палитры) — опционально. **P3**
+
+---
+
+## 9. Аудио: музыка и SFX — L (опциональная цель)
+
+В оригинале культовый саундтрек (~40 треков). Реалистично для прототипа:
+- WebAudio/синтез: 4–6 тематических лейтмотивов (боевая тема, город, данж, финал) + 8–10 SFX
+  (удар, заклинание, хил, крит); **P2**
+- переключатель звука в options (см. п.7). **P2**
+
+Если аудио не нужно — помечаем как «вне 100%» и фиксируем в документе.
+
+---
+
+## 10. Баланс и QA после контентного закрытия — M
+
+- Полный прогон `npm run balance` на новом ростере; цель: novice 55–65%, veteran 90–100%,
+  скилл-гэп ≥ 25 п.п.; обновить `artifacts/ga_weights.json`. **P0** (после п.1–4)
+- Полное прохождение кампании 19 битов без сломанных переходов (ручной smoke-тест). **P0**
+- Все `npm run audit:*` зелёные после каждого п.1–8. **P0**
+
+---
+
+## Дорожная карта (фазы)
+
+| Фаза | Содержание | Что даёт |
+|---|---|---|
+| **Фаза 1 — Каталоги** | п.1 (враги/боссы), п.2 (предметы/экипировка), п.3.1 (7 заклинаний), п.4 (статусы) | Content parity по спискам: 51/51 врагов, 42/42 spell, ~45 предметов, 2 статуса |
+| **Фаза 2 — Системы** | п.3.2 (уровни), п.3.3 (экипировка яиц), п.6 (Special Stage, мини-игры), п.10 (баланс) | Полноценная прогрессия как в оригинале |
+| **Фаза 3 — Parity/polish** | п.5 (скрипт), п.7 (меню-навигация), п.8 (арт), п.9 (аудио, опц.) | Внешний вид и ощущение оригинальных меню/сцен |
+| **Фаза 4 — QA** | полный прогон кампании, регресс, обновление аудитов и артефактов | 100% по определению выше |
+
+## Как измеряем прогресс
+
+- `node scripts/generate_bestiary_audit.js` → `BESTIARY_AUDIT.md` (51/51 канон)
+- `node scripts/generate_full_content_audit.js` → `FULL_CONTENT_AUDIT.md` (числа каталогов)
+- `node scripts/generate_menu_audit.js` → `MENU_AUDIT.md`
+- `node scripts/generate_script_audit.js` → `SCRIPT_AUDIT.md`
+- `npm run balance` → винрейты novice/veteran
+
+Единый чек-лист с галочками по всем пунктам — в `TODO.md` (раздел «Оставшиеся цели до 100%»).

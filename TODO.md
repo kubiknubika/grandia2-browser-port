@@ -71,7 +71,31 @@
 bestiary = полные группы + drop tables, меню = отдельные original-like screens,
 предметы/экипировка/секреты = расширены, арт = покрывает весь текущий roster.
 
-Единственное, что осознанно остаётся не-100% — это полный 1:1 перенос **всей**
-оригинальной Grandia II (весь скрипт, вся энциклопедия, все консольные меню),
-что для браузерного прототипа не является целью и честно отражено в
-`FULL_CONTENT_AUDIT.md`.
+---
+
+## Оставшиеся цели до 100% (→ GOALS_100.md)
+
+Полное определение и обоснование — в `GOALS_100.md`. Короткий чек-лист:
+
+- [ ] **Бестиарий:** 51 preset, но канонических обычных врагов 35/51 → добавить 16
+      (Ancient Warrior, Brain Bat, Big Foot, Chameleon, Clay Bird, Crimson Claw,
+      Death Doberman, Desert Diver, Devil, Dino Freezer, Dodo, Dragonoid, Emerald Bird,
+      Flame Toad, Snow Leopard, Venomous Larva) + 6–7 боссов (Eye of Valmar, Crimson Tails,
+      Naga Queens, Dual Fists, Birthplace Guardians, Egg Guardian, финальный Valmar).
+- [ ] **Предметы:** 29 → ~45 расходников; 66 → ~120 экипировки (канонический ассортимент).
+- [ ] **Магия:** добавить 7 заклинаний (BOOM!, BA-BOOM!, Meteor Strike, GadZap, Poizn, Craze, Halvah);
+      42/42 канон.
+- [ ] **Уровни приёмов и магии Lv1–5** за SC/MC (рост силы, снижение charge) — крупный системный кусок.
+- [ ] **Mana Eggs из каталога в бой:** экипировка яиц героям + получение за каноничных боссов.
+- [ ] **Статусы:** добавить `confusion` и `paralysis` (движок, UI, AI, предметы).
+- [ ] **Скрипт:** NPC-диалоги на все локации (~50–60 суммарно), defeat-реплики боссов.
+- [ ] **Секреты:** Raul Hills Special Stage, армрестлинг Хембла, Carro (Poff Nuts), Elmo,
+      канонические сундуки (29 → ~60).
+- [ ] **Menu parity:** консольная курсорная навигация, equip flow с превью, egg equip screen,
+      options (скорость текста и т.д.), экран Valuables.
+- [ ] **Арт:** портреты для всех 67+ врагов, бэкдропы ключевых локаций.
+- [ ] **Аудио (опц.):** синтез лейтмотивов и SFX.
+- [ ] **Баланс/QA:** полный прогон кампании, `npm run balance` (novice 55–65%, veteran 90–100%),
+      все аудиты зелёные, обновление `artifacts/ga_weights.json`.
+
+Фазы: 1 — Каталоги → 2 — Системы → 3 — Parity/polish → 4 — QA.
