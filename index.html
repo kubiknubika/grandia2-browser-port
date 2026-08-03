@@ -58,21 +58,166 @@
 
       .tab-row button[data-active='true'] { background: #0ea5e9; }
 
-      .menu-hero {
-        text-align: center;
-        padding: 36px 18px;
-        background-image:
-          linear-gradient(rgba(15, 23, 42, 0.58), rgba(15, 23, 42, 0.84)),
-          url('./assets/ui/menu-hero.svg');
-        background-size: cover;
-        background-position: center;
+      .title-screen {
+        position: relative;
+        min-height: 92vh;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        overflow: hidden;
+        border-radius: 14px;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: #050b16;
+        padding: 0;
+        margin-bottom: 16px;
       }
 
-      .menu-actions { justify-content: center; }
+      .title-bg {
+        position: absolute;
+        inset: 0;
+        background-size: cover;
+        background-position: center 28%;
+        opacity: 0.55;
+      }
 
-      .menu-actions button {
-        min-width: 220px;
-        min-height: 56px;
+      .title-vignette {
+        position: absolute;
+        inset: 0;
+        background:
+          radial-gradient(ellipse at 50% 30%, rgba(5, 11, 22, 0) 0%, rgba(5, 11, 22, 0.55) 78%),
+          linear-gradient(to bottom, rgba(5, 11, 22, 0.55), rgba(5, 11, 22, 0.92) 85%);
+      }
+
+      .title-logo {
+        position: relative;
+        padding: 44px 48px 0;
+        pointer-events: none;
+      }
+
+      .title-kicker {
+        letter-spacing: 0.42em;
+        font-size: 13px;
+        color: #fbbf24;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+      }
+
+      .title-name {
+        font-size: clamp(42px, 8vw, 76px);
+        line-height: 1;
+        letter-spacing: 0.03em;
+        margin: 0 0 10px;
+        color: #f8fafc;
+        text-shadow: 0 4px 30px rgba(59, 130, 246, 0.45);
+      }
+
+      .title-sub {
+        font-size: 15px;
+        color: #cbd5e1;
+        max-width: 520px;
+      }
+
+      .title-layout {
+        position: relative;
+        display: grid;
+        grid-template-columns: minmax(280px, 420px) minmax(220px, 320px);
+        gap: 28px;
+        align-items: start;
+        padding: 20px 48px 28px;
+      }
+
+      .title-menu {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .title-item {
+        position: relative;
+        display: flex;
+        align-items: center;
+        min-height: 52px;
+        padding: 10px 16px 10px 44px;
+        border: 1px solid rgba(148, 163, 184, 0.28);
+        border-radius: 10px;
+        background: rgba(15, 23, 42, 0.72);
+        color: #e2e8f0;
+        font-size: 16px;
+        font-weight: 600;
+        text-align: left;
+        cursor: pointer;
+        transition: background 0.15s, border-color 0.15s, color 0.15s;
+      }
+
+      .title-item::before {
+        content: '';
+        position: absolute;
+        left: 14px;
+        top: 50%;
+        width: 10px;
+        height: 10px;
+        transform: translateY(-50%) rotate(45deg);
+        border: 2px solid #94a3b8;
+        opacity: 0;
+        transition: opacity 0.15s, border-color 0.15s, transform 0.15s;
+      }
+
+      .title-item:hover,
+      .title-item[data-active='true'] {
+        background: rgba(37, 99, 235, 0.35);
+        border-color: rgba(96, 165, 250, 0.75);
+        color: #ffffff;
+      }
+
+      .title-item[data-active='true']::before {
+        opacity: 1;
+        border-color: #fbbf24;
+        transform: translateY(-50%) rotate(45deg) scale(1.25);
+      }
+
+      .title-item[data-active='true'] .title-item-name::after {
+        content: ' ◂';
+        color: #fbbf24;
+      }
+
+      .title-desc {
+        border-left: 2px solid rgba(96, 165, 250, 0.55);
+        padding: 4px 0 4px 18px;
+        min-height: 110px;
+      }
+
+      .title-desc-label {
+        font-size: 11px;
+        letter-spacing: 0.3em;
+        color: #fbbf24;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+      }
+
+      .title-desc-text {
+        margin: 0;
+        color: #cbd5e1;
+        font-size: 14px;
+        line-height: 1.55;
+      }
+
+      .title-footer {
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        padding: 14px 48px;
+        border-top: 1px solid rgba(148, 163, 184, 0.18);
+        font-size: 12px;
+        color: #64748b;
+      }
+
+      @media (max-width: 760px) {
+        .title-layout {
+          grid-template-columns: 1fr;
+          padding: 20px 20px 24px;
+        }
+        .title-logo { padding: 28px 20px 0; }
+        .title-footer { padding: 12px 20px; }
       }
 
       .action-button {
@@ -263,18 +408,43 @@
   </head>
   <body>
     <main>
-      <section id="menu-screen" class="panel menu-hero">
-        <h1>Grandia 2 Browser Port</h1>
-        <p>
-          Играбельный combat prototype с ручным боем, AI-дебагом, обучаемым veteran AI,
-          экспортом battle log и replay lab.
-        </p>
-        <div class="menu-actions">
-          <button id="menu-open-play">Начать игру</button>
-          <button id="menu-open-campaign" class="secondary">Сюжетная кампания</button>
-          <button id="menu-open-debug" class="secondary">Открыть дебаг-меню</button>
-          <button id="menu-open-compare" class="secondary">Replay compare lab</button>
-          <button id="menu-open-parity" class="secondary">Меню и энциклопедия</button>
+      <section id="menu-screen" class="title-screen" hidden>
+        <div class="title-bg" style="background-image: url('./assets/ui/menu-hero.svg');"></div>
+        <div class="title-vignette"></div>
+
+        <div class="title-logo">
+          <div class="title-kicker">BROWSER PORT</div>
+          <h1 class="title-name">Grandia&nbsp;II</h1>
+          <div class="title-sub">Играбельный прототип боевой системы и сюжетной кампании</div>
+        </div>
+
+        <div class="title-layout">
+          <nav class="title-menu" id="title-menu" aria-label="Главное меню">
+            <button class="title-item" id="menu-open-play" data-mdesc="Бой 2x2 вручную: IP Gauge, Combo / Critical / Moves / Magic / Items / Defend. Играй человеком против Novice или Veteran AI.">
+              <span class="title-item-name">Начать игру</span>
+            </button>
+            <button class="title-item" id="menu-open-campaign" data-mdesc="Полная сюжетная кампания: 19 битов, катсцены, NPC-диалоги, мир, магазины, экипировка, Mana Eggs и уровни приёмов.">
+              <span class="title-item-name">Сюжетная кампания</span>
+            </button>
+            <button class="title-item" id="menu-open-debug" data-mdesc="Лаборатория: AI-vs-AI, винрейты, обучение veteran-бота, баланс-вектор, редактор статов, replay viewer.">
+              <span class="title-item-name">Дебаг-меню</span>
+            </button>
+            <button class="title-item" id="menu-open-compare" data-mdesc="Сравнение двух replay-логов по шагам: события, решения, HP и экспорт diff.">
+              <span class="title-item-name">Replay compare</span>
+            </button>
+            <button class="title-item" id="menu-open-parity" data-mdesc="Original-like экраны: статус героя, навыки, Mana Eggs, предметы, энциклопедия врагов, ключевые предметы, настройки.">
+              <span class="title-item-name">Меню и энциклопедия</span>
+            </button>
+          </nav>
+
+          <aside class="title-desc" id="menu-desc">
+            <div class="title-desc-label">ОПИСАНИЕ</div>
+            <p class="title-desc-text" id="menu-desc-text">Выберите пункт меню.</p>
+          </aside>
+        </div>
+
+        <div class="title-footer">
+          <span id="menu-version">версия 2.0 · content parity</span>
         </div>
       </section>
 

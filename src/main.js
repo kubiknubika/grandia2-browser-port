@@ -955,6 +955,7 @@ function savePersistedSettings() {
 const state = {
   appScreen: 'menu',
   activeTab: 'play',
+  menuCursor: 0,
   settings: loadPersistedSettings(),
   menuParityScreen: 'status',
   battle: null,
@@ -1034,6 +1035,8 @@ const elements = {
   compareSection: document.querySelector('#compare-section'),
   paritySection: document.querySelector('#menu-parity-section'),
   menuOpenParity: document.querySelector('#menu-open-parity'),
+  menuDesc: document.querySelector('#menu-desc'),
+  menuDescText: document.querySelector('#menu-desc-text'),
   mpStatus: document.querySelector('#mp-status'),
   mpSkills: document.querySelector('#mp-skills'),
   mpEggs: document.querySelector('#mp-eggs'),
@@ -2740,6 +2743,42 @@ function getEventFxProgress() {
   return Math.max(0, Math.min(1, (now - state.eventFx.startedAt) / duration));
 }
 
+const TITLE_MENU_ITEMS = [
+  { id: 'menu-open-play', tab: 'play', run: () => resetToPlayBattle() },
+  { id: 'menu-open-campaign', tab: 'campaign', run: null },
+  { id: 'menu-open-debug', tab: 'debug', run: null },
+  { id: 'menu-open-compare', tab: 'compare', run: null },
+  { id: 'menu-open-parity', tab: 'parity', run: null },
+];
+
+function renderTitleMenu() {
+  if (state.appScreen !== 'menu' || !elements.menuDescText) {
+    return;
+  }
+  const items = TITLE_MENU_ITEMS;
+  const active = items[Math.max(0, Math.min(state.menuCursor ?? 0, items.length - 1))] ?? items[0];
+  for (const item of items) {
+    const btn = document.getElementById(item.id);
+    if (btn) {
+      btn.dataset.active = String(item.id === active.id);
+    }
+  }
+  const activeBtn = document.getElementById(active.id);
+  const desc = activeBtn?.dataset?.mdesc ?? 'Выберите пункт меню.';
+  elements.menuDescText.textContent = desc;
+  activeBtn?.focus({ preventScroll: true });
+}
+
+function activateTitleMenuItem(item) {
+  if (!item) {
+    return;
+  }
+  if (item.run) {
+    item.run();
+  }
+  openWorkspace(item.tab);
+}
+
 function openWorkspace(tab = state.activeTab) {
   state.appScreen = 'app';
   state.activeTab = tab;
@@ -2751,6 +2790,7 @@ function openMainMenu() {
   stopCompareAutoplay();
   state.eventFx = null;
   state.eventFxQueue = [];
+  state.menuCursor = 0;
   state.appScreen = 'menu';
   render();
 }
@@ -6109,6 +6149,7 @@ function render() {
   finalizeCampaignBattleOutcome();
   manageBattleTheme();
   renderTabs();
+  renderTitleMenu();
   renderToolbar();
   renderCanvas();
   renderStatusPanels();
@@ -10038,13 +10079,20 @@ async function importArtifactFromLocalFile(file) {
 }
 
 function bindEvents() {
-  elements.menuOpenPlay.addEventListener('click', () => {
-    resetToPlayBattle();
-    openWorkspace('play');
-  });
-  elements.menuOpenCampaign.addEventListener('click', () => openWorkspace('campaign'));
-  elements.menuOpenDebug.addEventListener('click', () => openWorkspace('debug'));
-  elements.menuOpenCompare.addEventListener('click', () => openWorkspace('compare'));
+  for (const item of TITLE_MENU_ITEMS) {
+    const btn = document.getElementById(item.id);
+    if (!btn) {
+      continue;
+    }
+    btn.addEventListener('click', () => activateTitleMenuItem(item));
+    btn.addEventListener('mouseenter', () => {
+      const idx = TITLE_MENU_ITEMS.findIndex((entry) => entry.id === item.id);
+      if (idx >= 0) {
+        state.menuCursor = idx;
+        renderTitleMenu();
+      }
+    });
+  }
   elements.backToMenu.addEventListener('click', openMainMenu);
   elements.tabPlay.addEventListener('click', () => setActiveTab('play'));
   elements.tabCampaign.addEventListener('click', () => setActiveTab('campaign'));
@@ -10090,6 +10138,28 @@ function bindEvents() {
     const tag = event.target?.tagName ?? '';
     if (['INPUT', 'SELECT', 'TEXTAREA'].includes(tag)) {
       return;
+    }
+    if (state.appScreen === 'menu' && state.activeTab === 'play') {
+      const key = event.key;
+      if (key === 'ArrowUp' || key === 'w' || key === 'W' || key === 'ArrowLeft') {
+        state.menuCursor = Math.max(0, (state.menuCursor ?? 0) - 1);
+        renderTitleMenu();
+        event.preventDefault();
+        return;
+      }
+      if (key === 'ArrowDown' || key === 's' || key === 'S' || key === 'ArrowRight') {
+        const items = TITLE_MENU_ITEMS;
+        state.menuCursor = Math.min(items.length - 1, (state.menuCursor ?? 0) + 1);
+        renderTitleMenu();
+        event.preventDefault();
+        return;
+      }
+      if (key === 'Enter' || key === ' ') {
+        const item = TITLE_MENU_ITEMS[Math.max(0, Math.min(state.menuCursor ?? 0, TITLE_MENU_ITEMS.length - 1))];
+        activateTitleMenuItem(item);
+        event.preventDefault();
+        return;
+      }
     }
     const key = String(event.key ?? '').toLowerCase();
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', 'w', 'a', 's', 'd'].includes(key)) {
