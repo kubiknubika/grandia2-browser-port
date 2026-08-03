@@ -81,6 +81,9 @@ import {
   MANA_EGGS,
 } from './mana_eggs.js';
 import {
+  valuablesList,
+} from './valuables.js';
+import {
   EGG_LEVEL_COSTS,
   isMagicLevelable,
   isMoveLevelable,
@@ -1029,6 +1032,7 @@ const elements = {
   mpEggs: document.querySelector('#mp-eggs'),
   mpItems: document.querySelector('#mp-items'),
   mpBestiary: document.querySelector('#mp-bestiary'),
+  mpValuables: document.querySelector('#mp-valuables'),
   mpConfig: document.querySelector('#mp-config'),
   mpOutput: document.querySelector('#mp-output'),
   mpImages: document.querySelector('#mp-images'),
@@ -1176,6 +1180,7 @@ const MP_SCREENS = [
   { key: 'skills', label: 'Навыки и магия', button: 'mpSkills' },
   { key: 'eggs', label: 'Mana Eggs', button: 'mpEggs' },
   { key: 'items', label: 'Предметы и снаряжение', button: 'mpItems' },
+  { key: 'valuables', label: 'Ключевые предметы', button: 'mpValuables' },
   { key: 'bestiary', label: 'Энциклопедия врагов', button: 'mpBestiary' },
   { key: 'config', label: 'Настройки', button: 'mpConfig' },
 ];
@@ -5461,6 +5466,9 @@ function renderMenuParityPanel() {
     case 'config':
       renderMpConfigScreen();
       break;
+    case 'valuables':
+      renderMpValuablesScreen();
+      break;
     case 'status':
     default:
       renderMpStatusScreen();
@@ -5674,6 +5682,34 @@ function handleMenuParityKeys(event) {
   }
 }
 
+function statDiffText(before, after) {
+  const keys = ['maxHp', 'str', 'vit', 'agi', 'spd', 'mag', 'men', 'maxMp'];
+  const parts = [];
+  for (const key of keys) {
+    const diff = Number(after[key] ?? 0) - Number(before[key] ?? 0);
+    if (Math.abs(diff) > 0) {
+      parts.push(`${key} ${diff > 0 ? '+' : ''}${diff}`);
+    }
+  }
+  return parts.join(', ') || 'нет изменений';
+}
+
+function equipmentStatPreview(entry, key) {
+  const before = buildCampaignPresetForKey(key);
+  const wasEquipped = state.campaignRun.equipmentLoadout?.[key]?.[entry.slot] === entry.id;
+  if (wasEquipped || !entry.targetKey) {
+    return null;
+  }
+  // simulate equipping: apply bonuses to a copy
+  const after = JSON.parse(JSON.stringify(before));
+  for (const [field, amount] of Object.entries(entry.bonuses ?? {})) {
+    if (field in after) {
+      after[field] = Number(after[field] ?? 0) + Number(amount ?? 0);
+    }
+  }
+  return `превью: ${statDiffText(before, after)}`;
+}
+
 function renderMpItemsScreen() {
   const lines = [
     'Предметы и снаряжение (item / bag / equipment screen)',
@@ -5687,8 +5723,12 @@ function renderMpItemsScreen() {
     '— Каталог магазинов —',
     ...SHOP_CATALOG.map((entry) => `  ${entry.label} (${entry.price} G): ${entry.description}`),
     '',
-    '— Каталог экипировки —',
-    ...EQUIPMENT_CATALOG.map((entry) => `  ${entry.label} [${entry.slot}] → ${PRESETS[entry.targetKey]?.name ?? 'party'}: ${entry.description}`),
+    '— Каталог экипировки (превью статов для владельца слота) —',
+    ...EQUIPMENT_CATALOG.map((entry) => {
+      const owner = entry.targetKey ? PRESETS[entry.targetKey]?.name ?? entry.targetKey : 'party';
+      const preview = entry.targetKey ? equipmentStatPreview(entry, entry.targetKey) : null;
+      return `  ${entry.label} [${entry.slot}] → ${owner}: ${entry.description}${preview ? ` | ${preview}` : ''}`;
+    }),
     '',
     '— Текущие слоты партии —',
     ...campaignEquipmentLoadoutLines(),
@@ -5733,6 +5773,23 @@ function renderMpBestiaryScreen() {
   elements.mpImages.innerHTML = imageBlocks.join('');
 }
 
+function renderMpValuablesScreen() {
+  const lines = [
+    'Ключевые предметы (valuables / key items)',
+    'Знаковые вещи пути — как в оригинальных меню Grandia II.',
+    '',
+  ];
+  const images = [];
+  for (const item of valuablesList()) {
+    lines.push(`◆ ${item.label}`);
+    lines.push(`  ${item.description}`);
+    lines.push(`  Найден: ${item.acquiredWhere}`);
+    lines.push('');
+  }
+  elements.mpOutput.textContent = lines.join('\n');
+  elements.mpImages.innerHTML = valuablesList().map((item) => `<div class="mp-entry"><span>${item.label}</span></div>`).join('');
+}
+
 function renderMpConfigScreen() {
   elements.mpConfigAi.value = state.settings.defaultPlayEnemyAi;
   elements.mpConfigTheme.value = state.settings.defaultBattlefieldTheme;
@@ -5746,7 +5803,26 @@ function renderMpConfigScreen() {
     `Поле боя по умолчанию: ${state.settings.defaultBattlefieldTheme}`,
     `Подсказки в командном меню: ${state.settings.showCommandHints ? 'вкл' : 'выкл'}`,
     `Скорость replay по умолчанию: ${state.settings.replaySpeedMs} мс`,
+    '',
+    'Кнопка «Сбросить сохранения кампании» удаляет сохранённый забег и настройки.',
   ].join('\n');
+  const buttons = [];
+  buttons.push(mpActionButton('Сбросить сохранения кампании', () => {
+    resetCampaignState();
+    state.debugOutput = 'Сохранения кампании сброшены.';
+    render();
+  }));
+  buttons.push(mpActionButton('Сбросить настройки', () => {
+    state.settings = { ...DEFAULT_SETTINGS };
+    localStorage.removeItem(SETTINGS_STORAGE_KEY);
+    state.playEnemyAi = DEFAULT_SETTINGS.defaultPlayEnemyAi;
+    state.battlefieldTheme = DEFAULT_SETTINGS.defaultBattlefieldTheme;
+    if (elements.replaySpeed) elements.replaySpeed.value = String(DEFAULT_SETTINGS.replaySpeedMs);
+    writeStateToForms();
+    state.debugOutput = 'Настройки сброшены к умолчаниям.';
+    render();
+  }));
+  elements.mpImages.innerHTML = buttons.join('');
 }
 
 function saveMenuParityConfig() {
@@ -9813,6 +9889,10 @@ function bindEvents() {
   });
   elements.mpBestiary.addEventListener('click', () => {
     state.menuParityScreen = 'bestiary';
+    render();
+  });
+  elements.mpValuables.addEventListener('click', () => {
+    state.menuParityScreen = 'valuables';
     render();
   });
   elements.mpConfig.addEventListener('click', () => {
