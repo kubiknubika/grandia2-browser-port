@@ -80,21 +80,17 @@ DoD: **выполнено** — новые предметы работают в 
 `BOOM!`, `BA-BOOM!`, `Meteor Strike`, `GadZap`, `Poizn`, `Craze`, `Halvah` добавлены
 (+ `Paralysis Wave` для врагов). Все школы обновлены в mana_eggs.js.
 
-### 3.2 Уровни магии и special moves (Lv 1–5) — M/L
-Сейчас приёмы/заклинания имеют фиксированную стоимость и силу. В оригинале:
-- special move: Lv1–5, прокачка за **SC** (250/500/1000/2000 и т.д.), рост силы и скорости;
-- magic: Lv1–5, прокачка за **MC** (60/30/45/75/120…), рост силы и скорости;
-- уровни завязаны на Mana Egg (для магии).
+### 3.2 Уровни магии и special moves (Lv 1–5) — ✅
+Канонические таблицы SC для всех приёмов героев (по гайдам Wulfson/Tricrokra) и MC для магии
+(из таблиц Mana Eggs); `power`/`ipDamage` растут, `chargeMultiplier` ускоряется с уровнем;
+skill screen показывает уровень и кнопки прокачки за SC/MC; уровни применяются в бою
+через `fighter.actionLevels`.
 
-DoD: у каждого move/magic есть `level` и таблица SC/MC, `chargeMultiplier` снижается,
-`power` растёт с уровнем; в UI (skill screen / egg screen) видна прокачка; трата SC/MC
-влияет на бой. Приоритет: **P1** (это самый крупный системный кусок).
-
-### 3.3 Mana Eggs: из каталога в бой — M
-Сейчас 8 яиц — каталог. Цель: экипировка яиц героям (слоты egg в меню героя),
-магия героя определяется надетым яйцом; получение яиц за боссов (канон):
-Mist — Durham Cave, Gravity — Eye of Valmar, Soul — Crimson Tails, Star — Naga Queens,
-Fairy — Raul Hills Special Stage, Dragon — Birthplace. Приоритет: **P1**.
+### 3.3 Mana Eggs: из каталога в бой — ✅
+Слоты яиц на героях (дефолт: Elena Holy, Millenia Chaos); надетое яйцо добавляет герою свои
+заклинания и задаёт их уровень; прокачка яйца за MC; получение за контент: Mist (Durham),
+Gravity (Fissure Depths), Soul (Ceceile Reef), Star (Demon's Law), Fairy (Raul Hills),
+Dragon (Birthplace).
 
 ---
 

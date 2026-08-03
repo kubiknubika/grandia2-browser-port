@@ -93,8 +93,13 @@ bestiary = полные группы + drop tables, меню = отдельны�
       сапоги, арфы).
 - [x] **Магия:** добавлены BOOM!, BA-BOOM!, Meteor Strike, GadZap, Poizn, Craze, Halvah +
       Paralysis Wave — **42/42** канонических заклинаний (110 actions).
-- [ ] **Уровни приёмов и магии Lv1–5** за SC/MC (рост силы, снижение charge) — крупный системный кусок.
-- [ ] **Mana Eggs из каталога в бой:** экипировка яиц героям + получение за каноничных боссов.
+- [x] **Уровни приёмов и магии Lv1–5** за SC/MC: канонические таблицы цен (MOVE_LEVEL_COSTS
+      по гайдам Wulfson/Tricrokra, MC из таблиц Mana Eggs), рост power/ipDamage и скорости
+      charge в бою; прокачка через skill screen (SC) и magic (MC).
+- [x] **Mana Eggs в бой:** слоты яиц на героях (Elena → Holy, Millenia → Chaos по умолчанию),
+      экипировка/прокачка яиц (MC) через экран Mana Eggs; надетое яйцо добавляет свои заклинания
+      герою и задаёт их уровень; получение яиц за контент: Mist (Durham), Gravity (Fissure),
+      Soul (Ceceile Reef), Star (Demon's Law), Fairy (Raul Hills), Dragon (Birthplace).
 - [x] **Статусы:** добавлены `confusion` (случайная цель, снимается ударом) и `paralysis`
       (шанс пропуска хода) — движок, UI-иконки, AI-анализ, Halvah/Refresh/Panacea лечат,
       Charm-амулеты дают сопротивления.

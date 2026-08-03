@@ -81,6 +81,13 @@ import {
   MANA_EGGS,
 } from './mana_eggs.js';
 import {
+  EGG_LEVEL_COSTS,
+  isMagicLevelable,
+  isMoveLevelable,
+  magicLevelCosts,
+  moveLevelCosts,
+} from './action_levels.js';
+import {
   dropEntriesForPresetKey,
 } from './drop_data.js';
 import {
@@ -317,6 +324,17 @@ function createEmptyCampaignRun() {
     activeLocationSceneId: null,
     seenLocationSceneIds: [],
     seenNpcDialogueIds: [],
+    actionLevels: {},
+    eggLoadout: {
+      ryudo: null,
+      elena: 'holy_egg',
+      tio: null,
+      roan: null,
+      mareg: null,
+      millenia: 'chaos_egg',
+    },
+    eggLevels: {},
+    ownedEggIds: [],
     roster: createDefaultCampaignRoster(),
     equipmentLoadout: createDefaultEquipmentLoadout(),
     journal: [],
@@ -1322,93 +1340,161 @@ const WORLD_LOCATION_EVENTS = {
 
 const WORLD_LOCATION_TREASURES = {
   carbo_village: [
+
     { id: 'carbo-garden-cache', label: 'Садовая грядка', description: 'Кто-то припрятал запас в корнях старого дерева.', rewards: { gold: 20, poffNut: 1 } },
+  
   ],
   black_forest: [
+
     { id: 'black-forest-cache', label: 'Корни у тропы', description: 'Старая сумка, брошенная кем-то в спешке.', rewards: { gold: 30, medicinalHerb: 1 } },
+  
   ],
   garmia_tower: [
+
     { id: 'garmia-reliquary', label: 'Разбитый реликварий', description: 'Осколки святыни и немного полезных припасов.', rewards: { gold: 45, antidote: 1, eyeDrops: 1 } },
+  
   ],
   inor_mountains: [
+
     { id: 'inor-cliff-chest', label: 'Сундук на уступе', description: 'Тайник у опасного горного прохода.', rewards: { gold: 55, medicinalHerb: 1, antidote: 1 } },
+  
   ],
   agear_town: [
+
     { id: 'agear-ruin-cache', label: 'Развалины на окраине', description: 'Осколки арсенала, уцелевшие после налёта.', rewards: { gold: 25, firebomb: 1 } },
+  
   ],
   durham_cave_entrance: [
+
     { id: 'durham-rock-cache', label: 'Тайник за валуном', description: 'Пещерный схрон возле старого рычага.', rewards: { gold: 70, medicinalHerb: 2 } },
     { id: 'durham-torte-cache', label: 'Дудочка в грязи', description: 'Кто-то обронил дудочку, которая умеет будить даже самых крепких сонь.', rewards: { tortesReedpipe: 1, gold: 20 } },
+  
+  ],
+  durham_cave_depths: [
+
+    { id: 'durham-mist-egg', label: 'Туманное яйцо', description: 'Воздушное яйцо маны, оставленное тварями пещеры: ветер, вода и мороз.', requiresFlags: ['flag_durham_roan_found'], rewards: { eggIds: ['mist_egg'] } },
+  
+  ],
+  fissure_depths: [
+
+    { id: 'fissure-gravity-egg', label: 'Яйцо гравитации', description: 'Землистое яйцо маны из глубин разлома: огонь, земля и взрывы.', rewards: { eggIds: ['gravity_egg'] } },
+  
+  ],
+  ceceile_reef: [
+
+    { id: 'reef-soul-egg', label: 'Яйцо души', description: 'Мудрое яйцо маны, выброшенное прибоем: ветер, вода и молнии.', rewards: { eggIds: ['soul_egg'] } },
+  ,
+    { id: 'reef-shell-cache', label: 'Сундук в кораллах', description: 'Тайник на рифе у кромки воды.', rewards: { gold: 120, medicinalHerb: 2 } },
+  
+  ],
+  raul_hills: [
+
+    { id: 'raul-fairy-egg', label: 'Яйцо феи', description: 'Защитное яйцо маны с вершины башни лабиринта: исцеление и поддержка.', rewards: { eggIds: ['fairy_egg'] } },
+  ,
+    { id: 'raul-star-cache', label: 'Звёздная расселина', description: 'Ящик, оставленный старыми охотниками за сокровищами.', rewards: { gold: 60, mogayBomb: 1 } },
+  ,
+    { id: 'raul-ruin-cache', label: 'Развалины с припасами', description: 'Кто-то оставил в руинах ценный запас.', rewards: { gold: 120, medicinalHerb: 2 } },
+  
+  ],
+  demons_law: [
+
+    { id: 'demons-law-star-egg', label: 'Звёздное яйцо', description: 'Ультимативное яйцо маны из контрольного зала: молнии и взрывы.', rewards: { eggIds: ['star_egg'] } },
+  ,
+    { id: 'demons-law-stone-cache', label: 'Алтарь стихий', description: 'Три камня, собранные древними мастерами для управления механизмами.', rewards: { flameStone: 1, galeStone: 1, quakeStone: 1 } },
+  
+  ],
+  birthplace_of_the_gods: [
+
+    { id: 'birthplace-dragon-egg', label: 'Яйцо дракона', description: 'Наступательное яйцо маны из алтаря Истока богов: вся боевая магия.', rewards: { eggIds: ['dragon_egg'] } },
+  ,
+    { id: 'birthplace-archive-cache', label: 'Древний архивный сундук', description: 'Редкий тайник из старого мира.', rewards: { gold: 260, medicinalHerb: 2, antidote: 2, equipmentIds: ['millenia-witch-ribbon'] } },
+  
   ],
   baked_plains: [
+
     { id: 'baked-smoke-cache', label: 'Сундук у паровых трещин', description: 'Потрёпанный сундук среди горячих камней.', rewards: { gold: 65, antidote: 1 } },
     { id: 'baked-sandman-sack', label: 'Мешок песчаного духа', description: 'То, что песчаный дух не успел унести с собой.', rewards: { gold: 30, seedOfPsyche: 1 } },
+  
   ],
   liligue_cave: [
+
     { id: 'liligue-ruin-cache', label: 'Тайник руин', description: 'Спрятанный сундук у храмовой стены.', rewards: { gold: 90, medicinalHerb: 1, antidote: 1 } },
     { id: 'liligue-reflection-cache', label: 'Зеркальная ниша', description: 'Древняя шкатулка с ювелирным кольцом.', rewards: { gold: 40, equipmentIds: ['roan-reflection-ring'] } },
     { id: 'liligue-flamberge-cache', label: 'Огненный тайник', description: 'Клинок, который ещё помнит жар древних печей Лилига.', rewards: { gold: 30, equipmentIds: ['ryudo-flamberge'] } },
+  
   ],
   mirumu_shed: [
+
     { id: 'mirumu-shed-cache', label: 'Полка в сарае', description: 'Запас того, кто собирался спускаться в разлом.', rewards: { eyeDrops: 1, paralysisSalve: 1 } },
+  
   ],
   st_heim_library: [
+
     { id: 'stheim-lost-tome-cache', label: 'Потерянный том', description: 'Книга, которую библиотекарь «потерял» — с закладкой из свитка.', rewards: { scrollOfAlheal: 1, magicCoins: 4 } },
-  ],
-  raul_hills: [
-    { id: 'raul-star-cache', label: 'Звёздная расселина', description: 'Ящик, оставленный старыми охотниками за сокровищами.', rewards: { gold: 60, mogayBomb: 1 } },
+  
   ],
   lumir_forest: [
+
     { id: 'lumir-snow-cache', label: 'Снежный тайник', description: 'Запорошенный ящик под елью.', rewards: { gold: 75, medicinalHerb: 1 } },
+  
   ],
   mysterious_fissure: [
+
     { id: 'fissure-deep-cache', label: 'Светящийся сундук', description: 'Схрон у спиральной платформы.', rewards: { gold: 95, antidote: 2, lumirFlower: 1 } },
+  
   ],
   st_heim_mountains: [
+
     { id: 'stheim-climb-cache', label: 'Сундук у водопада', description: 'Спрятан прямо у опасного горного перехода.', rewards: { gold: 110, medicinalHerb: 1, antidote: 1 } },
-  ],
-  raul_hills: [
-    { id: 'raul-ruin-cache', label: 'Развалины с припасами', description: 'Кто-то оставил в руинах ценный запас.', rewards: { gold: 120, medicinalHerb: 2 } },
+  
   ],
   cyrum_secret_passage: [
+
     { id: 'cyrum-secret-cache', label: 'Тайник замка', description: 'Спрятан у старой лестницы в проходе.', rewards: { gold: 130, medicinalHerb: 1, antidote: 1, moveBlessing: 1 } },
+  
   ],
   underground_plant: [
+
     { id: 'plant-terminal-cache', label: 'Контейнер у терминала', description: 'Ящик с техно-лутом и припасами.', rewards: { gold: 150, antidote: 2 } },
-  ],
-  ceceile_reef: [
-    { id: 'reef-shell-cache', label: 'Сундук в кораллах', description: 'Тайник на рифе у кромки воды.', rewards: { gold: 120, medicinalHerb: 2 } },
+  
   ],
   grail_mountain: [
+
     { id: 'grail-memory-cache', label: 'Тайник на склоне', description: 'Старый сундук у грязевого пути.', rewards: { gold: 155, medicinalHerb: 1, antidote: 1 } },
+  
   ],
   great_rift: [
+
     { id: 'rift-wind-cache', label: 'Сундук у обрыва', description: 'Добраться трудно, но награда того стоит.', rewards: { gold: 170, medicinalHerb: 2, antidote: 1 } },
-  ],
-  demons_law: [
-    { id: 'demons-law-stone-cache', label: 'Алтарь стихий', description: 'Три камня, собранные древними мастерами для управления механизмами.', rewards: { flameStone: 1, galeStone: 1, quakeStone: 1 } },
+  
   ],
   valmar_body: [
+
     { id: 'valmar-flesh-cache', label: 'Странный биотайник', description: 'Слишком органичный сундук внутри тела Вальмара.', rewards: { gold: 190, medicinalHerb: 2, antidote: 2, panacea: 1 } },
     { id: 'valmar-vein-cache', label: 'Пульсирующая железа', description: 'Внутри плоти застряли припасы прежней экспедиции.', rewards: { gold: 60, caterpillarSoup: 1, manaCrystal: 1 } },
+  
   ],
   cyrum_kingdom_south: [
+
     { id: 'cyrum-front-cache', label: 'Фронтовой схрон', description: 'Боезапас, спрятанный защитниками линии.', rewards: { scarletPotion: 1, handGrenade: 1 } },
+  
   ],
   valmars_moon: [
+
     { id: 'moon-core-cache', label: 'Лунный контейнер', description: 'Схрон у розовых колонн.', rewards: { gold: 220, medicinalHerb: 2, antidote: 2, healingHerb: 1, magicBlessing: 1 } },
-  ],
-  birthplace_of_the_gods: [
-    { id: 'birthplace-archive-cache', label: 'Древний архивный сундук', description: 'Редкий тайник из старого мира.', rewards: { gold: 260, medicinalHerb: 2, antidote: 2, equipmentIds: ['millenia-witch-ribbon'] } },
+  
   ],
   new_valmar: [
+
     { id: 'new-valmar-core-cache', label: 'Сердцевинный тайник', description: 'Награда у последнего рывка.', rewards: { gold: 320, medicinalHerb: 3, antidote: 2, yomisElixir: 1, healingIncense: 1, equipmentIds: ['ryudo-geohound-mail'] } },
+  ,
+    { id: 'new-valmar-hero-cache', label: 'Ларец героя', description: 'Запас, спрятанный для тех, кто дойдёт до самого сердца тьмы.', rewards: { heroElixir: 1, goldenPotion: 1 } },
+  
   ],
   new_valmar_core: [
+
     { id: 'core-meteor-cache', label: 'Архивный терминал ядра', description: 'Последний ящик снабжения перед финальной развязкой.', rewards: { meteorScroll: 1, yomisElixir: 1 } },
-  ],
-  new_valmar: [
-    { id: 'new-valmar-hero-cache', label: 'Ларец героя', description: 'Запас, спрятанный для тех, кто дойдёт до самого сердца тьмы.', rewards: { heroElixir: 1, goldenPotion: 1 } },
+  
   ],
 };
 
@@ -2127,6 +2213,10 @@ function normalizeCampaignRun(run) {
     activeLocationSceneId: run?.activeLocationSceneId ?? null,
     seenLocationSceneIds: Array.isArray(run?.seenLocationSceneIds) ? [...run.seenLocationSceneIds] : [],
     seenNpcDialogueIds: Array.isArray(run?.seenNpcDialogueIds) ? [...run.seenNpcDialogueIds] : [],
+    actionLevels: JSON.parse(JSON.stringify(run?.actionLevels ?? {})),
+    eggLoadout: { ryudo: null, elena: 'holy_egg', tio: null, roan: null, mareg: null, millenia: 'chaos_egg', ...(run?.eggLoadout ?? {}) },
+    eggLevels: JSON.parse(JSON.stringify(run?.eggLevels ?? {})),
+    ownedEggIds: Array.isArray(run?.ownedEggIds) ? [...run.ownedEggIds] : [],
     roster: cloneCampaignRoster(run?.roster),
     equipmentLoadout: cloneCampaignEquipmentLoadout(run?.equipmentLoadout),
     checkpointInventory: createBaseInventory({
@@ -5244,6 +5334,7 @@ function renderMenuParityPanel() {
       renderMpStatusScreen();
       break;
   }
+  bindMpActionButtons();
 }
 
 function mpPartyPortraitBlock(key) {
@@ -5271,6 +5362,7 @@ function renderMpStatusScreen() {
       `  HP ${rosterEntry?.hp ?? preset.maxHp}/${preset.maxHp} | SP ${rosterEntry?.sp ?? preset.startSp}/${preset.maxSp} | MP ${rosterEntry?.mp ?? preset.startMp}/${preset.maxMp}`,
       `  STR ${preset.str} VIT ${preset.vit} AGI ${preset.agi} SPD ${preset.spd} MAG ${preset.mag} MEN ${preset.men}`,
       `  Оружие: ${weapon} | Броня: ${armor} | Аксессуар: ${accessory}`,
+      `  Mana Egg: ${(() => { const eggId = state.campaignRun.eggLoadout?.[key] ?? null; const egg = eggId ? MANA_EGGS.find((entry) => entry.id === eggId) : null; return egg ? `${egg.label} (ур.${campaignEggLevel(key, egg.id)})` : '—'; })()}`,
       '',
     );
   }
@@ -5281,13 +5373,14 @@ function renderMpStatusScreen() {
 function renderMpSkillsScreen() {
   const lines = [
     'Навыки и магия (skill screen)',
-    'Полный список действий героев из ACTION_LIBRARY, сгруппированный как в оригинальных меню.',
+    'Уровни приёмов (Lv1–5) прокачиваются за SC, уровни магии — за MC. Рост уровня усиливает урон/лечение и ускоряет charge.',
     '',
   ];
+  const buttons = [];
   for (const key of CAMPAIGN_PLAYABLE_UNITS) {
     const preset = PRESETS[key];
     const groups = groupedActionDefinitions(loadoutActionIds(preset.loadout));
-    lines.push(`— ${preset.name} —`);
+    lines.push(`— ${preset.name} — SC: ${state.campaignRun.skillCoins} | MC: ${state.campaignRun.magicCoins}`);
     if (groups.length === 0) {
       lines.push('  (нет закреплённых действий)');
     }
@@ -5298,20 +5391,50 @@ function renderMpSkillsScreen() {
         if (definition.costSp) cost.push(`${definition.costSp} SP`);
         if (definition.costMp) cost.push(`${definition.costMp} MP`);
         const costText = cost.length ? ` [${cost.join(', ')}]` : '';
-        lines.push(`    - ${definition.label}${costText} — ${definition.targeting}`);
+        const level = campaignMoveLevel(key, definition.id);
+        const moveCosts = moveLevelCosts(definition.id);
+        const magicCosts = magicLevelCosts(definition.id);
+        let levelText = '';
+        if (isMoveLevelable(definition.id, definition)) {
+          levelText = ` ур.${level}/5`;
+          if (level < 5) {
+            const nextCost = moveCosts[level - 1];
+            buttons.push(mpActionButton(`${preset.name}: ${definition.label} → ур.${level + 1} (${nextCost} SC)`, () => upgradeCampaignMove(key, definition.id)));
+          }
+        } else if (isMagicLevelable(definition.id, definition)) {
+          levelText = ` ур.${level}/5`;
+          if (level < 5) {
+            const nextCost = magicCosts[level - 1];
+            buttons.push(mpActionButton(`${preset.name}: ${definition.label} → ур.${level + 1} (${nextCost} MC)`, () => upgradeCampaignMagic(key, definition.id)));
+          }
+        }
+        lines.push(`    - ${definition.label}${levelText}${costText} — ${definition.targeting}`);
       }
     }
     lines.push('');
   }
   elements.mpOutput.textContent = lines.join('\n');
+  elements.mpImages.innerHTML = buttons.join('');
 }
 
 function renderMpEggsScreen() {
   const lines = [
     'Mana Eggs (magic egg screen)',
-    'Каноничные яйца маны Grandia II: школа, уровни изучения и стоимость прокачки в MC.',
+    'Каноничные яйца маны Grandia II: школа, уровни изучения, MC-стоимость прокачки и экипировка на героев.',
+    'Яйца находятся в сундуках кампании (Durham → Mist, Aira → Gravity, Ceceile → Soul, Demon\'s Law → Star, Raul Hills → Fairy, Birthplace → Dragon).',
+    '',
+    '— Владение яйцами —',
+    ...(state.campaignRun.ownedEggIds.length ? state.campaignRun.ownedEggIds.map((id) => `  ✓ ${MANA_EGGS.find((egg) => egg.id === id)?.label ?? id}`) : ['  (пока нет; Elena и Millenia начинают со своими яйцами)']),
+    '',
+    '— Экипировка на героях —',
+    ...CAMPAIGN_PLAYABLE_UNITS.map((key) => {
+      const eggId = state.campaignRun.eggLoadout?.[key] ?? null;
+      const egg = eggId ? MANA_EGGS.find((entry) => entry.id === eggId) : null;
+      return `  ${PRESETS[key]?.name ?? key}: ${egg ? egg.label : '—'}`;
+    }),
     '',
   ];
+  const buttons = [];
   for (const egg of MANA_EGGS) {
     lines.push(`◆ ${egg.label} — ${egg.type}`);
     lines.push(`  Элементы: ${egg.elements.join(' / ')}`);
@@ -5321,9 +5444,46 @@ function renderMpEggsScreen() {
       const mc = spell.mcCost.join(' / ');
       lines.push(`    - ${spell.label} (уровень яйца ${spell.level}, MC: ${mc})`);
     }
+    const owned = state.campaignRun.ownedEggIds.includes(egg.id);
+    if (owned) {
+      for (const key of CAMPAIGN_PLAYABLE_UNITS) {
+        const equipped = state.campaignRun.eggLoadout?.[key] === egg.id;
+        buttons.push(mpActionButton(equipped ? `${PRESETS[key]?.name ?? key}: ${egg.label} (надето)` : `Надеть ${egg.label} на ${PRESETS[key]?.name ?? key}`, () => equipCampaignEgg(key, egg.id)));
+      }
+      for (const key of CAMPAIGN_PLAYABLE_UNITS) {
+        if (state.campaignRun.eggLoadout?.[key] === egg.id) {
+          const level = campaignEggLevel(key, egg.id);
+          if (level < 5) {
+            const cost = EGG_LEVEL_COSTS[level - 1];
+            buttons.push(mpActionButton(`${PRESETS[key]?.name ?? key}: ${egg.label} → ур.${level + 1} (${cost} MC)`, () => upgradeCampaignEgg(key, egg.id)));
+          }
+        }
+      }
+    }
     lines.push('');
   }
   elements.mpOutput.textContent = lines.join('\n');
+  elements.mpImages.innerHTML = buttons.join('');
+}
+
+const mpActionRegistry = new Map();
+let mpActionCounter = 0;
+
+function mpActionButton(label, onClick) {
+  mpActionCounter += 1;
+  const id = `mp-act-${mpActionCounter}`;
+  mpActionRegistry.set(id, onClick);
+  return `<button id="${id}" class="secondary" style="min-width:200px;">${label}</button>`;
+}
+
+function bindMpActionButtons() {
+  for (const [id, onClick] of mpActionRegistry) {
+    const button = document.getElementById(id);
+    if (button) {
+      button.addEventListener('click', onClick);
+      mpActionRegistry.delete(id);
+    }
+  }
 }
 
 function renderMpItemsScreen() {
@@ -6146,6 +6306,151 @@ function growthBonusesForKey(key) {
   return result;
 }
 
+
+function campaignMoveLevel(key, actionId) {
+  return Number(state.campaignRun.actionLevels?.[key]?.[actionId] ?? 1);
+}
+
+function campaignEggLevel(key, eggId) {
+  return Number(state.campaignRun.eggLevels?.[key]?.[eggId] ?? 1);
+}
+
+function campaignEggSpells(key, eggId) {
+  const egg = MANA_EGGS.find((entry) => entry.id === eggId);
+  const level = campaignEggLevel(key, eggId);
+  if (!egg) {
+    return [];
+  }
+  return egg.spells
+    .filter((spell) => spell.level <= level)
+    .map((spell) => spell.id);
+}
+
+function campaignActionLevelsForKey(key) {
+  const stored = { ...(state.campaignRun.actionLevels?.[key] ?? {}) };
+  const eggId = state.campaignRun.eggLoadout?.[key] ?? null;
+  if (eggId) {
+    const egg = MANA_EGGS.find((entry) => entry.id === eggId);
+    const level = campaignEggLevel(key, eggId);
+    if (egg) {
+      for (const spell of egg.spells) {
+        if (spell.level <= level) {
+          stored[spell.id] = Math.max(Number(stored[spell.id] ?? 1), level);
+        }
+      }
+    }
+  }
+  return stored;
+}
+
+function applyEggToLoadout(loadout, key, eggId) {
+  if (!eggId || !loadout) {
+    return loadout;
+  }
+  const spells = campaignEggSpells(key, eggId);
+  const next = { ...loadout };
+  const push = (arrayKey, id) => {
+    next[arrayKey] = [...new Set([...(next[arrayKey] ?? []), id])];
+  };
+  for (const spellId of spells) {
+    const def = ACTION_LIBRARY[spellId];
+    if (!def) {
+      continue;
+    }
+    const isAlly = def.targeting === 'single-ally' || def.targeting === 'all-allies';
+    const isHeal = isAlly && (def.revive || def.powerBase || def.healBase || (def.cureStatuses ?? []).length > 0);
+    const hasStatus = (def.statusEffects ?? []).length > 0;
+    const hasDebuff = (def.statShifts ?? []).some((shift) => shift.amount < 0);
+    if (isHeal) {
+      push('healMagics', spellId);
+    } else if (isAlly) {
+      push('supportMagics', spellId);
+    } else if (hasStatus) {
+      push('statusMoves', spellId);
+    } else if (hasDebuff) {
+      push('debuffMagics', spellId);
+    } else {
+      push('offensiveMagics', spellId);
+    }
+  }
+  return next;
+}
+
+function upgradeCampaignMove(key, actionId) {
+  const costs = moveLevelCosts(actionId);
+  const level = campaignMoveLevel(key, actionId);
+  if (!costs || level >= 5) {
+    return;
+  }
+  const cost = costs[level - 1];
+  if (state.campaignRun.skillCoins < cost) {
+    state.campaignRun.travelMessage = `Не хватает SC для ${ACTION_LIBRARY[actionId]?.label ?? actionId}: нужно ${cost}.`;
+    saveCampaignStateToLocalStorage();
+    render();
+    return;
+  }
+  state.campaignRun.skillCoins -= cost;
+  state.campaignRun.actionLevels[key] = { ...(state.campaignRun.actionLevels[key] ?? {}), [actionId]: level + 1 };
+  pushCampaignJournalEntry(`${PRESETS[key]?.name ?? key}: ${ACTION_LIBRARY[actionId]?.label ?? actionId} до ур. ${level + 1} (${cost} SC).`);
+  state.campaignRun.travelMessage = `${PRESETS[key]?.name ?? key}: ${ACTION_LIBRARY[actionId]?.label ?? actionId} → ур. ${level + 1}.`;
+  saveCampaignStateToLocalStorage();
+  render();
+}
+
+function upgradeCampaignMagic(key, actionId) {
+  const costs = magicLevelCosts(actionId);
+  const level = campaignMoveLevel(key, actionId);
+  if (!costs || level >= 5) {
+    return;
+  }
+  const cost = costs[level - 1];
+  if (state.campaignRun.magicCoins < cost) {
+    state.campaignRun.travelMessage = `Не хватает MC для ${ACTION_LIBRARY[actionId]?.label ?? actionId}: нужно ${cost}.`;
+    saveCampaignStateToLocalStorage();
+    render();
+    return;
+  }
+  state.campaignRun.magicCoins -= cost;
+  state.campaignRun.actionLevels[key] = { ...(state.campaignRun.actionLevels[key] ?? {}), [actionId]: level + 1 };
+  pushCampaignJournalEntry(`${PRESETS[key]?.name ?? key}: заклинание ${ACTION_LIBRARY[actionId]?.label ?? actionId} до ур. ${level + 1} (${cost} MC).`);
+  state.campaignRun.travelMessage = `${PRESETS[key]?.name ?? key}: ${ACTION_LIBRARY[actionId]?.label ?? actionId} → ур. ${level + 1}.`;
+  saveCampaignStateToLocalStorage();
+  render();
+}
+
+function upgradeCampaignEgg(key, eggId) {
+  const level = campaignEggLevel(key, eggId);
+  if (level >= 5) {
+    return;
+  }
+  const cost = EGG_LEVEL_COSTS[level - 1] ?? 80;
+  if (state.campaignRun.magicCoins < cost) {
+    state.campaignRun.travelMessage = `Не хватает MC для улучшения яйца: нужно ${cost}.`;
+    saveCampaignStateToLocalStorage();
+    render();
+    return;
+  }
+  state.campaignRun.magicCoins -= cost;
+  state.campaignRun.eggLevels[key] = { ...(state.campaignRun.eggLevels[key] ?? {}), [eggId]: level + 1 };
+  const egg = MANA_EGGS.find((entry) => entry.id === eggId);
+  pushCampaignJournalEntry(`${PRESETS[key]?.name ?? key}: ${egg?.label ?? eggId} до ур. ${level + 1} (${cost} MC).`);
+  state.campaignRun.travelMessage = `${PRESETS[key]?.name ?? key}: ${egg?.label ?? eggId} → ур. ${level + 1}.`;
+  saveCampaignStateToLocalStorage();
+  render();
+}
+
+function equipCampaignEgg(key, eggId) {
+  if (!state.campaignRun.ownedEggIds.includes(eggId)) {
+    return;
+  }
+  state.campaignRun.eggLoadout[key] = eggId;
+  const egg = MANA_EGGS.find((entry) => entry.id === eggId);
+  pushCampaignJournalEntry(`${PRESETS[key]?.name ?? key} надевает ${egg?.label ?? eggId}.`);
+  state.campaignRun.travelMessage = `${PRESETS[key]?.name ?? key}: надето яйцо ${egg?.label ?? eggId}.`;
+  saveCampaignStateToLocalStorage();
+  render();
+}
+
 function buildCampaignPresetForKey(key) {
   const preset = buildFormPresetForKey(key);
   const bonuses = {
@@ -6165,6 +6470,11 @@ function buildCampaignPresetForKey(key) {
       bonuses[field] = Number(bonuses[field] ?? 0) + Number(amount ?? 0);
     }
   }
+  const eggId = state.campaignRun.eggLoadout?.[key] ?? null;
+  if (eggId) {
+    preset.loadout = applyEggToLoadout(preset.loadout, key, eggId);
+  }
+  preset.actionLevels = campaignActionLevelsForKey(key);
   const resistBonusMap = {
     resistSleep: 'sleep',
     resistPoison: 'poison',
@@ -7380,6 +7690,7 @@ function grantCampaignRewards(rewards = {}, { sourceLabel = 'Награда' } =
     ...createBaseInventory(rewards),
     equipmentIds: Array.isArray(rewards.equipmentIds) ? rewards.equipmentIds : [],
     setFlags: Array.isArray(rewards.setFlags) ? rewards.setFlags : [],
+    eggIds: Array.isArray(rewards.eggIds) ? rewards.eggIds : [],
   };
 
   state.campaignRun.gold += normalized.gold;
@@ -7409,6 +7720,11 @@ function grantCampaignRewards(rewards = {}, { sourceLabel = 'Награда' } =
       }
     }
   }
+  for (const eggId of normalized.eggIds) {
+    if (!state.campaignRun.ownedEggIds.includes(eggId)) {
+      state.campaignRun.ownedEggIds.push(eggId);
+    }
+  }
   writeStateToForms();
 
   const hasReward = normalized.gold
@@ -7417,11 +7733,15 @@ function grantCampaignRewards(rewards = {}, { sourceLabel = 'Награда' } =
     || normalized.magicCoins
     || inventoryEntries(normalized).length > 0
     || normalized.equipmentIds.length
-    || normalized.setFlags.length;
+    || normalized.setFlags.length
+    || normalized.eggIds.length;
   if (hasReward) {
     const extra = [];
     if (normalized.equipmentIds.length) {
       extra.push(`экипировка ${normalized.equipmentIds.map((id) => EQUIPMENT_CATALOG.find((entry) => entry.id === id)?.label ?? id).join(', ')}`);
+    }
+    if (normalized.eggIds.length) {
+      extra.push(`Mana Eggs: ${normalized.eggIds.map((id) => MANA_EGGS.find((egg) => egg.id === id)?.label ?? id).join(', ')}`);
     }
     if (normalized.setFlags.length) {
       extra.push(`flags ${normalized.setFlags.map(questFlagLabel).join(', ')}`);
@@ -7532,10 +7852,21 @@ function renderCampaignGrowthPanel() {
 
   const unlocked = GROWTH_NODES.filter((node) => (state.campaignRun.growthUnlockIds ?? []).includes(node.id));
   const available = GROWTH_NODES.filter((node) => !(state.campaignRun.growthUnlockIds ?? []).includes(node.id));
+  const eggLines = CAMPAIGN_PLAYABLE_UNITS
+    .filter((key) => state.campaignRun.eggLoadout?.[key])
+    .map((key) => {
+      const eggId = state.campaignRun.eggLoadout[key];
+      const egg = MANA_EGGS.find((entry) => entry.id === eggId);
+      return `- ${PRESETS[key]?.name ?? key}: ${egg?.label ?? eggId} (ур.${campaignEggLevel(key, eggId)})`;
+    });
 
   elements.campaignGrowthSummary.textContent = [
     `Рост: ${campaignGrowthString()}`,
     `Следующий уровень через ${xpThresholdForLevel(state.campaignRun.partyLevel) - state.campaignRun.experience} EXP.`,
+    '',
+    'Mana Eggs на героях:',
+    ...(eggLines.length ? eggLines : ['- нет']),
+    `Найдено яиц: ${state.campaignRun.ownedEggIds.length}/${MANA_EGGS.length} (экипировка и прокачка — во вкладке «Меню» → Mana Eggs)`,
     '',
     'Открытые growth nodes:',
     ...(unlocked.length ? unlocked.map((node) => `- ${node.label} [${node.category}]`) : ['- none']),

@@ -1893,16 +1893,39 @@ function getScaleForTeam(balance, team) {
   return mergeScale({}, teamScale);
 }
 
-function getActionDefinition(battle, actionId) {
+function scaleActionDefinitionForLevel(definition, level) {
+  const lv = Math.max(1, Math.min(5, Number(level) || 1));
+  if (lv <= 1) {
+    return definition;
+  }
+  const powerFactor = 1 + (lv - 1) * 0.15;
+  const chargeFactor = 1 + (lv - 1) * 0.06;
+  const ipFactor = 1 + (lv - 1) * 0.12;
+  return {
+    ...definition,
+    ...(definition.power != null ? { power: Math.round(definition.power * powerFactor * 1000) / 1000 } : {}),
+    ...(definition.spellPower != null ? { spellPower: Math.round(definition.spellPower * powerFactor * 1000) / 1000 } : {}),
+    ...(definition.powerBase != null ? { powerBase: Math.round(definition.powerBase + (lv - 1) * 4) } : {}),
+    ...(definition.spellBase != null ? { spellBase: Math.round(definition.spellBase + (lv - 1) * 3) } : {}),
+    ...(definition.ipDamage != null ? { ipDamage: Math.round(definition.ipDamage * ipFactor) } : {}),
+    ...(definition.chargeMultiplier != null ? { chargeMultiplier: Math.round(definition.chargeMultiplier * chargeFactor * 1000) / 1000 } : {}),
+    level: lv,
+  };
+}
+
+function getActionDefinition(battle, actionId, fighter = null) {
   const base = ACTION_LIBRARY[actionId];
   if (!base) {
     throw new Error(`Unknown action definition: ${actionId}`);
   }
 
-  return {
+  const merged = {
     ...base,
     ...(battle.balance?.actionOverrides?.[actionId] ?? {}),
   };
+
+  const level = fighter?.actionLevels?.[actionId] ?? 1;
+  return scaleActionDefinitionForLevel(merged, level);
 }
 
 export function getBattleStat(fighter, stat) {
@@ -2305,7 +2328,7 @@ function chooseBestLineAttackForTargets(attackerPosition, targets, definition) {
 }
 
 function chooseBestLineAttack(battle, fighter, actionId) {
-  const definition = getActionDefinition(battle, actionId);
+  const definition = getActionDefinition(battle, actionId, fighter);
   const opponents = livingOpponents(battle, fighter);
   return chooseBestLineAttackForTargets(fighter.position, opponents, definition);
 }
@@ -2317,7 +2340,7 @@ function maxProjectedLineHits(battle, defendingTeam, overrides = []) {
   });
 
   const attackers = listLiving(defendingTeam === battle.players ? battle.enemies : battle.players)
-    .filter((fighter) => fighter.loadout.lineMove && fighter.sp >= getActionDefinition(battle, fighter.loadout.lineMove).costSp);
+    .filter((fighter) => fighter.loadout.lineMove && fighter.sp >= getActionDefinition(battle, fighter.loadout.lineMove, fighter).costSp);
 
   if (attackers.length === 0) {
     return 0;
@@ -2325,7 +2348,7 @@ function maxProjectedLineHits(battle, defendingTeam, overrides = []) {
 
   let best = 0;
   for (const attacker of attackers) {
-    const definition = getActionDefinition(battle, attacker.loadout.lineMove);
+    const definition = getActionDefinition(battle, attacker.loadout.lineMove, attacker);
     const line = chooseBestLineAttackForTargets(attacker.position, targets, definition);
     best = Math.max(best, line?.hits.length ?? 0);
   }
@@ -2375,6 +2398,7 @@ function createCombatant(config, balance) {
     position: clonePoint(config.position),
     home: clonePoint(config.position),
     radius: config.radius ?? 18,
+    actionLevels: { ...(config.actionLevels ?? {}) },
     get isAlive() {
       return this.hp > 0;
     },
@@ -4655,7 +4679,7 @@ export function createDefaultBattle(options = {}) {
 }
 
 function buildAction(battle, actor, actionId, target = null, point = null) {
-  const definition = getActionDefinition(battle, actionId);
+  const definition = getActionDefinition(battle, actionId, actor);
   return {
     id: actionId,
     definition,
@@ -4710,7 +4734,7 @@ export function getAvailableActions(battle, fighter) {
 
   if (!moveBlocked) {
     for (const moveId of aoeMoveIds(fighter)) {
-      const definition = getActionDefinition(battle, moveId);
+      const definition = getActionDefinition(battle, moveId, fighter);
       if (opponents.length > 0 && canPayActionCost(fighter, definition)) {
         actions.push(buildAction(battle, fighter, moveId));
       }
@@ -4724,7 +4748,7 @@ export function getAvailableActions(battle, fighter) {
 
   if (!moveBlocked) {
     for (const moveId of cancelMoveIds(fighter)) {
-      const definition = getActionDefinition(battle, moveId);
+      const definition = getActionDefinition(battle, moveId, fighter);
       if (!canPayActionCost(fighter, definition)) {
         continue;
       }
@@ -4734,7 +4758,7 @@ export function getAvailableActions(battle, fighter) {
     }
 
     for (const moveId of singleMoveIds(fighter)) {
-      const definition = getActionDefinition(battle, moveId);
+      const definition = getActionDefinition(battle, moveId, fighter);
       if (!canPayActionCost(fighter, definition)) {
         continue;
       }
@@ -4744,7 +4768,7 @@ export function getAvailableActions(battle, fighter) {
     }
 
     for (const moveId of statusMoveIds(fighter)) {
-      const definition = getActionDefinition(battle, moveId);
+      const definition = getActionDefinition(battle, moveId, fighter);
       if (!canPayActionCost(fighter, definition)) {
         continue;
       }
@@ -4754,7 +4778,7 @@ export function getAvailableActions(battle, fighter) {
     }
 
     for (const moveId of lineMoveIds(fighter)) {
-      const definition = getActionDefinition(battle, moveId);
+      const definition = getActionDefinition(battle, moveId, fighter);
       if (!canPayActionCost(fighter, definition)) {
         continue;
       }
@@ -4798,7 +4822,7 @@ export function getAvailableActions(battle, fighter) {
 
     if (Array.isArray(fighter.loadout.supportMagics)) {
       for (const spellId of fighter.loadout.supportMagics) {
-        const definition = getActionDefinition(battle, spellId);
+        const definition = getActionDefinition(battle, spellId, fighter);
         if (!canPayActionCost(fighter, definition)) {
           continue;
         }
@@ -4814,7 +4838,7 @@ export function getAvailableActions(battle, fighter) {
 
     if (Array.isArray(fighter.loadout.debuffMagics)) {
       for (const spellId of fighter.loadout.debuffMagics) {
-        const definition = getActionDefinition(battle, spellId);
+        const definition = getActionDefinition(battle, spellId, fighter);
         if (!canPayActionCost(fighter, definition)) {
           continue;
         }

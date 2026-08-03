@@ -12,7 +12,7 @@
 - ✅ **Все основные играбельные герои партии:** да; Ryudo, Elena, Millenia, Tio, Roan, Mareg присутствуют.
 - ❌ **Все оригинальные мобы/боссы:** нет; есть 74 enemy presets (52 с drop tables), это заметный curated subset, но не вся энциклопедия оригинала.
 - ❌ **Все оригинальные предметы/экипировка:** нет; есть 57 inventory items, 53 shop SKUs и 126 equipment entries, это не весь original item database.
-- ❌ **Все оригинальные секреты:** нет; есть 33 treasure nodes, 40 travel encounters и 96 world/event nodes, но это не полный secret compendium оригинала.
+- ❌ **Все оригинальные секреты:** нет; есть 39 treasure nodes, 40 travel encounters и 96 world/event nodes, но это не полный secret compendium оригинала.
 - 🟡 **Все оригинальные диалоги:** нет; story/dialogue coverage большая (234 dialogue blocks + 70 narration blocks + 30 optional NPC dialogues), но не весь original script.
 
 ## Что реально на 100%
@@ -57,7 +57,7 @@
 - Inventory item catalog: **57**.
 - Shop catalog: **53**.
 - Equipment catalog: **126**.
-- Treasure nodes: **33**.
+- Treasure nodes: **39**.
 - Travel encounter nodes: **40**.
 - World event nodes: **39**.
 - Additional scripted world events: **57**.
