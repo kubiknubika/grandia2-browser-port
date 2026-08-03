@@ -50,8 +50,8 @@ travel encounters, портреты (80 SVG), `BESTIARY_AUDIT.md` = 100% кан�
 
 ## 2. Предметы и экипировка — 29 → ~45 расходников, 66 → ~120 экипировки
 
-Текущее: 29 расходников, 36 shop SKU, 66 экипировки.
-Цель: закрыть канонический ассортимент.
+Текущее: **57 расходников, 53 shop SKU, 126 экипировки (✅ основной канонический ассортимент закрыт)**.
+Осталось: точечные дропы/редкости и часть аксессуаров — полировка, не каркас.
 
 **Недостающие расходники (примерный список, ~15–20):**
 Healing Fruit, Potion of Azure, Torte's Reedpipe, Smelling Salts, Blessing Scroll, Vaccine,
@@ -68,8 +68,9 @@ Charming Heels, Goddess Hi-Heels…), armor (Ancient Cuirass, Halo Armor, Moonst
 Sun Robe, Holy Clothes, Ninja Clothes…), аксессуары (Talisman, Phoenix Ring, Angel's Ring,
 King's Pride, Kojin Charm, Dark Ring…).
 
-DoD: новые предметы работают в бою/магазинах/экипировке, добавлены в shop stock и drop tables,
-`FULL_CONTENT_AUDIT.md` показывает закрытие каталога. Приоритет: **P0**.
+DoD: **выполнено** — новые предметы работают в бою (оффенсивные бомбы/камни, лечение,
+возрождение Holy Ashes, Spiderweb с moveBlock), в магазинах и drop tables; `FULL_CONTENT_AUDIT.md`
+обновлён.
 
 ---
 

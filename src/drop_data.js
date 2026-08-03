@@ -11,6 +11,7 @@ export const ENEMY_DROPS = {
   frostFrog: [
     { key: 'eyeDrops', chance: 0.5, count: 1 },
     { key: 'paralysisSalve', chance: 0.25, count: 1 },
+    { key: 'toadOil', chance: 0.2, count: 1 },
   ],
   gargoyle: [
     { equipment: 'ryudo-sword-of-purity', chance: 0.12, count: 1 },
@@ -74,6 +75,7 @@ export const ENEMY_DROPS = {
   sandman: [
     { key: 'seedOfPsyche', chance: 0.3, count: 1 },
     { key: 'paralysisSalve', chance: 0.2, count: 1 },
+    { key: 'sandmanWhiskers', chance: 0.25, count: 1 },
   ],
   pitViper: [
     { key: 'purifyingHerb', chance: 0.5, count: 1 },
@@ -106,6 +108,7 @@ export const ENEMY_DROPS = {
   tarantula: [
     { key: 'purifyingHerb', chance: 0.4, count: 1 },
     { key: 'caterpillarSoup', chance: 0.2, count: 1 },
+    { key: 'spiderweb', chance: 0.3, count: 1 },
   ],
   valmarFly: [
     { equipment: 'tio-platinum-feather', chance: 0.15, count: 1 },
@@ -175,6 +178,7 @@ export const ENEMY_DROPS = {
   devil: [
     { key: 'manaCrystal', chance: 0.3, count: 1 },
     { key: 'scarletPotion', chance: 0.3, count: 1 },
+    { key: 'demonAsh', chance: 0.25, count: 1 },
   ],
   snowLeopard: [
     { key: 'paralysisSalve', chance: 0.35, count: 1 },

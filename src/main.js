@@ -1338,6 +1338,7 @@ const WORLD_LOCATION_TREASURES = {
   ],
   durham_cave_entrance: [
     { id: 'durham-rock-cache', label: 'Тайник за валуном', description: 'Пещерный схрон возле старого рычага.', rewards: { gold: 70, medicinalHerb: 2 } },
+    { id: 'durham-torte-cache', label: 'Дудочка в грязи', description: 'Кто-то обронил дудочку, которая умеет будить даже самых крепких сонь.', rewards: { tortesReedpipe: 1, gold: 20 } },
   ],
   baked_plains: [
     { id: 'baked-smoke-cache', label: 'Сундук у паровых трещин', description: 'Потрёпанный сундук среди горячих камней.', rewards: { gold: 65, antidote: 1 } },
@@ -1346,6 +1347,7 @@ const WORLD_LOCATION_TREASURES = {
   liligue_cave: [
     { id: 'liligue-ruin-cache', label: 'Тайник руин', description: 'Спрятанный сундук у храмовой стены.', rewards: { gold: 90, medicinalHerb: 1, antidote: 1 } },
     { id: 'liligue-reflection-cache', label: 'Зеркальная ниша', description: 'Древняя шкатулка с ювелирным кольцом.', rewards: { gold: 40, equipmentIds: ['roan-reflection-ring'] } },
+    { id: 'liligue-flamberge-cache', label: 'Огненный тайник', description: 'Клинок, который ещё помнит жар древних печей Лилига.', rewards: { gold: 30, equipmentIds: ['ryudo-flamberge'] } },
   ],
   mirumu_shed: [
     { id: 'mirumu-shed-cache', label: 'Полка в сарае', description: 'Запас того, кто собирался спускаться в разлом.', rewards: { eyeDrops: 1, paralysisSalve: 1 } },
@@ -1383,6 +1385,9 @@ const WORLD_LOCATION_TREASURES = {
   great_rift: [
     { id: 'rift-wind-cache', label: 'Сундук у обрыва', description: 'Добраться трудно, но награда того стоит.', rewards: { gold: 170, medicinalHerb: 2, antidote: 1 } },
   ],
+  demons_law: [
+    { id: 'demons-law-stone-cache', label: 'Алтарь стихий', description: 'Три камня, собранные древними мастерами для управления механизмами.', rewards: { flameStone: 1, galeStone: 1, quakeStone: 1 } },
+  ],
   valmar_body: [
     { id: 'valmar-flesh-cache', label: 'Странный биотайник', description: 'Слишком органичный сундук внутри тела Вальмара.', rewards: { gold: 190, medicinalHerb: 2, antidote: 2, panacea: 1 } },
     { id: 'valmar-vein-cache', label: 'Пульсирующая железа', description: 'Внутри плоти застряли припасы прежней экспедиции.', rewards: { gold: 60, caterpillarSoup: 1, manaCrystal: 1 } },
@@ -1401,6 +1406,9 @@ const WORLD_LOCATION_TREASURES = {
   ],
   new_valmar_core: [
     { id: 'core-meteor-cache', label: 'Архивный терминал ядра', description: 'Последний ящик снабжения перед финальной развязкой.', rewards: { meteorScroll: 1, yomisElixir: 1 } },
+  ],
+  new_valmar: [
+    { id: 'new-valmar-hero-cache', label: 'Ларец героя', description: 'Запас, спрятанный для тех, кто дойдёт до самого сердца тьмы.', rewards: { heroElixir: 1, goldenPotion: 1 } },
   ],
 };
 
@@ -1969,6 +1977,10 @@ const ADDITIONAL_WORLD_EVENTS_BY_LOCATION = {
   ],
   new_valmar: [
     { id: 'new-valmar-nut-memory', label: 'Найти орех в живой стене', text: 'В складке живой стены застрял орех сочувствия — кто-то прятал его здесь, чтобы вернуться.', rewards: { sympathyNut: 1, experience: 10 } },
+    { id: 'new-valmar-ash-memory', label: 'Собрать пепел демона', text: 'Тёмный пепел на стенах — остатки того, кто пытался пройти этот путь раньше.', rewards: { demonAsh: 1, experience: 12 } },
+  ],
+  demons_law: [
+    { id: 'demons-law-medicine', label: 'Взять магическое снадобье', text: 'В сундуке контрольного зала лежит запас магической медицины старой экспедиции.', rewards: { magicalMedicine: 1, magicCoins: 4 } },
   ],
 };
 
@@ -2658,7 +2670,15 @@ function baseInventoryForCurrentEncounter() {
       return createBaseInventory({ medicinalHerb: 6, antidote: 3, woundSalve: 1, moveBlessing: 1 });
     case 'fullParty4v4':
     case 'guardianTrial':
-      return createBaseInventory({ medicinalHerb: 6, antidote: 4, woundSalve: 2, healingHerb: 1, magicBlessing: 1 });
+      return createBaseInventory({ medicinalHerb: 6, antidote: 4, woundSalve: 2, healingHerb: 1, magicBlessing: 1, healingFruit: 1, dynamite: 1 });
+    case 'eyeOfValmarBoss':
+    case 'crimsonTailsBoss':
+    case 'nagaQueensBoss':
+    case 'dualFistsBoss':
+    case 'birthplaceGuardianBoss':
+    case 'eggGuardianBoss':
+    case 'finalValmarBoss':
+      return createBaseInventory({ medicinalHerb: 6, antidote: 4, woundSalve: 2, healingHerb: 1, healingFruit: 2, scarletPotion: 1, dynamite: 2, blessingScroll: 1, magicalMedicine: 1 });
     default:
       return createBaseInventory(DEFAULT_CAMPAIGN_INVENTORY);
   }

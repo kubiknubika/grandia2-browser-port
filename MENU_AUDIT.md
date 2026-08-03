@@ -9,10 +9,10 @@
 - Campaign-related menu nodes: **46**.
 - Debug / replay / compare menu nodes: **47**.
 - Menu-parity (original-like screens) menu nodes: **13**.
-- Боевых actions, которые теперь могут быть показаны в command menus и handbooks: **110**.
-- Inventory item catalog для menu/item layer: **29**.
-- Shop catalog: **36**.
-- Equipment catalog: **74**.
+- Боевых actions, которые теперь могут быть показаны в command menus и handbooks: **138**.
+- Inventory item catalog для menu/item layer: **57**.
+- Shop catalog: **53**.
+- Equipment catalog: **126**.
 - Mana Egg catalog: **8**.
 - Optional NPC dialogue entries: **30**.
 

@@ -83,9 +83,14 @@ bestiary = полные группы + drop tables, меню = отдельны�
       Snow Leopard, Venomous Larva) + 7 боссов (Eye of Valmar, Crimson Tails, Naga Queens,
       Dual Fists, Birthplace Guardians, Egg Guardian, Final Valmar) со сценариями/шаблонами
       в песочнице и travel encounters.
-- [~] **Предметы:** 29 расходников; 66 → **74** экипировки (добавлены Charm-амулеты статусов,
-      Healing Ring, Relief Tag). Осталось: канонические расходники (Healing Fruit, Potion of
-      Azure, свитки, орехи, семена, бомбы) и полный ассортимент оружия/брони/аксессуаров.
+- [x] **Предметы:** 29 → **57** расходников (Healing Fruit, Potion of Azure, Torte's Reedpipe,
+      Smelling Salts, Blessing Scroll, Vaccine, Holy Ashes, орехи, Dynamite, Hyper/Super Mogay
+      Bomb, Spiderweb, Toad Oil, Magical Medicine, Golden Potion, Hero's Elixir, камни стихий…);
+      магазины 36 → **53**; экипировка 66 → **126** (оружие всех героев по канону: Flamberge,
+      Holy Soul Blade, Blazing/Icefang/Thor swords, Granasaber, Tio-клинки, ножи Roan,
+      Tundra Battleax; броня: Halo/Moonstone/Sun Robe, Holy Clothes, Valkyrie Dress,
+      Angel's Robe, Hero's Cuirass, Jet Black Cape; аксессуары: кольца, перья, серьги, шлемы,
+      сапоги, арфы).
 - [x] **Магия:** добавлены BOOM!, BA-BOOM!, Meteor Strike, GadZap, Poizn, Craze, Halvah +
       Paralysis Wave — **42/42** канонических заклинаний (110 actions).
 - [ ] **Уровни приёмов и магии Lv1–5** за SC/MC (рост силы, снижение charge) — крупный системный кусок.
