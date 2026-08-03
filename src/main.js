@@ -6296,6 +6296,9 @@ function readFormsToState() {
   for (const key of UNIT_KEYS) {
     for (const field of STAT_FIELDS) {
       const input = document.querySelector(`#stat-${key}-${field}`);
+      if (!input) {
+        continue;
+      }
       state.unitFormState[key][field] = Number(input.value);
     }
   }
@@ -6346,6 +6349,9 @@ function writeStateToForms() {
   for (const key of UNIT_KEYS) {
     for (const field of STAT_FIELDS) {
       const input = document.querySelector(`#stat-${key}-${field}`);
+      if (!input) {
+        continue;
+      }
       input.value = state.unitFormState[key][field];
     }
   }

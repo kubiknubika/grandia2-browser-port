@@ -5,7 +5,7 @@
 ## Что уже есть
 
 - Top-level sections: menu-screen, play-section, campaign-section, debug-section, compare-section, menu-parity-section.
-- Всего HTML ids / menu nodes: **265**.
+- Всего HTML ids / menu nodes: **301**.
 - Campaign-related menu nodes: **46**.
 - Debug / replay / compare menu nodes: **47**.
 - Menu-parity (original-like screens) menu nodes: **16**.
