@@ -73,19 +73,48 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
 
     // --- Туловище ---------------------------------------------------------
     // Имя *_body важно: UIController подсвечивает его при попадании.
-    const chest = track(MeshBuilder.CreateCapsule(`${id}_body`, {
-        height: 1.05, radius: 0.34, capSubdivisions: 6, subdivisions: 6,
+    // Конус даёт треугольный силуэт: широкие плечи, узкая талия.
+    const chest = track(MeshBuilder.CreateCylinder(`${id}_body`, {
+        height: 0.82, diameterTop: 0.78, diameterBottom: 0.5, tessellation: 14,
     }, scene));
     chest.parent = torso;
-    chest.position.y = 0.55;
+    chest.position.y = 0.66;
+    chest.scaling.z = 0.72; // тело не бочка, а слегка приплюснутое
     chest.material = cloth;
 
+    // Наплечники разбивают силуэт и делают героя «экипированным».
+    for (const side of [-1, 1]) {
+        const pad = track(MeshBuilder.CreateSphere(`${id}_pauldron${side}`, {
+            diameterX: 0.34, diameterY: 0.26, diameterZ: 0.32, slice: 0.55,
+        }, scene));
+        pad.parent = torso;
+        pad.position.set(0.42 * side, 0.9, 0);
+        pad.rotation.z = side * 0.35;
+        pad.material = weapon === 'staff' ? trim : steel;
+    }
+
+    const waist = track(MeshBuilder.CreateCylinder(`${id}_waist`, {
+        height: 0.3, diameterTop: 0.5, diameterBottom: 0.56, tessellation: 14,
+    }, scene));
+    waist.parent = torso;
+    waist.position.y = 0.14;
+    waist.scaling.z = 0.72;
+    waist.material = cloth;
+
     const belt = track(MeshBuilder.CreateCylinder(`${id}_belt`, {
-        height: 0.14, diameter: 0.68, tessellation: 16,
+        height: 0.13, diameter: 0.6, tessellation: 16,
     }, scene));
     belt.parent = torso;
-    belt.position.y = 0.06;
+    belt.position.y = 0.02;
+    belt.scaling.z = 0.78;
     belt.material = leather;
+
+    const buckle = track(MeshBuilder.CreateBox(`${id}_buckle`, {
+        width: 0.14, height: 0.12, depth: 0.06,
+    }, scene));
+    buckle.parent = torso;
+    buckle.position.set(0, 0.02, 0.22);
+    buckle.material = trim;
 
     // Плащ/накидка — силуэт, который отличает персонажа издалека.
     const cape = track(MeshBuilder.CreateBox(`${id}_cape`, {
@@ -104,12 +133,59 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     head.position.y = 0.28;
     head.material = skin;
 
+    const jaw = track(MeshBuilder.CreateSphere(`${id}_jaw`, {
+        diameterX: 0.4, diameterY: 0.3, diameterZ: 0.42,
+    }, scene));
+    jaw.parent = head;
+    jaw.position.set(0, -0.15, 0.03);
+    jaw.material = skin;
+
+    const nose = track(MeshBuilder.CreateSphere(`${id}_nose`, { diameter: 0.09 }, scene));
+    nose.parent = head;
+    nose.position.set(0, -0.02, 0.26);
+    nose.material = skin;
+
     const hairMesh = track(MeshBuilder.CreateSphere(`${id}_hair`, {
-        diameterX: 0.54, diameterY: 0.44, diameterZ: 0.54, slice: 0.62,
+        diameterX: 0.56, diameterY: 0.5, diameterZ: 0.56, slice: 0.58,
     }, scene));
     hairMesh.parent = head;
-    hairMesh.position.y = 0.1;
+    hairMesh.position.y = 0.08;
     hairMesh.material = hair;
+
+    if (weapon === 'staff') {
+        // Елена: длинные волосы по плечи — узнаваемый силуэт со спины.
+        for (const side of [-1, 1]) {
+            const strand = track(MeshBuilder.CreateCapsule(`${id}_strand${side}`, {
+                height: 0.62, radius: 0.1, capSubdivisions: 3, subdivisions: 3,
+            }, scene));
+            strand.parent = head;
+            strand.position.set(0.2 * side, -0.22, -0.06);
+            strand.material = hair;
+        }
+        const bun = track(MeshBuilder.CreateSphere(`${id}_bun`, { diameter: 0.3 }, scene));
+        bun.parent = head;
+        bun.position.set(0, -0.12, -0.26);
+        bun.material = hair;
+    } else {
+        // Рюдо: короткий ёжик и хвостик сзади.
+        const tail = track(MeshBuilder.CreateCapsule(`${id}_tail`, {
+            height: 0.34, radius: 0.07, capSubdivisions: 3, subdivisions: 3,
+        }, scene));
+        tail.parent = head;
+        tail.position.set(0, 0.02, -0.28);
+        tail.rotation.x = 0.9;
+        tail.material = hair;
+    }
+
+    for (const side of [-1, 1]) {
+        const brow = track(MeshBuilder.CreateBox(`${id}_brow${side}`, {
+            width: 0.13, height: 0.035, depth: 0.05,
+        }, scene));
+        brow.parent = head;
+        brow.position.set(0.1 * side, 0.1, 0.22);
+        brow.rotation.z = side * (weapon === 'staff' ? -0.1 : 0.22);
+        brow.material = hair;
+    }
 
     // Взгляд: чтобы было видно, куда повёрнут юнит.
     for (const side of [-1, 1]) {
@@ -142,14 +218,33 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     limb(`${id}_shinR`, kneeR, 0.62, 0.13, clothDark);
 
     for (const [name, parent] of [[`${id}_footL`, kneeL], [`${id}_footR`, kneeR]]) {
-        const foot = track(MeshBuilder.CreateBox(name, { width: 0.2, height: 0.12, depth: 0.34 }, scene));
+        const foot = track(MeshBuilder.CreateBox(name, { width: 0.21, height: 0.11, depth: 0.36 }, scene));
         foot.parent = parent;
-        foot.position.set(0, -0.6, 0.07);
+        foot.position.set(0, -0.62, 0.08);
         foot.material = leather;
+
+        // Голенище — сапог, а не дощечка под ногой.
+        const shaftBoot = track(MeshBuilder.CreateCylinder(`${name}_boot`, {
+            height: 0.26, diameterTop: 0.29, diameterBottom: 0.25, tessellation: 10,
+        }, scene));
+        shaftBoot.parent = parent;
+        shaftBoot.position.set(0, -0.46, 0.01);
+        shaftBoot.material = leather;
     }
 
-    // --- Оружие в правой руке --------------------------------------------
+    // --- Кисти -------------------------------------------------------------
+    // Без них руки просто обрубались на предплечье.
     const hand = joint(scene, `${id}_hand`, elbowR, new Vector3(0, -0.52, 0));
+    const handL = joint(scene, `${id}_handL`, elbowL, new Vector3(0, -0.52, 0));
+
+    for (const [name, parent] of [[`${id}_fistR`, hand], [`${id}_fistL`, handL]]) {
+        const fist = track(MeshBuilder.CreateSphere(name, {
+            diameterX: 0.15, diameterY: 0.18, diameterZ: 0.14,
+        }, scene));
+        fist.parent = parent;
+        fist.material = weapon === 'staff' ? skin : leather;
+    }
+
     const weaponPivot = joint(scene, `${id}_weaponPivot`, hand, Vector3.Zero());
 
     if (weapon === 'sword') {
@@ -173,35 +268,71 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         grip.position.y = -0.15;
         grip.material = leather;
     } else {
+        // Посох делаем толще и светлее: тонкая тёмная палка терялась на фоне.
+        const wood = makeMaterial(scene, `${id}_wood`, '#b98a56');
         const shaft = track(MeshBuilder.CreateCylinder(`${id}_shaft`, {
-            height: 1.75, diameter: 0.07, tessellation: 8,
+            height: 1.9, diameter: 0.11, tessellation: 10,
         }, scene));
         shaft.parent = weaponPivot;
-        shaft.position.y = 0.5;
-        shaft.material = leather;
+        shaft.position.y = 0.55;
+        shaft.material = wood;
 
-        const orb = track(MeshBuilder.CreateSphere(`${id}_orb`, { diameter: 0.26 }, scene));
+        // Перехваты, чтобы посох не выглядел трубой.
+        for (const y of [0.05, 1.0]) {
+            const wrap = track(MeshBuilder.CreateCylinder(`${id}_wrap${y}`, {
+                height: 0.1, diameter: 0.14, tessellation: 10,
+            }, scene));
+            wrap.parent = weaponPivot;
+            wrap.position.y = y;
+            wrap.material = leather;
+        }
+
+        const orbColor = accent ?? '#7fe7ff';
+        const orb = track(MeshBuilder.CreateSphere(`${id}_orb`, { diameter: 0.34 }, scene));
         orb.parent = weaponPivot;
-        orb.position.y = 1.4;
-        orb.material = makeMaterial(scene, `${id}_orbMat`, accent ?? '#c084fc', {
-            emissive: shade(accent ?? '#c084fc', 0.55),
+        orb.position.y = 1.62;
+        orb.material = makeMaterial(scene, `${id}_orbMat`, orbColor, {
+            emissive: orbColor, specular: 0.9,
         });
 
+        // Держатель-когти вокруг орба.
+        for (const side of [-1, 1]) {
+            const claw = track(MeshBuilder.CreateCylinder(`${id}_claw${side}`, {
+                height: 0.3, diameterTop: 0.02, diameterBottom: 0.09, tessellation: 6,
+            }, scene));
+            claw.parent = weaponPivot;
+            claw.position.set(0.13 * side, 1.48, 0);
+            claw.rotation.z = side * -0.4;
+            claw.material = trim;
+        }
+
         const ringMesh = track(MeshBuilder.CreateTorus(`${id}_orbRing`, {
-            diameter: 0.4, thickness: 0.035, tessellation: 20,
+            diameter: 0.46, thickness: 0.04, tessellation: 20,
         }, scene));
         ringMesh.parent = weaponPivot;
-        ringMesh.position.y = 1.4;
+        ringMesh.position.y = 1.62;
         ringMesh.rotation.x = Math.PI / 2.6;
         ringMesh.material = trim;
     }
 
-    // Поза покоя: руки чуть разведены, оружие наготове.
-    shoulderL.rotation.z = 0.16;
-    shoulderR.rotation.z = -0.16;
-    elbowL.rotation.x = -0.24;
-    elbowR.rotation.x = -0.35;
-    weaponPivot.rotation.x = weapon === 'sword' ? -0.5 : 0;
+    // Поза покоя: руки разведены, оружие видно и не пересекает тело.
+    shoulderL.rotation.z = 0.2;
+    shoulderR.rotation.z = -0.2;
+    elbowL.rotation.x = -0.22;
+
+    if (weapon === 'sword') {
+        // Меч уводим остриём вверх-вбок: клинок читается, а не режет ногу.
+        shoulderR.rotation.x = -0.1;
+        elbowR.rotation.x = -0.62;
+        weaponPivot.rotation.x = -0.55;
+        weaponPivot.rotation.z = -0.35;
+    } else {
+        // Посох стоит вертикально в опущенной руке, орб над плечом.
+        elbowR.rotation.x = -0.16;
+        shoulderR.rotation.z = -0.34;
+        weaponPivot.rotation.x = 0.16;    // навершие уходит вперёд от плеча
+        weaponPivot.rotation.z = -0.2;    // и наружу, чтобы не прятаться за корпус
+    }
 
     return {
         root,
@@ -211,13 +342,17 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
             hips, torso, neck, head,
             shoulderL, shoulderR, elbowL, elbowR,
             hipL, hipR, kneeL, kneeR,
-            hand, weaponPivot, cape,
+            hand, handL, weaponPivot, cape,
             foreArmL, foreArmR,
         },
     };
 }
 
 /** Паук: 8 суставчатых ног, брюшко, жвалы и гроздь глаз. */
+// Геометрия паука: высота тела над ареной и целевая высота кончика лапы.
+const BODY_HEIGHT = 0.78;
+const FOOT_Y = 0.04;
+
 export function createSpider(scene, { id, color = '#8e44ad' } = {}) {
     const meshes = [];
     const track = (mesh) => { meshes.push(mesh); return mesh; };
@@ -229,7 +364,7 @@ export function createSpider(scene, { id, color = '#8e44ad' } = {}) {
     const eyeMat = makeMaterial(scene, `${id}_eyeMat`, '#ff2d2d', { emissive: '#7a0000' });
 
     const root = new TransformNode(`${id}_root`, scene);
-    const body = joint(scene, `${id}_bodyJoint`, root, new Vector3(0, 0.78, 0));
+    const body = joint(scene, `${id}_bodyJoint`, root, new Vector3(0, BODY_HEIGHT, 0));
 
     // Головогрудь — её подсвечивает UIController при попадании.
     const cephalothorax = track(MeshBuilder.CreateSphere(`${id}_body`, {
@@ -286,6 +421,16 @@ export function createSpider(scene, { id, color = '#8e44ad' } = {}) {
     }
 
     // --- Восемь ног из двух сегментов ------------------------------------
+    // Бедро идёт вверх-наружу, голень — вниз к земле: у паука колено выше тела.
+    const FEMUR_LENGTH = 0.9;
+    const TIBIA_LENGTH = 1.45;
+    const HIP_UP_ANGLE = 0.66;
+    // Угол голени подбираем так, чтобы лапа реально доставала до пола,
+    // а не висела в воздухе (иначе паук лежит брюхом на арене).
+    const KNEE_Y = BODY_HEIGHT + Math.sin(HIP_UP_ANGLE) * FEMUR_LENGTH;
+    const TIBIA_ANGLE = Math.asin(
+        Math.max(-1, Math.min(1, (FOOT_Y - KNEE_Y) / TIBIA_LENGTH)),
+    );
     const legs = [];
     for (const side of [-1, 1]) {
         for (let i = 0; i < 4; i += 1) {
@@ -295,35 +440,43 @@ export function createSpider(scene, { id, color = '#8e44ad' } = {}) {
                 new Vector3(0.45 * side, 0.02, 0.62 - i * 0.42));
             // Передние ноги смотрят вперёд, задние — назад.
             hip.rotation.y = side * (-0.72 + i * 0.44);
-            hip.rotation.z = side * -0.62;
+            // Бедро задирается ВВЕРХ — отсюда характерный домик паучьей ноги.
+            hip.rotation.z = side * HIP_UP_ANGLE;
 
             const femur = track(MeshBuilder.CreateCapsule(`${id}_femur${label}`, {
-                height: 0.92, radius: 0.075, capSubdivisions: 3, subdivisions: 3,
+                height: FEMUR_LENGTH, radius: 0.075, capSubdivisions: 3, subdivisions: 3,
             }, scene));
             femur.parent = hip;
+            // Капсула растёт по Y, поэтому кладём её вдоль оси сустава.
             femur.rotation.z = Math.PI / 2;
-            femur.position.x = 0.46 * side;
+            femur.position.x = (FEMUR_LENGTH / 2) * side;
             femur.material = legMat;
 
-            const knee = joint(scene, `${id}_legKnee${label}`, hip, new Vector3(0.92 * side, 0, 0));
-            knee.rotation.z = side * 1.32;
+            // Колено на конце бедра; голень уходит ВНИЗ, к земле.
+            const knee = joint(scene, `${id}_legKnee${label}`, hip, new Vector3(FEMUR_LENGTH * side, 0, 0));
+            knee.rotation.z = side * (TIBIA_ANGLE - HIP_UP_ANGLE);
 
             const tibia = track(MeshBuilder.CreateCapsule(`${id}_tibia${label}`, {
-                height: 0.95, radius: 0.055, capSubdivisions: 3, subdivisions: 3,
+                height: TIBIA_LENGTH, radius: 0.05, capSubdivisions: 3, subdivisions: 3,
             }, scene));
             tibia.parent = knee;
             tibia.rotation.z = Math.PI / 2;
-            tibia.position.x = 0.47 * side;
+            tibia.position.x = (TIBIA_LENGTH / 2) * side;
             tibia.material = legMat;
 
-            legs.push({ hip, knee, side, index: i, restHipY: hip.rotation.y, restHipZ: hip.rotation.z });
+            legs.push({
+                hip, knee, side, index: i,
+                restHipY: hip.rotation.y,
+                restHipZ: hip.rotation.z,
+                restKneeZ: knee.rotation.z,
+            });
         }
     }
 
     return {
         root,
         meshes,
-        rig: { kind: 'spider', body, cephalothorax, abdomen, legs, fangs },
+        rig: { kind: 'spider', body, cephalothorax, abdomen, legs, fangs, restBodyY: BODY_HEIGHT },
     };
 }
 

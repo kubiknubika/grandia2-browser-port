@@ -182,19 +182,22 @@ export class Animator {
             const step = Math.sin(phase);
 
             leg.hip.rotation.y = leg.restHipY + step * 0.34 * runBlend;
-            // Idle: ноги чуть перебирают, даже когда паук стоит.
+            // Шаг ПОДНИМАЕТ лапу (бедро выше), а не вдавливает её в пол:
+            // в позе покоя кончик лапы уже лежит на арене.
+            const lift = Math.max(0, step);
             leg.hip.rotation.z = leg.restHipZ
-                + Math.max(0, step) * 0.3 * runBlend
-                + Math.sin(t * 1.5 + leg.index) * 0.03 * (1 - runBlend);
+                + leg.side * lift * 0.26 * runBlend
+                + leg.side * Math.sin(t * 1.5 + leg.index) * 0.025 * (1 - runBlend);
+            // Поза покоя берётся из рига: геометрия ноги живёт в models.js.
             leg.knee.rotation.z = damp(
                 leg.knee.rotation.z,
-                leg.side * (1.32 - Math.max(0, step) * 0.34 * runBlend),
+                leg.restKneeZ - leg.side * lift * 0.22 * runBlend,
                 16, dt,
             );
         }
 
         // Тело покачивается на ходу и приседает перед броском.
-        rig.body.position.y = 0.78
+        rig.body.position.y = rig.restBodyY
             + Math.sin(gait * 2) * 0.06 * runBlend
             + Math.sin(t * 1.6) * 0.03 * (1 - runBlend)
             - swingEase * 0.16;
@@ -218,8 +221,10 @@ export class Animator {
         root.rotation.z = damp(root.rotation.z, state.death * SPIDER_DEATH_ROT, 8, dt);
         root.position.y = damp(root.position.y, state.death * SPIDER_DEATH_LIFT, 8, dt);
         if (state.death > 0) {
+            // Лапы поджимаются к телу — классическая поза мёртвого паука.
             for (const leg of rig.legs) {
-                leg.knee.rotation.z = damp(leg.knee.rotation.z, leg.side * 2.3, 6, dt);
+                leg.knee.rotation.z = damp(leg.knee.rotation.z, leg.restKneeZ - leg.side * 1.1, 6, dt);
+                leg.hip.rotation.z = damp(leg.hip.rotation.z, leg.restHipZ + leg.side * 0.5, 6, dt);
             }
         }
     }
