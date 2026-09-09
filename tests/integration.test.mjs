@@ -76,13 +76,15 @@ for (let t = 0; t < 300 && !system.outcome; t += step) {
     frames += 1;
 
     // «Игрок»: жмём первую доступную команду и первую цель.
+    // Важно брать .cmd-btn, а не любой <button>: в кольце есть ещё вкладки
+    // категорий, и клик по ним лишь переключает список, не отдавая приказ.
     const ring = window.document.querySelector('#command-ring');
     if (ring) {
         const target = ring.querySelector('.target-btn');
         if (target) {
             target.click();
         } else {
-            [...ring.querySelectorAll('button')]
+            [...ring.querySelectorAll('.cmd-btn')]
                 .find((b) => !b.disabled && !/back/i.test(b.textContent))
                 ?.click();
         }

@@ -27,6 +27,17 @@ function makeMesh(x, z) {
     };
 }
 
+/** Детерминированный ГПСЧ: тесты не должны мигать от прогона к прогону. */
+function makeRng(seed) {
+    let a = seed | 0;
+    return () => {
+        a = (a + 0x6D2B79F5) | 0;
+        let t = Math.imul(a ^ (a >>> 15), 1 | a);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+}
+
 /** UI-заглушка, которая ещё и записывает всё показанное — удобно для ассертов. */
 function makeUiStub({ autoCommand = null } = {}) {
     return {
@@ -702,6 +713,164 @@ test('бой с полным набором механик доходит до �
     for (const [key, count] of Object.entries(system.inventory)) {
         assert.ok(count >= 0, `инвентарь ушёл в минус: ${key}=${count}`);
     }
+});
+
+
+// --- Приёмы бьют с места, а не подбегают ----------------------------------
+
+test('спецприём выполняется без подбегания к цели', () => {
+    // Раньше любой melee-приём гнал юнита через всю арену; теперь бежит
+    // только обычная атака, а приёмы играются на своей позиции.
+    const { system } = buildBattle();
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    const spider = system.units.find((u) => u.id === 'spider1');
+
+    ryudo.sp = 100;
+    const start = ryudo.mesh.position.clone();
+    system.commitAction(ryudo, 'tenseiken', spider);
+
+    // commitAction переводит в ACT; до EXECUTE юнит доходит по шкале IP.
+    let travelled = 0;
+    for (let i = 0; i < 1200 && spider.hp === spider.maxHp; i += 1) {
+        system.update(1 / 60);
+        travelled = Math.max(travelled, Vector3.Distance(start, ryudo.mesh.position));
+    }
+
+    assert.ok(travelled < 0.5, `приём не должен двигать юнита, сместился на ${travelled.toFixed(2)}`);
+    assert.ok(spider.hp < spider.maxHp, 'приём всё равно обязан нанести урон');
+});
+
+test('обычная атака по-прежнему подбегает к цели', () => {
+    const { system } = buildBattle();
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    const spider = system.units.find((u) => u.id === 'spider1');
+
+    const start = ryudo.mesh.position.clone();
+    system.commitAction(ryudo, 'combo', spider);
+
+    let travelled = 0;
+    for (let i = 0; i < 1200 && spider.hp === spider.maxHp; i += 1) {
+        system.update(1 / 60);
+        travelled = Math.max(travelled, Vector3.Distance(start, ryudo.mesh.position));
+    }
+
+    assert.ok(travelled > 2, `Combo должен сближать с целью, сместился на ${travelled.toFixed(2)}`);
+});
+
+test('длинный приём тратит своё animationSeconds', () => {
+    // Приём с места не должен срабатывать мгновенно — иначе нет анимации.
+    const { system } = buildBattle();
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    const spider = system.units.find((u) => u.id === 'spider1');
+
+    const definition = system.getDefinition(ryudo, 'tenseiken');
+    assert.ok(definition.animationSeconds > 0, 'предпосылка: у приёма есть длительность');
+
+    ryudo.sp = 100;
+    const hpBefore = spider.hp;
+    system.commitAction(ryudo, 'tenseiken', spider);
+
+    // Считаем время с момента входа в EXECUTE до попадания.
+    let elapsed = 0;
+    let executing = false;
+    for (let i = 0; i < 1200 && spider.hp === hpBefore; i += 1) {
+        system.update(1 / 60);
+        if (ryudo.phase === 'EXECUTE') executing = true;
+        if (executing) elapsed += 1 / 60;
+    }
+
+    assert.ok(spider.hp < hpBefore, 'предпосылка: приём должен сработать');
+    assert.ok(
+        elapsed >= definition.animationSeconds * 0.8,
+        `урон пришёл слишком рано: ${elapsed.toFixed(2)}с при анимации ${definition.animationSeconds}с`,
+    );
+});
+
+// --- Выбор цели противником -----------------------------------------------
+
+test('враги не фокусируются вечно на одном герое', () => {
+    // Баг: цель выбиралась строгим минимумом доли HP, поэтому Елена
+    // (меньший максимум HP) получала весь урон, а Рюдо — ноль.
+    const { system } = buildBattle();
+    const spider = system.units.find((u) => u.id === 'spider1');
+
+    const picks = new Map();
+    for (let i = 0; i < 400; i += 1) {
+        const victim = system.pickVictim(system.livingOpponents(spider));
+        picks.set(victim.id, (picks.get(victim.id) ?? 0) + 1);
+    }
+
+    assert.equal(picks.size, 2, 'должны выбираться оба героя');
+    for (const [id, count] of picks) {
+        assert.ok(count > 40, `${id} выбирается слишком редко: ${count}/400`);
+    }
+});
+
+test('раненый герой притягивает больше внимания', () => {
+    const { system } = buildBattle();
+    const spider = system.units.find((u) => u.id === 'spider1');
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    const elena = system.units.find((u) => u.id === 'elena');
+
+    ryudo.hp = Math.round(ryudo.maxHp * 0.15);
+    elena.hp = elena.maxHp;
+
+    let hurtPicks = 0;
+    for (let i = 0; i < 400; i += 1) {
+        if (system.pickVictim(system.livingOpponents(spider)).id === 'ryudo') hurtPicks += 1;
+    }
+
+    assert.ok(hurtPicks > 200, `раненого должны выбирать чаще: ${hurtPicks}/400`);
+    assert.ok(hurtPicks < 400, 'но не абсолютно всегда');
+});
+
+test('и Рюдо, и Елена получают урон за бой', () => {
+    // Интегральная проверка того же бага: за полный бой оба должны пострадать.
+    let ryudoHurt = 0;
+    let elenaHurt = 0;
+
+    for (let seed = 0; seed < 6; seed += 1) {
+        const { system, ui } = buildBattle({
+            autoCommand: (unit, actions) => {
+                const combo = actions.find((a) => a.id === 'combo' && a.enabled) ?? actions[0];
+                return { actionId: combo.id, target: combo.targets?.[0] ?? null };
+            },
+            rng: makeRng(seed + 1),
+        });
+        runBattle(system, ui, { maxSeconds: 240 });
+        const ryudo = system.units.find((u) => u.id === 'ryudo');
+        const elena = system.units.find((u) => u.id === 'elena');
+        if (ryudo.hp < ryudo.maxHp) ryudoHurt += 1;
+        if (elena.hp < elena.maxHp) elenaHurt += 1;
+    }
+
+    assert.ok(ryudoHurt >= 4, `Рюдо почти не получает урона: ${ryudoHurt}/6 боёв`);
+    assert.ok(elenaHurt >= 4, `Елена почти не получает урона: ${elenaHurt}/6 боёв`);
+});
+
+// --- Описания приёмов -----------------------------------------------------
+
+test('у каждой команды есть описание, а Combo и Critical различимы', () => {
+    const { system } = buildBattle();
+    const elena = system.units.find((u) => u.id === 'elena');
+
+    const actions = system.getAvailableActions(elena);
+    assert.ok(actions.length > 5, 'предпосылка: команд много');
+
+    for (const action of actions) {
+        assert.ok(
+            typeof action.description === 'string' && action.description.length > 0,
+            `у команды ${action.id} нет описания`,
+        );
+    }
+
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    const ryudoActions = system.getAvailableActions(ryudo);
+    const combo = ryudoActions.find((a) => a.id === 'combo');
+    const critical = ryudoActions.find((a) => a.id === 'critical');
+
+    assert.notEqual(combo.description, critical.description, 'описания должны отличаться');
+    assert.match(critical.description, /сбива/i, 'Critical должен объяснять сбив хода');
 });
 
 // --- Запуск ---------------------------------------------------------------

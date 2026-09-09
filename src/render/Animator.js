@@ -13,6 +13,8 @@ const TWO_PI = Math.PI * 2;
 
 // Позы смерти: угол падения и подъём корня, который не даёт телу
 // провалиться сквозь пол арены. Значения подобраны по габаритам моделей.
+const SWING_SECONDS = 0.42;
+const CAST_SECONDS = 0.8;
 const HUMANOID_DEATH_ROT = 1.45;
 const HUMANOID_DEATH_LIFT = 0.68;
 const SPIDER_DEATH_ROT = Math.PI * 0.92;
@@ -36,9 +38,11 @@ export class Animator {
         this.states.set(unitId, {
             model,
             time: Math.random() * TWO_PI, // рассинхрон, чтобы юниты не дышали в такт
-            swing: 0,      // 0..1 прогресс взмаха оружием
+            swing: 0,      // 1 -> 0 прогресс взмаха оружием
+            swingSpan: SWING_SECONDS,
             hitFlash: 0,   // затухающее вздрагивание от урона
-            cast: 0,       // свечение/подъём оружия при касте
+            cast: 0,       // 1 -> 0 подъём оружия при касте
+            castSpan: CAST_SECONDS,
             death: 0,      // 0..1 прогресс падения
             speed: 0,      // сглаженная скорость бега для микса поз
             lastPosition: model.root.position.clone(),
@@ -51,15 +55,22 @@ export class Animator {
         if (state) state.hitFlash = 1;
     }
 
-    /** Замах: вызывается в момент удара, отыгрывается за ~0.35 с. */
-    playSwing(unitId) {
+    /**
+     * Замах. duration — длительность приёма (animationSeconds): длинные
+     * спецприёмы должны и выглядеть длиннее обычного удара.
+     */
+    playSwing(unitId, duration = SWING_SECONDS) {
         const state = this.states.get(unitId);
-        if (state) state.swing = 1;
+        if (!state) return;
+        state.swing = 1;
+        state.swingSpan = Math.max(0.2, duration);
     }
 
-    playCast(unitId) {
+    playCast(unitId, duration = CAST_SECONDS) {
         const state = this.states.get(unitId);
-        if (state) state.cast = 1;
+        if (!state) return;
+        state.cast = 1;
+        state.castSpan = Math.max(0.25, duration);
     }
 
     update(units, deltaTime) {
@@ -77,9 +88,9 @@ export class Animator {
             const instantSpeed = dt > 0 ? moved / dt : 0;
             state.speed = damp(state.speed, instantSpeed, 12, dt);
 
-            state.swing = Math.max(0, state.swing - dt / 0.35);
+            state.swing = Math.max(0, state.swing - dt / state.swingSpan);
             state.hitFlash = Math.max(0, state.hitFlash - dt / 0.3);
-            state.cast = Math.max(0, state.cast - dt / 0.8);
+            state.cast = Math.max(0, state.cast - dt / state.castSpan);
 
             const dying = unit.phase === 'DEAD';
             state.death = dying
@@ -98,48 +109,84 @@ export class Animator {
         const { rig, root } = state.model;
         const t = state.time;
 
+        const rest = rig.rest;
+
         // Бег: чем быстрее, тем шире шаг. runBlend гасит покой на месте.
         const runBlend = Math.min(1, state.speed / 6);
         const stride = t * (6 + state.speed * 0.9);
         const breathe = Math.sin(t * 1.7) * 0.035;
 
-        const swingEase = Math.sin(state.swing * Math.PI); // 0 -> 1 -> 0
+        // swing идёт 1 -> 0. Первая треть — замах назад, дальше рубящий удар.
+        const swingP = 1 - state.swing;                       // 0 -> 1
+        const windup = Math.min(1, swingP / 0.35);            // 0 -> 1 (занос)
+        const strike = Math.max(0, (swingP - 0.35) / 0.65);   // 0 -> 1 (удар)
+        const swingEase = Math.sin(state.swing * Math.PI);
         const attacking = state.swing > 0;
 
-        // Корпус: дыхание в покое, наклон вперёд на бегу, доворот при ударе.
+        const castP = state.cast > 0 ? Math.sin(state.cast * Math.PI) : 0;
+
+        // Корпус: дыхание, наклон на бегу, доворот плечом при ударе.
         rig.torso.rotation.x = damp(
             rig.torso.rotation.x,
-            runBlend * 0.22 + swingEase * 0.28,
+            runBlend * 0.22 + (attacking ? (windup * -0.18 + strike * 0.4) : 0) - castP * 0.12,
             14, dt,
         );
-        rig.torso.rotation.y = damp(rig.torso.rotation.y, swingEase * -0.5, 16, dt);
-        rig.hips.position.y = 1.45 + breathe * (1 - runBlend)
-            + Math.abs(Math.sin(stride)) * 0.09 * runBlend;
+        rig.torso.rotation.y = damp(
+            rig.torso.rotation.y,
+            attacking ? (windup * 0.45 - strike * 0.75) : 0,
+            16, dt,
+        );
+        rig.hips.position.y = rest.hipsY + breathe * (1 - runBlend)
+            + Math.abs(Math.sin(stride)) * 0.09 * runBlend
+            + castP * 0.05;
 
-        // Ноги: противофазный шаг.
+        // Ноги: противофазный шаг; при ударе — выпад вперёд.
         const legSwing = Math.sin(stride) * 0.85 * runBlend;
-        rig.hipL.rotation.x = damp(rig.hipL.rotation.x, legSwing, 18, dt);
-        rig.hipR.rotation.x = damp(rig.hipR.rotation.x, -legSwing, 18, dt);
+        const lunge = attacking ? strike * 0.35 : 0;
+        rig.hipL.rotation.x = damp(rig.hipL.rotation.x, legSwing - lunge, 18, dt);
+        rig.hipR.rotation.x = damp(rig.hipR.rotation.x, -legSwing + lunge, 18, dt);
         rig.kneeL.rotation.x = damp(rig.kneeL.rotation.x, Math.max(0, -legSwing) * 1.1, 18, dt);
         rig.kneeR.rotation.x = damp(rig.kneeR.rotation.x, Math.max(0, legSwing) * 1.1, 18, dt);
 
-        // Левая рука: маятник на бегу.
-        rig.shoulderL.rotation.x = damp(rig.shoulderL.rotation.x, -legSwing * 0.75, 16, dt);
-        rig.shoulderL.rotation.z = damp(rig.shoulderL.rotation.z, 0.16, 10, dt);
-
-        // Правая рука несёт оружие: замах назад-вверх, затем рубящий удар.
-        const castPose = state.cast > 0 ? Math.sin(state.cast * Math.PI) : 0;
-        const swordTarget = attacking
-            ? lerp(-2.1, 0.85, Math.min(1, (1 - state.swing) * 1.6))
-            : -legSwing * -0.4;
-
-        rig.shoulderR.rotation.x = damp(
-            rig.shoulderR.rotation.x,
-            castPose > 0 ? -2.2 * castPose : swordTarget,
-            attacking ? 22 : 12, dt,
+        // Левая рука: маятник на бегу, поднимается при касте.
+        rig.shoulderL.rotation.x = damp(
+            rig.shoulderL.rotation.x,
+            -legSwing * 0.75 - castP * 1.5,
+            16, dt,
         );
-        rig.shoulderR.rotation.z = damp(rig.shoulderR.rotation.z, -0.16 - swingEase * 0.3, 14, dt);
-        rig.elbowR.rotation.x = damp(rig.elbowR.rotation.x, -0.35 + swingEase * 0.3, 14, dt);
+        rig.shoulderL.rotation.z = damp(rig.shoulderL.rotation.z, rest.shoulderLZ, 10, dt);
+        rig.elbowL.rotation.x = damp(rig.elbowL.rotation.x, rest.elbowLX - castP * 0.5, 12, dt);
+
+        // Правая рука с оружием: занос за плечо, затем рубящий удар вниз.
+        const armTarget = attacking
+            ? rest.shoulderRX - windup * 1.9 + strike * 2.6
+            : rest.shoulderRX - legSwing * -0.4 - castP * 2.4;
+
+        rig.shoulderR.rotation.x = damp(rig.shoulderR.rotation.x, armTarget, attacking ? 20 : 12, dt);
+        rig.shoulderR.rotation.z = damp(
+            rig.shoulderR.rotation.z,
+            rest.shoulderRZ - (attacking ? windup * 0.45 : 0) - castP * 0.25,
+            14, dt,
+        );
+        rig.elbowR.rotation.x = damp(
+            rig.elbowR.rotation.x,
+            rest.elbowRX - (attacking ? windup * 0.85 - strike * 0.7 : 0),
+            14, dt,
+        );
+
+        // Кисть довoрачивает оружие: клинок идёт плашмя -> на ребро.
+        if (rig.weaponPivot) {
+            rig.weaponPivot.rotation.x = damp(
+                rig.weaponPivot.rotation.x,
+                rest.weaponX - (attacking ? windup * 0.6 - strike * 0.5 : 0),
+                16, dt,
+            );
+            rig.weaponPivot.rotation.z = damp(
+                rig.weaponPivot.rotation.z,
+                rest.weaponZ + castP * 0.4,
+                12, dt,
+            );
+        }
 
         // Плащ отстаёт от корпуса — простая имитация инерции ткани.
         if (rig.cape) {

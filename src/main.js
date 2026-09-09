@@ -3,6 +3,7 @@ import '@babylonjs/loaders';
 import { DEFAULT_ENCOUNTER, DEFAULT_INVENTORY, makeUnitData } from './data/battle_data.js';
 import { createUnitModel } from './render/models.js';
 import { Animator } from './render/Animator.js';
+import { BattleCamera } from './render/BattleCamera.js';
 import { BattleSystem } from './system/BattleSystem.js';
 import { UIController } from './system/UIController.js';
 
@@ -22,6 +23,7 @@ toggle.addEventListener('change', (e) => {
 // Managers
 const ui = new UIController();
 const animator = new Animator();
+let battleCamera = null;
 const battleSystem = new BattleSystem(ui, { inventory: DEFAULT_INVENTORY, animator });
 
 // Карточки партии рисует и обновляет UIController (HP-бары живут по ходу боя),
@@ -37,6 +39,11 @@ function createScene() {
     camera.upperBetaLimit = (Math.PI / 2) - 0.1;
     camera.lowerRadiusLimit = 10;
     camera.upperRadiusLimit = 50;
+
+    // Камера следит за тем, кто бьёт: раньше она стояла неподвижно и
+    // приёмы происходили где-то вдалеке без всякого акцента.
+    battleCamera = new BattleCamera(camera);
+    battleSystem.camera = battleCamera;
 
     const ambientLight = new HemisphericLight("ambientLight", new Vector3(0, 1, 0), scene);
     ambientLight.intensity = 0.4;
@@ -166,5 +173,6 @@ engine.runRenderLoop(() => {
     const deltaTime = engine.getDeltaTime() / 1000;
     battleSystem.update(deltaTime);
     animator.update(battleSystem.units, deltaTime);
+    battleCamera?.update(battleSystem.units, deltaTime);
 });
 window.addEventListener("resize", () => engine.resize());

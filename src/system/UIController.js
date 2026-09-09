@@ -93,8 +93,32 @@ const STYLES = `
     margin-top: 8px; border-bottom: 1px solid #2c3e50; padding-bottom: 2px;
 }
 .cmd-btn .cmd-reason { font-size: 11px; color: #e74c3c; font-weight: normal; margin-left: 8px; }
-.cmd-scroll { max-height: 58vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
+.cmd-scroll { max-height: 46vh; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; padding-right: 4px; }
 .cmd-el { font-size: 11px; margin-left: 6px; padding: 1px 4px; border-radius: 3px; background: rgba(255,255,255,0.12); }
+
+/* Вкладки категорий: список из 30+ команд в один столбец был нечитаем. */
+.cmd-tabs { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+.cmd-tab {
+    flex: 1 1 auto; background: #223449; color: #8da3c7; border: 1px solid #33475f;
+    padding: 6px 10px; border-radius: 5px; cursor: pointer; font-size: 12px;
+    text-transform: uppercase; letter-spacing: 0.5px; font-weight: bold;
+}
+.cmd-tab:hover { background: #2c4258; color: #ecf0f1; }
+.cmd-tab.active { background: #c0392b; color: #fff; border-color: #e74c3c; }
+.cmd-tab .cmd-tab-key { opacity: 0.55; margin-right: 4px; font-size: 10px; }
+
+/* Панель описания под списком. */
+.cmd-info {
+    margin-top: 8px; padding: 8px 10px; border-radius: 6px; min-height: 52px;
+    background: rgba(0,0,0,0.32); border: 1px solid #2c3e50;
+}
+.cmd-info-title { font-size: 13px; color: #f1c40f; font-weight: bold; margin-bottom: 3px; }
+.cmd-info-text { font-size: 12px; color: #cfd9e6; line-height: 1.4; }
+.cmd-info-nums { font-size: 11px; color: #7f93ad; margin-top: 4px; font-family: monospace; }
+.cmd-info-empty { font-size: 12px; color: #6b7d94; font-style: italic; }
+
+.cmd-btn.selected { background: #47617d; border-color: #8da3c7; }
+.cmd-hintbar { font-size: 11px; color: #6b7d94; margin-top: 6px; text-align: center; }
 
 .hp-bar-track {
     height: 6px; background: rgba(0,0,0,0.5); border-radius: 3px;
@@ -262,73 +286,164 @@ export class UIController {
         ring.id = 'command-ring';
         Object.assign(ring.style, {
             position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-            background: 'rgba(20, 30, 45, 0.95)', padding: '20px', borderRadius: '12px',
+            background: 'rgba(20, 30, 45, 0.96)', padding: '18px', borderRadius: '12px',
             border: '2px solid #5a6e8c', display: 'flex', flexDirection: 'column',
-            gap: '10px', pointerEvents: 'auto', boxShadow: '0 0 20px rgba(0,0,0,0.8)',
-            minWidth: '280px',
+            pointerEvents: 'auto', boxShadow: '0 0 24px rgba(0,0,0,0.85)',
+            width: '440px', maxWidth: '92vw',
         });
 
         const title = document.createElement('div');
-        title.style.cssText = 'font-size: 20px; margin-bottom: 6px; color: #f1c40f;';
-        title.textContent = `${unit.name}'s Turn`;
+        title.style.cssText = 'font-size: 19px; margin-bottom: 10px; color: #f1c40f;';
+        title.textContent = `${unit.name} — ход`;
         ring.appendChild(title);
+
+        const GROUP_TITLES = {
+            basic: 'Атака', move: 'Приёмы', magic: 'Магия', item: 'Предметы', defense: 'Защита',
+        };
+        const ORDER = ['basic', 'move', 'magic', 'item', 'defense'];
+
+        // Вкладки: 30+ команд одним столбцом читать невозможно.
+        const present = ORDER.filter((cat) => actions.some((a) => (a.category ?? 'basic') === cat));
+        const tabs = document.createElement('div');
+        tabs.className = 'cmd-tabs';
+        ring.appendChild(tabs);
 
         const scroll = document.createElement('div');
         scroll.className = 'cmd-scroll';
         ring.appendChild(scroll);
 
-        // Группируем команды по категориям, как в оригинальном кольце.
-        const GROUP_TITLES = {
-            basic: 'Attack', move: 'Special Moves', magic: 'Magic', item: 'Items', defense: 'Defense',
-        };
-        let lastCategory = null;
+        // Панель описания: раньше игрок не знал, чем Critical отличается от Combo.
+        const info = document.createElement('div');
+        info.className = 'cmd-info';
+        info.innerHTML = '<div class="cmd-info-empty">Наведите команду, чтобы прочитать описание</div>';
+        ring.appendChild(info);
 
-        for (const action of actions) {
-            const category = action.category ?? 'basic';
-            if (category !== lastCategory) {
-                const label = document.createElement('div');
-                label.className = 'cmd-group-label';
-                label.textContent = GROUP_TITLES[category] ?? category;
-                scroll.appendChild(label);
-                lastCategory = category;
+        const hint = document.createElement('div');
+        hint.className = 'cmd-hintbar';
+        hint.textContent = '←→ вкладки · ↑↓ выбор · Enter подтвердить';
+        ring.appendChild(hint);
+
+        let activeCategory = present[0] ?? 'basic';
+        let cursor = 0;
+
+        const showInfo = (action) => {
+            if (!action) {
+                info.innerHTML = '<div class="cmd-info-empty">Наведите команду, чтобы прочитать описание</div>';
+                return;
             }
-
-            const button = document.createElement('button');
-            button.className = 'cmd-btn';
-            button.disabled = !action.enabled;
-
             const cost = [];
             if (action.costSp) cost.push(`${action.costSp} SP`);
             if (action.costMp) cost.push(`${action.costMp} MP`);
-            if (action.count != null) cost.push(`x${action.count}`);
+            if (action.count != null) cost.push(`осталось: ${action.count}`);
 
-            const element = action.element
-                ? `<span class="cmd-el">${action.element}</span>` : '';
-            const reason = !action.enabled && action.disabledReason
-                ? `<span class="cmd-reason">${action.disabledReason}</span>` : '';
-            const costLabel = cost.length
-                ? `<span class="cmd-cost">${cost.join(' / ')}</span>` : '';
+            const head = `${action.label}${cost.length ? ` — ${cost.join(', ')}` : ''}`;
+            const blocked = !action.enabled && action.disabledReason
+                ? `<div class="cmd-info-nums" style="color:#e74c3c">недоступно: ${action.disabledReason}</div>`
+                : '';
+            const nums = action.numbers
+                ? `<div class="cmd-info-nums">${action.numbers}</div>` : '';
 
-            button.innerHTML = `<span class="cmd-name">${action.label}</span>${element}${costLabel}${reason}`;
+            info.innerHTML = `<div class="cmd-info-title">${head}</div>`
+                + `<div class="cmd-info-text">${action.description ?? ''}</div>${nums}${blocked}`;
+        };
 
-            button.onclick = () => {
-                // Действие без выбора цели (Endure/Evade/групповые) выполняем сразу.
-                if (action.targets.length === 0) {
-                    this.hideCommandRing();
-                    onCommandSelected(action.id, null);
-                    return;
-                }
-                // Одна возможная цель — не мучаем игрока лишним кликом.
-                if (action.targets.length === 1) {
-                    this.hideCommandRing();
-                    onCommandSelected(action.id, action.targets[0]);
-                    return;
-                }
-                this.showTargetPicker(unit, action, onCommandSelected);
-            };
+        const confirm = (action) => {
+            if (!action.enabled) return;
+            if (action.targets.length === 0) {
+                this.hideCommandRing();
+                onCommandSelected(action.id, null);
+                return;
+            }
+            if (action.targets.length === 1) {
+                this.hideCommandRing();
+                onCommandSelected(action.id, action.targets[0]);
+                return;
+            }
+            this.showTargetPicker(unit, action, onCommandSelected);
+        };
 
-            scroll.appendChild(button);
-        }
+        let visible = [];
+
+        const renderList = () => {
+            scroll.innerHTML = '';
+            visible = actions.filter((a) => (a.category ?? 'basic') === activeCategory);
+            cursor = Math.max(0, Math.min(cursor, visible.length - 1));
+
+            visible.forEach((action, index) => {
+                const button = document.createElement('button');
+                button.className = 'cmd-btn' + (index === cursor ? ' selected' : '');
+                button.disabled = !action.enabled;
+
+                const cost = [];
+                if (action.costSp) cost.push(`${action.costSp} SP`);
+                if (action.costMp) cost.push(`${action.costMp} MP`);
+                if (action.count != null) cost.push(`x${action.count}`);
+
+                const element = action.element ? `<span class="cmd-el">${action.element}</span>` : '';
+                const costLabel = cost.length ? `<span class="cmd-cost">${cost.join(' / ')}</span>` : '';
+                const reason = !action.enabled && action.disabledReason
+                    ? `<span class="cmd-reason">${action.disabledReason}</span>` : '';
+
+                button.innerHTML = `<span class="cmd-name">${action.label}</span>${element}${costLabel}${reason}`;
+
+                button.onmouseenter = () => { cursor = index; showInfo(action); highlight(); };
+                button.onfocus = () => { cursor = index; showInfo(action); highlight(); };
+                button.onclick = () => confirm(action);
+
+                scroll.appendChild(button);
+            });
+
+            showInfo(visible[cursor]);
+        };
+
+        const highlight = () => {
+            [...scroll.children].forEach((el, i) => {
+                el.classList.toggle('selected', i === cursor);
+            });
+        };
+
+        const renderTabs = () => {
+            tabs.innerHTML = '';
+            present.forEach((cat) => {
+                const tab = document.createElement('button');
+                tab.className = 'cmd-tab' + (cat === activeCategory ? ' active' : '');
+                tab.textContent = GROUP_TITLES[cat] ?? cat;
+                tab.onclick = () => {
+                    activeCategory = cat;
+                    cursor = 0;
+                    renderTabs();
+                    renderList();
+                };
+                tabs.appendChild(tab);
+            });
+        };
+
+        // Клавиатура: стрелки по списку и вкладкам, Enter — подтверждение.
+        this.commandKeyHandler = (event) => {
+            const catIndex = present.indexOf(activeCategory);
+            switch (event.key) {
+                case 'ArrowRight':
+                    activeCategory = present[(catIndex + 1) % present.length];
+                    cursor = 0; renderTabs(); renderList(); event.preventDefault(); break;
+                case 'ArrowLeft':
+                    activeCategory = present[(catIndex - 1 + present.length) % present.length];
+                    cursor = 0; renderTabs(); renderList(); event.preventDefault(); break;
+                case 'ArrowDown':
+                    cursor = Math.min(cursor + 1, visible.length - 1);
+                    highlight(); showInfo(visible[cursor]); event.preventDefault(); break;
+                case 'ArrowUp':
+                    cursor = Math.max(cursor - 1, 0);
+                    highlight(); showInfo(visible[cursor]); event.preventDefault(); break;
+                case 'Enter':
+                    if (visible[cursor]) confirm(visible[cursor]);
+                    event.preventDefault(); break;
+                default: break;
+            }
+        };
+        document.addEventListener('keydown', this.commandKeyHandler);
+
+        renderTabs();
+        renderList();
 
         this.uiLayer.appendChild(ring);
         this.commandRing = ring;
@@ -378,6 +493,10 @@ export class UIController {
     }
 
     hideCommandRing() {
+        if (this.commandKeyHandler) {
+            document.removeEventListener('keydown', this.commandKeyHandler);
+            this.commandKeyHandler = null;
+        }
         if (this.commandRing) {
             this.commandRing.remove();
             this.commandRing = null;

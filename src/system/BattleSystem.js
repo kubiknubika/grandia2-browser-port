@@ -13,6 +13,7 @@ import {
     processTimedModifiers,
     scaleActionDefinitionForLevel,
 } from '../entities/combat.js';
+import { describeAction, describeNumbers } from '../data/action_text.js';
 
 // --- Константы связки "движок <-> 3D-сцена" ---------------------------------
 
@@ -411,6 +412,8 @@ export class BattleSystem {
                 id,
                 label: definition.label,
                 definition,
+                description: describeAction(definition),
+                numbers: describeNumbers(definition),
                 category: definition.commandType ?? 'basic',
                 enabled: reasons.length === 0,
                 disabledReason: reasons[0] ?? null,
@@ -459,7 +462,12 @@ export class BattleSystem {
             return { actionId: 'critical', target: interruptible };
         }
 
-        const weakest = [...opponents].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+        // Выбор жертвы. Раньше здесь был строгий min по доле HP, из-за чего
+        // враги намертво залипали на одном герое: у Елены меньше максимум HP,
+        // поэтому она первой уходила вниз по доле и получала ВЕСЬ урон до
+        // конца боя (замер: 9668 урона против 181 у Рюдо за 50 боёв).
+        // Теперь считаем вес и бросаем рулетку — фокус есть, но не абсолютный.
+        const weakest = this.pickVictim(opponents);
 
         // Иногда пускаем в ход фирменные статусные приёмы (яд, паутина, сон).
         const statusMoves = (unit.loadout?.statusMoves ?? []).filter(canUse);
@@ -475,6 +483,28 @@ export class BattleSystem {
         }
 
         return { actionId: 'combo', target: weakest };
+    }
+
+    /**
+     * Взвешенный выбор цели: раненые притягивают внимание сильнее, но у
+     * любого живого героя остаётся шанс получить удар.
+     */
+    pickVictim(opponents) {
+        if (opponents.length === 1) return opponents[0];
+
+        const weights = opponents.map((foe) => {
+            const hpFraction = foe.hp / foe.maxHp;
+            // Чем меньше HP, тем выше вес; +0.5 не даёт весу обнулиться.
+            return (1.35 - hpFraction) + 0.5;
+        });
+
+        const total = weights.reduce((sum, w) => sum + w, 0);
+        let roll = this.rng() * total;
+        for (let i = 0; i < opponents.length; i += 1) {
+            roll -= weights[i];
+            if (roll <= 0) return opponents[i];
+        }
+        return opponents[opponents.length - 1];
     }
 
     commitAction(unit, actionId, explicitTarget = null) {
@@ -626,7 +656,13 @@ export class BattleSystem {
         if (!unit.actionState) {
             unit.actionState = 'RUN_FORWARD';
             unit.hitsDone = 0;
-            unit.attackTimer = WINDUP_SECONDS;
+            // Спецприёмы отыгрывают собственный замах (animationSeconds),
+            // обычная атака бьёт почти сразу.
+            const definition = unit.pendingAction?.definition;
+            unit.attackTimer = definition?.animationSeconds ?? WINDUP_SECONDS;
+            unit.castStarted = false;
+            // Акцент камеры на исполнителе приёма.
+            this.camera?.focusOn(unit, (definition?.animationSeconds ?? 0.5) + 1.1);
         }
 
         const definition = unit.pendingAction?.definition;
@@ -667,18 +703,26 @@ export class BattleSystem {
         }
     }
 
-    tickRunForward(unit, definition, deltaTime) {
-        // С места бьют: дальнобойные приёмы, магия, предметы, групповые атаки
-        // и любой юнит со статусом moveBlock (движение заблокировано).
+    /**
+     * Приём выполняется с места, если это не обычная атака в упор.
+     * Спецприёмы, магия, предметы и групповые атаки играются на своей
+     * позиции: к цели бежит только базовая атака (Combo/Critical).
+     */
+    isStationaryAction(unit, definition) {
         const groupTargeting = definition.targeting === 'all-enemies'
             || definition.targeting === 'all-allies'
             || definition.targeting === 'line';
 
-        if (definition.melee === false
+        return definition.melee === false
             || definition.kind === 'magic'
             || definition.kind === 'item'
+            || definition.commandType === 'move'
             || groupTargeting
-            || (unit.statuses?.moveBlock ?? 0) > 0) {
+            || (unit.statuses?.moveBlock ?? 0) > 0;
+    }
+
+    tickRunForward(unit, definition, deltaTime) {
+        if (this.isStationaryAction(unit, definition)) {
             if (unit.target) this.faceTowards(unit, unit.target.mesh.position);
             unit.actionState = 'ATTACK';
             return;
@@ -707,6 +751,17 @@ export class BattleSystem {
     }
 
     tickAttack(unit, definition, deltaTime) {
+        // Анимацию запускаем в НАЧАЛЕ замаха, а не в момент попадания:
+        // иначе долгий приём выглядит как зависание, а потом рывок.
+        if (!unit.castStarted) {
+            unit.castStarted = true;
+            if (definition.kind === 'magic') {
+                this.animator?.playCast(unit.id, definition.animationSeconds);
+            } else {
+                this.animator?.playSwing(unit.id, definition.animationSeconds);
+            }
+        }
+
         unit.attackTimer -= deltaTime;
         if (unit.attackTimer > 0) return;
 
@@ -714,13 +769,6 @@ export class BattleSystem {
         if (targets.length === 0) {
             unit.actionState = 'RUN_BACK';
             return;
-        }
-
-        // Замах/каст проигрываем ровно в момент нанесения удара.
-        if (definition.kind === 'magic') {
-            this.animator?.playCast(unit.id);
-        } else {
-            this.animator?.playSwing(unit.id);
         }
 
         this.applyActionToTargets(unit, definition, targets);
@@ -732,6 +780,7 @@ export class BattleSystem {
         const stillFighting = targets.some((t) => this.isAlive(t));
         if (unit.hitsDone < hitCount && stillFighting) {
             unit.attackTimer = HIT_RECOVERY_SECONDS;
+            unit.castStarted = false; // следующий удар — новый замах
         } else {
             unit.actionState = 'RUN_BACK';
         }

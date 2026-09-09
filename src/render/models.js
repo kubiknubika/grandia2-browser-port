@@ -339,11 +339,23 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         meshes,
         rig: {
             kind: 'humanoid',
+            weapon,
             hips, torso, neck, head,
             shoulderL, shoulderR, elbowL, elbowR,
             hipL, hipR, kneeL, kneeR,
             hand, handL, weaponPivot, cape,
             foreArmL, foreArmR,
+            // Поза покоя: аниматор возвращается к ней, а не к константам.
+            rest: {
+                hipsY: hips.position.y,
+                shoulderLZ: shoulderL.rotation.z,
+                shoulderRZ: shoulderR.rotation.z,
+                shoulderRX: shoulderR.rotation.x,
+                elbowLX: elbowL.rotation.x,
+                elbowRX: elbowR.rotation.x,
+                weaponX: weaponPivot.rotation.x,
+                weaponZ: weaponPivot.rotation.z,
+            },
         },
     };
 }

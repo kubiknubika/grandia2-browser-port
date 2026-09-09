@@ -111,13 +111,64 @@ check('недоступный по SP приём отрисован как disab
   const ryudo = system.units.find((u) => u.id === 'ryudo');
   ryudo.sp = 0;
   ui.showCommandRing(ryudo, system.getAvailableActions(ryudo), () => {});
-  const buttons = [...$('#command-ring button')];
+
+  // Команды разложены по вкладкам, приёмы живут на вкладке «Приёмы».
+  const movesTab = [...$('#command-ring .cmd-tab')].find((t) => /приёмы/i.test(t.textContent));
+  assert.ok(movesTab, 'должна быть вкладка приёмов');
+  movesTab.click();
+
+  const buttons = [...$('#command-ring .cmd-btn')];
   const tenseiken = buttons.find((b) => /tenseiken/i.test(b.textContent));
   assert.ok(tenseiken, 'кнопка приёма должна быть');
   assert.equal(tenseiken.disabled, true);
   assert.ok(/24 SP/.test(tenseiken.textContent), 'должна показываться стоимость');
   ui.hideCommandRing();
   ryudo.sp = 34;
+});
+
+check('панель описания объясняет разницу между Combo и Critical', () => {
+  // Игрок не понимал, чем эти две базовые атаки отличаются.
+  const ryudo = system.units.find((u) => u.id === 'ryudo');
+  ui.showCommandRing(ryudo, system.getAvailableActions(ryudo), () => {});
+
+  const buttons = [...$('#command-ring .cmd-btn')];
+  const combo = buttons.find((b) => /combo/i.test(b.textContent));
+  const critical = buttons.find((b) => /critical/i.test(b.textContent));
+
+  const infoText = () => document.querySelector('#command-ring .cmd-info').textContent;
+
+  combo.dispatchEvent(new window.MouseEvent('mouseenter'));
+  const comboText = infoText();
+
+  critical.dispatchEvent(new window.MouseEvent('mouseenter'));
+  const critText = infoText();
+
+  assert.notEqual(comboText, critText, 'описания должны различаться');
+  assert.ok(/сбива/i.test(critText), `Critical должен упоминать сбив хода: ${critText}`);
+  assert.ok(/IP|SP/i.test(comboText), `Combo должен упоминать накопление: ${comboText}`);
+  ui.hideCommandRing();
+});
+
+check('вкладки переключают показанные команды', () => {
+  const elena = system.units.find((u) => u.id === 'elena');
+  ui.showCommandRing(elena, system.getAvailableActions(elena), () => {});
+
+  const tabs = [...$('#command-ring .cmd-tab')];
+  assert.ok(tabs.length >= 3, `должно быть несколько вкладок, найдено ${tabs.length}`);
+
+  const firstCount = document.querySelector('#command-ring .cmd-scroll').children.length;
+  const magicTab = tabs.find((t) => /магия/i.test(t.textContent));
+  assert.ok(magicTab, 'у Елены должна быть вкладка магии');
+  magicTab.click();
+
+  const magicButtons = [...$('#command-ring .cmd-btn')];
+  assert.ok(magicButtons.length > 0, 'на вкладке магии должны быть заклинания');
+  assert.ok(
+    magicButtons.every((b) => !/^\s*combo/i.test(b.textContent)),
+    'обычная атака не должна попадать на вкладку магии',
+  );
+  assert.notEqual(magicButtons.length, firstCount + 999, 'список должен перерисовываться');
+  ui.hideCommandRing();
 });
 
 check('выбор цели: клик по Critical открывает список живых врагов', () => {
