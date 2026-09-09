@@ -59,9 +59,11 @@ const check = (name, fn) => {
   catch (err) { results.push(`  FAIL ${name}\n       ${err.message}`); process.exitCode = 1; }
 };
 
-check('карточка партии создана только для игрока', () => {
-  assert.equal($('.character-card').length, 1);
-  assert.equal($('.ip-icon').length, 3);
+check('карточки создаются только для партии, иконки — для всех', () => {
+  const players = DEFAULT_ENCOUNTER.players.length;
+  const total = players + DEFAULT_ENCOUNTER.enemies.length;
+  assert.equal($('.character-card').length, players);
+  assert.equal($('.ip-icon').length, total);
 });
 
 check('HP-бар отражает текущее HP', () => {

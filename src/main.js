@@ -1,6 +1,6 @@
 import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, DirectionalLight, MeshBuilder, StandardMaterial, Color3, ShadowGenerator, SceneLoader } from '@babylonjs/core';
 import '@babylonjs/loaders';
-import { DEFAULT_ENCOUNTER, makeUnitData } from './data/battle_data.js';
+import { DEFAULT_ENCOUNTER, DEFAULT_INVENTORY, makeUnitData } from './data/battle_data.js';
 import { BattleSystem } from './system/BattleSystem.js';
 import { UIController } from './system/UIController.js';
 
@@ -19,7 +19,7 @@ toggle.addEventListener('change', (e) => {
 
 // Managers
 const ui = new UIController();
-const battleSystem = new BattleSystem(ui);
+const battleSystem = new BattleSystem(ui, { inventory: DEFAULT_INVENTORY });
 
 // Карточки партии рисует и обновляет UIController (HP-бары живут по ходу боя),
 // поэтому статического рендерера здесь больше нет.

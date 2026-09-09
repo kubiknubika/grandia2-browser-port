@@ -49,13 +49,23 @@ export function makeUnitData(presetKey, overrides = {}) {
     };
 }
 
-// Состав боя по умолчанию: Рюдо против двух пятнистых пауков (Башня Гармия).
+// Состав боя по умолчанию: Рюдо и Елена против двух пятнистых пауков
+// (Башня Гармия). Елена нужна, чтобы в бою были лечение, поддержка и
+// воскрешение — то, ради чего в оригинале держат второго персонажа.
 export const DEFAULT_ENCOUNTER = {
     players: [
-        { presetKey: 'ryudo', id: 'ryudo', position: { x: -6, z: 0 } },
+        { presetKey: 'ryudo', id: 'ryudo', position: { x: -6, z: -2 } },
+        { presetKey: 'elena', id: 'elena', position: { x: -7, z: 2.5 } },
     ],
     enemies: [
         { presetKey: 'mottledSpider', id: 'spider1', name: 'Mottled Spider A', position: { x: 4, z: 3 } },
         { presetKey: 'mottledSpider', id: 'spider2', name: 'Mottled Spider B', position: { x: 5, z: -2 } },
     ],
+};
+
+// Стартовый инвентарь партии (общий, как в оригинале).
+export const DEFAULT_INVENTORY = {
+    medicinalHerb: 3,
+    antidote: 2,
+    yomisElixir: 1,
 };

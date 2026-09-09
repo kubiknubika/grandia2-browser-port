@@ -14,7 +14,7 @@ import { Vector3 } from '@babylonjs/core/Maths/math.vector.js';
 
 import { BattleSystem } from '../src/system/BattleSystem.js';
 import { makeUnitData, DEFAULT_ENCOUNTER } from '../src/data/battle_data.js';
-import { COM_START, IP_MAX } from '../src/entities/combat.js';
+import { COM_START, IP_MAX, getBattleStat } from '../src/entities/combat.js';
 
 // --- Заглушки -------------------------------------------------------------
 
@@ -53,9 +53,9 @@ function makeUiStub({ autoCommand = null } = {}) {
     };
 }
 
-function buildBattle({ autoCommand, encounter = DEFAULT_ENCOUNTER } = {}) {
+function buildBattle({ autoCommand, encounter = DEFAULT_ENCOUNTER, inventory, rng } = {}) {
     const ui = makeUiStub({ autoCommand });
-    const system = new BattleSystem(ui);
+    const system = new BattleSystem(ui, { inventory, rng });
 
     for (const entry of encounter.players) {
         const { presetKey, ...rest } = entry;
@@ -381,6 +381,327 @@ test('IP не накапливается во время паузы на выб�
     for (let i = 0; i < 60; i += 1) system.update(1 / 60);
 
     assert.equal(spider.ip, before, 'на паузе шкала IP должна стоять');
+});
+
+// --- Перенесённые из оригинала механики -----------------------------------
+
+test('яд снимает HP в начале хода и сам истекает', () => {
+    const { system } = buildBattle();
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    ryudo.statuses.poison = 2;
+
+    const before = ryudo.hp;
+    const skipped = system.processTurnStartStatuses(ryudo);
+
+    const expected = Math.max(1, Math.round(ryudo.maxHp * 0.06));
+    assert.equal(before - ryudo.hp, expected, 'яд снимает 6% от максимума HP');
+    assert.equal(ryudo.statuses.poison, 1, 'счётчик яда должен уменьшаться');
+    assert.equal(skipped, false, 'яд сам по себе не отнимает ход');
+});
+
+test('яд может добить юнита и это корректно обрабатывается', () => {
+    const { system, ui } = buildBattle();
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    ryudo.statuses.poison = 3;
+    ryudo.hp = 1;
+
+    const skipped = system.processTurnStartStatuses(ryudo);
+
+    assert.equal(ryudo.hp, 0);
+    assert.equal(ryudo.phase, 'DEAD');
+    assert.equal(skipped, true, 'мёртвый не ходит');
+    assert.ok(ui.events.some((e) => e.type === 'dead' && e.id === 'ryudo'));
+});
+
+test('сон отнимает ход, а урон будит', () => {
+    const { system } = buildBattle();
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    const spider = system.units.find((u) => u.id === 'spider1');
+
+    ryudo.statuses.sleep = 2;
+    assert.equal(system.processTurnStartStatuses(ryudo), true, 'спящий теряет ход');
+    assert.equal(ryudo.ip, 0, 'после потери хода шкала сбрасывается');
+
+    ryudo.statuses.sleep = 2;
+    system.applyHit(spider, ryudo, { power: 1, hitCount: 1, ipDamage: 0 });
+    assert.equal(ryudo.statuses.sleep, 0, 'урон должен будить');
+});
+
+test('Endure режет и урон, и откат по шкале IP', () => {
+    const { system } = buildBattle();
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    const spider = system.units.find((u) => u.id === 'spider1');
+    const definition = { power: 1, hitCount: 1, ipDamage: 100 };
+
+    ryudo.ip = 500;
+    ryudo.guard = null;
+    system.applyHit(spider, ryudo, definition);
+    const normalPushback = 500 - ryudo.ip;
+
+    ryudo.ip = 500;
+    ryudo.guard = 'endure';
+    system.applyHit(spider, ryudo, definition);
+    const endurePushback = 500 - ryudo.ip;
+
+    assert.ok(endurePushback < normalPushback, `Endure должен смягчать откат (${endurePushback} vs ${normalPushback})`);
+    assert.equal(endurePushback, Math.round(normalPushback * 0.4), 'откат режется до 40%');
+});
+
+test('контрудар: попадание по юниту с IP>=930 усилено', () => {
+    const { system, ui } = buildBattle({ rng: () => 0.5 });
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    const spider = system.units.find((u) => u.id === 'spider1');
+    const definition = { power: 1, hitCount: 1, ipDamage: 0 };
+
+    // Обычное попадание.
+    ryudo.ip = 100;
+    ryudo.pendingAction = null;
+    const hpBefore = ryudo.hp;
+    system.applyHit(spider, ryudo, definition);
+    const normal = hpBefore - ryudo.hp;
+
+    // Цель уже занесла оружие.
+    ryudo.hp = hpBefore;
+    ryudo.ip = 950;
+    ryudo.pendingAction = { definition: { chargeMultiplier: 1 } };
+    system.applyHit(spider, ryudo, definition);
+    const counter = hpBefore - ryudo.hp;
+
+    assert.ok(counter > normal, `контрудар должен быть сильнее (${counter} vs ${normal})`);
+    assert.ok(ui.events.some((e) => e.text === 'COUNTER!'), 'должна показаться надпись COUNTER!');
+});
+
+test('защищающийся копит SP за полученный удар', () => {
+    const { system } = buildBattle();
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    const spider = system.units.find((u) => u.id === 'spider1');
+
+    ryudo.sp = 0;
+    system.applyHit(spider, ryudo, { power: 1, hitCount: 1, ipDamage: 0 });
+    assert.equal(ryudo.sp, 3, 'обычный удар даёт цели 3 SP');
+
+    ryudo.sp = 0;
+    ryudo.guard = 'endure';
+    system.applyHit(spider, ryudo, { power: 1, hitCount: 1, ipDamage: 0 });
+    assert.equal(ryudo.sp, 5, 'при Endure цель получает 5 SP');
+});
+
+test('магия учитывает стихию и сопротивление цели', () => {
+    const { system } = buildBattle({ rng: () => 0.5 });
+    const elena = system.units.find((u) => u.id === 'elena');
+    const spider = system.units.find((u) => u.id === 'spider1');
+
+    // У пятнистого паука resistances.fire = 1.2 (уязвим к огню).
+    assert.equal(spider.resistances.fire, 1.2, 'предпосылка теста: паук уязвим к огню');
+
+    const definition = { kind: 'magic', spellPower: 0.92, spellBase: 18, ipDamage: 0 };
+
+    const before = spider.hp;
+    system.applyMagicHit(elena, spider, { ...definition, element: 'fire' });
+    const fire = before - spider.hp;
+
+    spider.hp = before;
+    system.applyMagicHit(elena, spider, { ...definition, element: null });
+    const neutral = before - spider.hp;
+
+    assert.ok(fire > neutral, `огонь должен бить больнее (${fire} vs ${neutral})`);
+});
+
+test('статусный приём накладывает статус с учётом сопротивления', () => {
+    const { system } = buildBattle({ rng: () => 0 }); // rng=0 -> шанс всегда срабатывает
+    const spider = system.units.find((u) => u.id === 'spider1');
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+
+    system.applySupportEffects(spider, ryudo, {
+        statusEffects: [{ name: 'poison', turns: 3, chance: 0.88 }],
+    });
+
+    assert.equal(ryudo.statuses.poison, 3, 'яд должен наложиться');
+});
+
+test('баффы поднимают стат и истекают со временем', () => {
+    const { system } = buildBattle();
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+
+    const before = getBattleStat(ryudo, 'MOV');
+    system.applySupportEffects(ryudo, ryudo, {
+        statShifts: [{ stat: 'mov', amount: 1, turns: 2, target: 'ally' }],
+    });
+
+    assert.ok(getBattleStat(ryudo, 'MOV') > before, 'Runner должен ускорять бег');
+
+    // Два начала хода — и бафф истекает.
+    system.processTurnStartStatuses(ryudo);
+    system.processTurnStartStatuses(ryudo);
+    assert.equal(getBattleStat(ryudo, 'MOV'), before, 'бафф должен истечь');
+});
+
+test('предмет лечит и тратится из общего инвентаря', () => {
+    const { system } = buildBattle({ inventory: { medicinalHerb: 2 } });
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    ryudo.hp = 100;
+
+    const definition = system.getDefinition(ryudo, 'medicinalHerb');
+    system.applyInstantAction(ryudo, definition, ryudo);
+
+    assert.equal(ryudo.hp, 178, 'Medicinal Herb лечит на 78');
+    assert.equal(system.inventory.medicinalHerb, 1, 'предмет должен списаться');
+});
+
+test('предмет с нулевым остатком недоступен в кольце', () => {
+    const { system } = buildBattle({ inventory: { medicinalHerb: 0, antidote: 1 } });
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+
+    const actions = system.getAvailableActions(ryudo);
+    assert.ok(!actions.some((a) => a.id === 'medicinalHerb'), 'закончившийся предмет не показывается');
+    assert.ok(actions.some((a) => a.id === 'antidote'), 'доступный предмет показывается');
+});
+
+test('антидот снимает яд', () => {
+    const { system } = buildBattle({ inventory: { antidote: 1 } });
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    ryudo.statuses.poison = 3;
+
+    system.applyInstantAction(ryudo, system.getDefinition(ryudo, 'antidote'), ryudo);
+    assert.equal(ryudo.statuses.poison, 0, 'яд должен быть снят');
+});
+
+test('воскрешение поднимает павшего союзника', () => {
+    const { system } = buildBattle({ inventory: { yomisElixir: 1 } });
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    const elena = system.units.find((u) => u.id === 'elena');
+
+    elena.hp = 0;
+    system.handleDeath(elena);
+    assert.equal(elena.phase, 'DEAD');
+
+    system.applyInstantAction(ryudo, system.getDefinition(ryudo, 'yomisElixir'), elena);
+
+    assert.ok(elena.hp > 0, 'союзник должен ожить');
+    assert.equal(elena.phase, 'WAIT', 'и вернуться в бой');
+});
+
+test('magicBlock запрещает магию, но не обычную атаку', () => {
+    const { system } = buildBattle();
+    const elena = system.units.find((u) => u.id === 'elena');
+    elena.mp = elena.maxMp;
+    elena.statuses.magicBlock = 2;
+
+    const actions = system.getAvailableActions(elena);
+    const heal = actions.find((a) => a.id === 'heal');
+    const combo = actions.find((a) => a.id === 'combo');
+
+    assert.equal(heal.enabled, false, 'магия должна быть запечатана');
+    assert.equal(heal.disabledReason, 'magic sealed');
+    assert.equal(combo.enabled, true, 'обычная атака доступна');
+});
+
+test('moveBlock не даёт подбегать к цели', () => {
+    const { system } = buildBattle();
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    const spider = system.units.find((u) => u.id === 'spider1');
+
+    ryudo.statuses.moveBlock = 2;
+    ryudo.phase = 'EXECUTE';
+    ryudo.pendingAction = { definition: { power: 0.58, hitCount: 1, melee: true, ipDamage: 0 } };
+    ryudo.target = spider;
+
+    const start = ryudo.mesh.position.clone();
+    system.update(1 / 60);
+
+    assert.equal(Vector3.Distance(start, ryudo.mesh.position), 0, 'юнит не должен сдвинуться');
+    assert.equal(ryudo.actionState, 'ATTACK', 'он бьёт с места');
+});
+
+test('групповая атака задевает всех живых врагов', () => {
+    const { system } = buildBattle();
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    const enemies = system.units.filter((u) => !u.isPlayer);
+    const before = enemies.map((e) => e.hp);
+
+    const definition = system.getDefinition(ryudo, 'skyDragonSlash');
+    assert.equal(definition.targeting, 'all-enemies', 'предпосылка: приём групповой');
+
+    const targets = system.resolveTargets(ryudo, definition);
+    assert.equal(targets.length, enemies.length, 'должны попасть под удар все враги');
+
+    system.applyActionToTargets(ryudo, definition, targets);
+    enemies.forEach((enemy, index) => {
+        assert.ok(enemy.hp < before[index], `${enemy.id} должен получить урон`);
+    });
+});
+
+test('лечение и воскрешение выбирают правильные цели', () => {
+    const { system } = buildBattle();
+    const elena = system.units.find((u) => u.id === 'elena');
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+
+    ryudo.hp = 50;
+    const healTarget = system.pickDefaultTarget(elena, system.getDefinition(elena, 'heal'));
+    assert.equal(healTarget.id, 'ryudo', 'лечим самого раненого');
+
+    ryudo.hp = 0;
+    system.handleDeath(ryudo);
+    const reviveTarget = system.pickDefaultTarget(elena, system.getDefinition(elena, 'resurrect'));
+    assert.equal(reviveTarget.id, 'ryudo', 'воскрешаем павшего');
+});
+
+test('кольцо команд содержит магию Елены и предметы партии', () => {
+    const { system } = buildBattle({ inventory: { medicinalHerb: 2 } });
+    const elena = system.units.find((u) => u.id === 'elena');
+    elena.mp = elena.maxMp;
+
+    const actions = system.getAvailableActions(elena);
+    const ids = actions.map((a) => a.id);
+
+    assert.ok(ids.includes('heal'), 'должно быть лечение');
+    assert.ok(ids.includes('burn'), 'должна быть атакующая магия');
+    assert.ok(ids.includes('medicinalHerb'), 'должны быть предметы');
+    assert.ok(ids.includes('endure') && ids.includes('evade'), 'должна быть защита');
+
+    // Категории идут в каноничном порядке.
+    const order = actions.map((a) => a.category);
+    const sorted = [...order].sort(
+        (a, b) => ['basic', 'move', 'magic', 'item', 'defense'].indexOf(a)
+                - ['basic', 'move', 'magic', 'item', 'defense'].indexOf(b),
+    );
+    assert.deepEqual(order, sorted, 'команды должны быть сгруппированы по категориям');
+});
+
+test('враг применяет статусные приёмы из своего loadout', () => {
+    // rng=0.1 -> проходит проверка шанса 0.35 на статусный приём.
+    const { system } = buildBattle({ rng: () => 0.1 });
+    const spider = system.units.find((u) => u.id === 'spider1');
+    spider.sp = spider.maxSp;
+
+    const choice = system.chooseEnemyAction(spider);
+    assert.ok(
+        ['poisonSpit', 'spellbindDust'].includes(choice.actionId),
+        `паук должен использовать статусный приём, а не ${choice.actionId}`,
+    );
+});
+
+test('бой с полным набором механик доходит до конца', () => {
+    // Игрок использует всё подряд, включая магию и предметы.
+    const { system, ui } = buildBattle({
+        autoCommand: (unit, actions) => {
+            const usable = actions.filter((a) => a.enabled);
+            const action = usable[Math.floor(Math.random() * usable.length)] ?? actions[0];
+            return { actionId: action.id, target: action.targets[0] ?? null };
+        },
+    });
+
+    const elapsed = runBattle(system, ui, { maxSeconds: 400 });
+    assert.ok(system.outcome !== null, `бой завис на ${elapsed.toFixed(1)} с`);
+
+    for (const unit of system.units) {
+        assert.ok(unit.hp >= 0 && unit.hp <= unit.maxHp, `${unit.id}: HP вне диапазона`);
+        assert.ok(unit.sp >= 0 && unit.sp <= unit.maxSp, `${unit.id}: SP вне диапазона`);
+        assert.ok(unit.mp >= 0 && unit.mp <= unit.maxMp, `${unit.id}: MP вне диапазона`);
+    }
+    for (const [key, count] of Object.entries(system.inventory)) {
+        assert.ok(count >= 0, `инвентарь ушёл в минус: ${key}=${count}`);
+    }
 });
 
 // --- Запуск ---------------------------------------------------------------

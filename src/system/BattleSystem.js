@@ -4,9 +4,14 @@ import {
     COM_START,
     IP_MAX,
     WAIT_SPEED_SCALE,
+    applyStatShift,
+    applyStatus,
     calcHealAmount,
+    calcMagicDamage,
     calcPhysicalDamage,
     getBattleStat,
+    processTimedModifiers,
+    scaleActionDefinitionForLevel,
 } from '../entities/combat.js';
 
 // --- Константы связки "движок <-> 3D-сцена" ---------------------------------
@@ -24,10 +29,23 @@ const MELEE_RANGE = 2.2;
 // Порог «добежал домой», чтобы не дрожать вокруг точки при большой скорости.
 const HOME_EPSILON = 0.15;
 
-const ENDURE_MULTIPLIER = 0.35; // из applyHitEffects() в combat.js
+// --- Каноничные правила из applyHitEffects() (combat.js) --------------------
+
+const ENDURE_DAMAGE_MULTIPLIER = 0.35;  // Endure режет урон
+const ENDURE_IP_MULTIPLIER = 0.4;       // ...и откат по шкале
+const COUNTER_IP_THRESHOLD = 930;       // удар по «занёсшему» юниту усилен
+const COUNTER_MULTIPLIER = 1.25;
+const SP_GAIN_ON_TAKING_HIT = 3;        // защищающийся тоже копит SP
+const SP_GAIN_ON_TAKING_HIT_ENDURE = 5;
+const POISON_HP_FRACTION = 0.06;        // яд за ход
+const PARALYSIS_SKIP_CHANCE = 0.5;
+
 const AI_THINK_SECONDS = 0.45;
 const HIT_RECOVERY_SECONDS = 0.35; // пауза между ударами комбо
 const WINDUP_SECONDS = 0.12;       // замах перед первым ударом
+
+// Порядок команд в кольце — как в оригинале.
+const COMMAND_CATEGORIES = ['basic', 'move', 'magic', 'item', 'defense'];
 
 function clamp(value, min, max) {
     return Math.max(min, Math.min(max, value));
@@ -41,14 +59,18 @@ function clamp(value, min, max) {
  * и симулятор баланса не разъезжались.
  */
 export class BattleSystem {
-    constructor(uiController) {
+    constructor(uiController, { inventory, rng = Math.random } = {}) {
         this.units = [];
         this.ui = uiController;
+        this.rng = rng;
 
         this.isPaused = false;      // пауза на время выбора команды игроком
         this.outcome = null;        // null | 'victory' | 'defeat'
         this.commandQueue = [];     // игроки, дошедшие до COM и ждущие приказа
         this.awaitingInput = null;  // юнит, для которого сейчас открыто кольцо
+
+        // Инвентарь общий на партию, как в оригинале.
+        this.inventory = { ...(inventory ?? { medicinalHerb: 3, antidote: 2, yomisElixir: 1 }) };
     }
 
     // --- Регистрация юнитов -------------------------------------------------
@@ -76,9 +98,19 @@ export class BattleSystem {
             ip: 0,
             phase: 'WAIT',          // WAIT -> COM -> ACT -> EXECUTE -> WAIT
             pendingAction: null,
-            guard: null,            // 'endure' до следующего хода
+            guard: null,            // 'endure' / 'evade' до следующего хода
+
+            // Модификаторы статов со сроком жизни в ходах (getBattleStat их читает).
             buffs: { atk: 0, def: 0, act: 0, mov: 0 },
             debuffs: { atk: 0, def: 0, act: 0, mov: 0 },
+            buffTimers: { atk: 0, def: 0, act: 0, mov: 0 },
+            debuffTimers: { atk: 0, def: 0, act: 0, mov: 0 },
+
+            // Статусы из канона: сон, блок движения/магии, яд, замешательство, паралич.
+            statuses: { sleep: 0, moveBlock: 0, magicBlock: 0, poison: 0, confusion: 0, paralysis: 0 },
+            resistances: { ...(preset.resistances ?? {}) },
+            statusResistances: { ...(preset.statusResistances ?? {}) },
+            actionLevels: { ...(preset.actionLevels ?? {}) },
 
             actionState: null,
             target: null,
@@ -160,12 +192,71 @@ export class BattleSystem {
             unit.phase = 'COM';
             unit.guard = null; // защита действует только до своего следующего хода
 
+            // Яд/сон/паралич и истечение баффов срабатывают в начале хода.
+            if (this.processTurnStartStatuses(unit)) {
+                return; // ход потерян (или юнит погиб от яда)
+            }
+
             if (unit.isPlayer) {
                 this.commandQueue.push(unit);
             } else {
                 unit.aiThinkTimer = AI_THINK_SECONDS;
             }
         }
+    }
+
+    /**
+     * Статусы, срабатывающие в начале хода — порт processTurnStartStatuses()
+     * из combat.js. Возвращает true, если ход пропущен.
+     */
+    processTurnStartStatuses(unit) {
+        const statuses = unit.statuses;
+
+        if ((statuses.poison ?? 0) > 0) {
+            const damage = Math.max(1, Math.round(unit.maxHp * POISON_HP_FRACTION));
+            unit.hp = clamp(unit.hp - damage, 0, unit.maxHp);
+            statuses.poison = Math.max(0, statuses.poison - 1);
+
+            this.ui.showFloatingText(unit.mesh, String(damage), 'poison');
+            this.ui.updateUnit(unit);
+
+            if (unit.hp <= 0) {
+                this.handleDeath(unit);
+                return true;
+            }
+        }
+
+        if ((statuses.paralysis ?? 0) > 0) {
+            statuses.paralysis = Math.max(0, statuses.paralysis - 1);
+            if (this.rng() < PARALYSIS_SKIP_CHANCE) {
+                this.ui.showFloatingText(unit.mesh, 'PARALYZED', 'status');
+                this.resetToWait(unit);
+                this.ui.updateUnit(unit);
+                return true;
+            }
+        }
+
+        if ((statuses.confusion ?? 0) > 0) {
+            statuses.confusion = Math.max(0, statuses.confusion - 1);
+        }
+
+        for (const key of ['moveBlock', 'magicBlock']) {
+            if ((statuses[key] ?? 0) > 0) {
+                statuses[key] = Math.max(0, statuses[key] - 1);
+            }
+        }
+
+        if ((statuses.sleep ?? 0) > 0) {
+            statuses.sleep = Math.max(0, statuses.sleep - 1);
+            this.ui.showFloatingText(unit.mesh, 'ASLEEP', 'status');
+            this.resetToWait(unit);
+            this.ui.updateUnit(unit);
+            return true;
+        }
+
+        processTimedModifiers(unit);
+        this.ui.updateUnit(unit);
+        return false;
     }
 
     tickCom(unit, deltaTime) {
@@ -228,43 +319,112 @@ export class BattleSystem {
         });
     }
 
-    /** Список доступных действий с учётом SP/MP и живых целей. */
+    /** Определение приёма с учётом уровня владения (как getActionDefinition в движке). */
+    getDefinition(unit, actionId) {
+        const base = ACTION_LIBRARY[actionId];
+        if (!base) return null;
+        return scaleActionDefinitionForLevel(base, unit?.actionLevels?.[actionId] ?? 1);
+    }
+
+    /**
+     * Полный список команд юнита, собранный из его loadout — как в оригинале:
+     * Combo/Critical, приёмы за SP, магия за MP, предметы из общего инвентаря,
+     * Endure/Evade. Учитывает блокировку магии (magicBlock) и движения (moveBlock).
+     */
+    collectActionIds(unit) {
+        const loadout = unit.loadout ?? {};
+        const ids = ['combo', 'critical'];
+
+        const push = (value) => {
+            for (const id of [value].flat()) {
+                if (id && !ids.includes(id)) ids.push(id);
+            }
+        };
+
+        push(loadout.cancelMove);
+        push(loadout.cancelMoves);
+        push(loadout.singleMoves);
+        push(loadout.aoeMoves);
+        push(loadout.statusMoves);
+        push(loadout.healMagic);
+        push(loadout.healMagics);
+        push(loadout.offensiveMagic);
+        push(loadout.offensiveMagics);
+        push(loadout.supportMagics);
+        push(loadout.debuffMagics);
+
+        // Предметы доступны только партии и только те, что есть в наличии.
+        if (unit.isPlayer) {
+            for (const [key, count] of Object.entries(this.inventory)) {
+                if (count > 0 && ACTION_LIBRARY[key]) push(key);
+            }
+        }
+
+        ids.push('endure', 'evade');
+        return ids;
+    }
+
+    /** Список доступных действий с учётом ресурсов, статусов и живых целей. */
     getAvailableActions(unit) {
         const opponents = this.livingOpponents(unit);
         const allies = this.livingAllies(unit);
-        const loadout = unit.loadout ?? {};
+        const downedAllies = this.units.filter((u) => u.isPlayer === unit.isPlayer && u.hp <= 0);
 
-        const ids = ['combo', 'critical'];
-        if (loadout.cancelMove) ids.push(loadout.cancelMove);
-        if (loadout.healMagic) ids.push(loadout.healMagic);
-        ids.push('endure', 'evade');
+        const magicBlocked = (unit.statuses?.magicBlock ?? 0) > 0;
+        const moveBlocked = (unit.statuses?.moveBlock ?? 0) > 0;
 
         const actions = [];
-        for (const id of ids) {
-            const definition = ACTION_LIBRARY[id];
+        for (const id of this.collectActionIds(unit)) {
+            const definition = this.getDefinition(unit, id);
             if (!definition) continue;
 
             const costSp = definition.costSp ?? 0;
             const costMp = definition.costMp ?? 0;
-            const affordable = unit.sp >= costSp && unit.mp >= costMp;
 
-            const needsEnemy = definition.targeting === 'single' || definition.targeting === 'all-enemies';
-            const needsAlly = definition.targeting === 'single-ally';
-            if (needsEnemy && opponents.length === 0) continue;
-            if (needsAlly && allies.length === 0) continue;
+            // Воскрешение целится в павших, всё остальное — в живых.
+            const targetsDowned = Boolean(definition.revive);
+            const needsEnemy = definition.targeting === 'single'
+                || definition.targeting === 'all-enemies'
+                || definition.targeting === 'line';
+            const needsAlly = definition.targeting === 'single-ally' || definition.targeting === 'all-allies';
+
+            let targets = [];
+            if (needsEnemy) targets = opponents;
+            else if (needsAlly) targets = targetsDowned ? downedAllies : allies;
+
+            if ((needsEnemy || needsAlly) && targets.length === 0) continue;
+
+            // Групповые действия цель не выбирают.
+            const pickable = definition.targeting === 'single' || definition.targeting === 'single-ally';
+
+            const reasons = [];
+            if (unit.sp < costSp) reasons.push('not enough SP');
+            if (unit.mp < costMp) reasons.push('not enough MP');
+            if (magicBlocked && definition.kind === 'magic') reasons.push('magic sealed');
+            // moveBlock запрещает приёмы с подбеганием, но не базовые атаки.
+            if (moveBlocked && definition.commandType === 'move') reasons.push('move sealed');
+            if (definition.inventoryKey && (this.inventory[definition.inventoryKey] ?? 0) <= 0) reasons.push('none left');
 
             actions.push({
                 id,
                 label: definition.label,
                 definition,
-                enabled: affordable,
+                category: definition.commandType ?? 'basic',
+                enabled: reasons.length === 0,
+                disabledReason: reasons[0] ?? null,
                 costSp,
                 costMp,
-                targets: needsAlly ? allies : needsEnemy ? opponents : [],
+                count: definition.inventoryKey ? (this.inventory[definition.inventoryKey] ?? 0) : null,
+                element: definition.element ?? null,
+                targets: pickable ? targets : [],
             });
         }
 
-        return actions;
+        // Стабильный порядок: базовые -> приёмы -> магия -> предметы -> защита.
+        return actions.sort((a, b) => {
+            const byCategory = COMMAND_CATEGORIES.indexOf(a.category) - COMMAND_CATEGORIES.indexOf(b.category);
+            return byCategory !== 0 ? byCategory : 0;
+        });
     }
 
     /**
@@ -272,8 +432,21 @@ export class BattleSystem {
      * оружие (фаза COM/ACT), выгодно ударить Critical и сбить ему ход.
      */
     chooseEnemyAction(unit) {
+        // Замешательство: бьём случайную цель, включая своих.
+        if ((unit.statuses?.confusion ?? 0) > 0) {
+            const anyone = this.units.filter((u) => this.isAlive(u) && u !== unit);
+            if (anyone.length === 0) return null;
+            return {
+                actionId: this.rng() < 0.5 ? 'combo' : 'critical',
+                target: anyone[Math.floor(this.rng() * anyone.length)],
+            };
+        }
+
         const opponents = this.livingOpponents(unit);
         if (opponents.length === 0) return null;
+
+        const available = this.getAvailableActions(unit).filter((a) => a.enabled);
+        const canUse = (id) => available.some((a) => a.id === id);
 
         // Приоритет — прервать того, кто ближе всех к удару.
         const interruptible = opponents
@@ -284,30 +457,47 @@ export class BattleSystem {
             return { actionId: 'critical', target: interruptible };
         }
 
-        // Иначе добиваем самого раненого.
         const weakest = [...opponents].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0];
+
+        // Иногда пускаем в ход фирменные статусные приёмы (яд, паутина, сон).
+        const statusMoves = (unit.loadout?.statusMoves ?? []).filter(canUse);
+        if (statusMoves.length > 0 && this.rng() < 0.35) {
+            const move = statusMoves[Math.floor(this.rng() * statusMoves.length)];
+            const definition = this.getDefinition(unit, move);
+            // Не тратим приём, если статус уже висит на цели.
+            const alreadyAfflicted = (definition?.statusEffects ?? [])
+                .every((effect) => (weakest.statuses?.[effect.name] ?? 0) > 0);
+            if (!alreadyAfflicted) {
+                return { actionId: move, target: weakest };
+            }
+        }
+
         return { actionId: 'combo', target: weakest };
     }
 
     commitAction(unit, actionId, explicitTarget = null) {
-        const definition = ACTION_LIBRARY[actionId];
+        const definition = this.getDefinition(unit, actionId);
         if (!definition) {
             this.resetToWait(unit);
             return;
         }
 
-        // Мгновенные защитные действия не доходят до фазы EXECUTE.
+        // Мгновенные действия (Endure/Evade/предметы) не доходят до фазы EXECUTE.
         if (definition.instant) {
             this.applyInstantAction(unit, definition);
             return;
         }
 
+        const groupTargeting = definition.targeting === 'all-enemies'
+            || definition.targeting === 'all-allies'
+            || definition.targeting === 'line';
+
         let target = explicitTarget;
-        if (!target || !this.isAlive(target)) {
+        if (!groupTargeting && (!target || !this.isValidTarget(target, definition))) {
             target = this.pickDefaultTarget(unit, definition);
         }
 
-        if (!target) {
+        if (!groupTargeting && !target) {
             this.resetToWait(unit);
             return;
         }
@@ -316,22 +506,48 @@ export class BattleSystem {
         unit.sp = clamp(unit.sp - (definition.costSp ?? 0), 0, unit.maxSp);
         unit.mp = clamp(unit.mp - (definition.costMp ?? 0), 0, unit.maxMp);
 
-        unit.pendingAction = { definition, targetId: target.id };
-        unit.target = target;
+        unit.pendingAction = { definition, targetId: target?.id ?? null };
+        unit.target = target ?? null;
         unit.phase = 'ACT';
         this.ui.updateUnit(unit);
     }
 
+    /** Воскрешение целится в павших, всё остальное — только в живых. */
+    isValidTarget(target, definition) {
+        return definition.revive ? target.hp <= 0 : this.isAlive(target);
+    }
+
     pickDefaultTarget(unit, definition) {
+        if (definition.revive) {
+            return this.units.find((u) => u.isPlayer === unit.isPlayer && u.hp <= 0) ?? null;
+        }
         if (definition.targeting === 'single-ally') {
             const allies = this.livingAllies(unit);
             return [...allies].sort((a, b) => a.hp / a.maxHp - b.hp / b.maxHp)[0] ?? null;
         }
         const opponents = this.livingOpponents(unit);
-        return opponents[Math.floor(Math.random() * opponents.length)] ?? null;
+        return opponents[Math.floor(this.rng() * opponents.length)] ?? null;
     }
 
-    applyInstantAction(unit, definition) {
+    /** Кого фактически заденет действие в момент исполнения. */
+    resolveTargets(unit, definition) {
+        switch (definition.targeting) {
+            case 'all-enemies':
+            case 'line':
+                return this.livingOpponents(unit);
+            case 'all-allies':
+                return this.livingAllies(unit);
+            case 'self':
+                return [unit];
+            default: {
+                if (unit.target && this.isValidTarget(unit.target, definition)) return [unit.target];
+                const fallback = this.pickDefaultTarget(unit, definition);
+                return fallback ? [fallback] : [];
+            }
+        }
+    }
+
+    applyInstantAction(unit, definition, explicitTarget = null) {
         if (definition.id === 'endure') {
             unit.guard = 'endure';
             this.ui.showFloatingText(unit.mesh, 'ENDURE', 'guard');
@@ -341,11 +557,65 @@ export class BattleSystem {
             away.x += unit.isPlayer ? -3 : 3;
             unit.homePosition = away;
             unit.mesh.position.copyFrom(away);
+            unit.guard = 'evade';
             this.ui.showFloatingText(unit.mesh, 'EVADE', 'guard');
+        } else if (definition.kind === 'item') {
+            this.applyItem(unit, definition, explicitTarget);
         }
 
         this.resetToWait(unit);
         this.ui.updateUnit(unit);
+    }
+
+    /** Предметы: лечение, снятие статусов, воскрешение, восстановление SP/MP. */
+    applyItem(unit, definition, explicitTarget = null) {
+        const key = definition.inventoryKey;
+        if (key && (this.inventory[key] ?? 0) <= 0) {
+            this.ui.showFloatingText(unit.mesh, 'NONE LEFT', 'status');
+            return;
+        }
+        if (key) this.inventory[key] -= 1;
+
+        const targets = explicitTarget
+            ? [explicitTarget]
+            : this.resolveTargets(unit, definition);
+
+        for (const target of targets) {
+            if (target.hp <= 0 && definition.revive) {
+                target.hp = Math.max(1, Math.round(target.maxHp * (definition.reviveRatio ?? 0.35)));
+                target.phase = 'WAIT';
+                target.ip = 0;
+                this.ui.showFloatingText(target.mesh, 'REVIVE', 'heal');
+                this.ui.markRevived?.(target);
+            }
+
+            if (target.hp <= 0) continue;
+
+            if ((definition.healBase ?? 0) > 0) {
+                const before = target.hp;
+                target.hp = clamp(target.hp + definition.healBase, 0, target.maxHp);
+                this.ui.showFloatingText(target.mesh, `+${target.hp - before}`, 'heal');
+            }
+            if ((definition.restoreSp ?? 0) > 0) {
+                target.sp = clamp(target.sp + definition.restoreSp, 0, target.maxSp);
+            }
+            if ((definition.restoreMp ?? 0) > 0) {
+                target.mp = clamp(target.mp + definition.restoreMp, 0, target.maxMp);
+            }
+
+            const cured = [];
+            for (const status of definition.cureStatuses ?? []) {
+                if ((target.statuses?.[status] ?? 0) > 0) {
+                    target.statuses[status] = 0;
+                    cured.push(status);
+                }
+            }
+            if (cured.length > 0) {
+                this.ui.showFloatingText(target.mesh, 'CURED', 'heal');
+            }
+
+            this.ui.updateUnit(target);
+        }
     }
 
     // --- Исполнение действия ------------------------------------------------
@@ -363,12 +633,15 @@ export class BattleSystem {
             return;
         }
 
-        // Цель могла погибнуть, пока мы бежали, — перенацеливаемся.
-        if (!unit.target || !this.isAlive(unit.target)) {
-            const replacement = definition.targeting === 'single-ally'
-                ? this.pickDefaultTarget(unit, definition)
-                : this.livingOpponents(unit)[0] ?? null;
+        // Групповые действия цель не держат — там всё решает resolveTargets().
+        const groupTargeting = definition.targeting === 'all-enemies'
+            || definition.targeting === 'all-allies'
+            || definition.targeting === 'line'
+            || definition.targeting === 'self';
 
+        if (!groupTargeting && (!unit.target || !this.isValidTarget(unit.target, definition))) {
+            // Цель могла погибнуть, пока мы бежали, — перенацеливаемся.
+            const replacement = this.pickDefaultTarget(unit, definition);
             if (!replacement) {
                 unit.actionState = 'RUN_BACK';
                 unit.target = null;
@@ -393,8 +666,17 @@ export class BattleSystem {
     }
 
     tickRunForward(unit, definition, deltaTime) {
-        // Дальнобойные приёмы и лечение бьют с места.
-        if (definition.melee === false || definition.kind === 'magic') {
+        // С места бьют: дальнобойные приёмы, магия, предметы, групповые атаки
+        // и любой юнит со статусом moveBlock (движение заблокировано).
+        const groupTargeting = definition.targeting === 'all-enemies'
+            || definition.targeting === 'all-allies'
+            || definition.targeting === 'line';
+
+        if (definition.melee === false
+            || definition.kind === 'magic'
+            || definition.kind === 'item'
+            || groupTargeting
+            || (unit.statuses?.moveBlock ?? 0) > 0) {
             if (unit.target) this.faceTowards(unit, unit.target.mesh.position);
             unit.actionState = 'ATTACK';
             return;
@@ -426,26 +708,86 @@ export class BattleSystem {
         unit.attackTimer -= deltaTime;
         if (unit.attackTimer > 0) return;
 
-        const target = unit.target;
-        if (!target || !this.isAlive(target)) {
+        const targets = this.resolveTargets(unit, definition);
+        if (targets.length === 0) {
             unit.actionState = 'RUN_BACK';
             return;
         }
 
-        if (definition.kind === 'magic') {
-            this.applyHeal(unit, target, definition);
-        } else {
-            this.applyHit(unit, target, definition);
-        }
+        this.applyActionToTargets(unit, definition, targets);
 
         unit.hitsDone += 1;
 
+        // Многоударные приёмы продолжают бить, пока цель жива.
         const hitCount = definition.hitCount ?? 1;
-        if (unit.hitsDone < hitCount && this.isAlive(target)) {
+        const stillFighting = targets.some((t) => this.isAlive(t));
+        if (unit.hitsDone < hitCount && stillFighting) {
             unit.attackTimer = HIT_RECOVERY_SECONDS;
         } else {
             unit.actionState = 'RUN_BACK';
         }
+    }
+
+    /** Диспетчер эффектов: урон, магия, лечение, баффы, статусы. */
+    applyActionToTargets(unit, definition, targets) {
+        for (const target of targets) {
+            // Воскрешение и лечение павших.
+            if (definition.revive && target.hp <= 0) {
+                target.hp = Math.max(1, Math.round(target.maxHp * (definition.reviveRatio ?? 0.35)));
+                target.phase = 'WAIT';
+                target.ip = 0;
+                this.ui.showFloatingText(target.mesh, 'REVIVE', 'heal');
+                this.ui.markRevived?.(target);
+                this.ui.updateUnit(target);
+                continue;
+            }
+
+            const isHealing = (definition.powerBase ?? 0) > 0 || (definition.healBase ?? 0) > 0;
+            const isOffensiveMagic = definition.kind === 'magic'
+                && (definition.spellPower != null || definition.spellBase != null);
+
+            if (isHealing) {
+                this.applyHeal(unit, target, definition);
+            } else if (isOffensiveMagic) {
+                this.applyMagicHit(unit, target, definition);
+            } else if (definition.kind === 'physical') {
+                this.applyHit(unit, target, definition);
+            }
+
+            // Баффы/дебаффы и статусы могут висеть на любом типе действия.
+            this.applySupportEffects(unit, target, definition);
+        }
+    }
+
+    /** Баффы, дебаффы, снятие и наложение статусов. */
+    applySupportEffects(actor, target, definition) {
+        for (const shift of definition.statShifts ?? []) {
+            // Дебаффы летят во врага, баффы — в союзника.
+            const wantsAlly = (shift.target ?? 'ally') === 'ally';
+            if (wantsAlly !== (target.isPlayer === actor.isPlayer)) continue;
+
+            if (applyStatShift(target, shift)) {
+                const label = `${shift.stat.toUpperCase()}${shift.amount > 0 ? '+' : '-'}`;
+                this.ui.showFloatingText(target.mesh, label, shift.amount > 0 ? 'buff' : 'status');
+            }
+        }
+
+        for (const status of definition.cureStatuses ?? []) {
+            if ((target.statuses?.[status] ?? 0) > 0) {
+                target.statuses[status] = 0;
+                this.ui.showFloatingText(target.mesh, 'CURED', 'heal');
+            }
+        }
+
+        if (this.isAlive(target)) {
+            for (const effect of definition.statusEffects ?? []) {
+                if (applyStatus(target, effect, this.rng)) {
+                    this.ui.showFloatingText(target.mesh, effect.name.toUpperCase(), 'status');
+                }
+            }
+        }
+
+        this.ui.updateUnit(target);
     }
 
     tickRunBack(unit, deltaTime) {
@@ -493,20 +835,59 @@ export class BattleSystem {
     // --- Урон, лечение, смерть ---------------------------------------------
 
     applyHit(attacker, target, definition) {
-        const power = definition.power ?? 1;
-        const raw = calcPhysicalDamage(attacker, target, power);
-        const mitigated = target.guard === 'endure' ? raw * ENDURE_MULTIPLIER : raw;
+        const raw = calcPhysicalDamage(attacker, target, definition.power ?? 1, this.rng);
+        this.dealDamage(attacker, target, definition, raw);
+    }
+
+    /** Магический урон со стихией и сопротивлениями цели. */
+    applyMagicHit(attacker, target, definition) {
+        const raw = calcMagicDamage(
+            attacker,
+            target,
+            definition.spellPower ?? 0.9,
+            definition.spellBase ?? 0,
+            this.rng,
+            definition.element ?? null,
+        );
+        this.dealDamage(attacker, target, definition, raw, definition.element ?? null);
+    }
+
+    /**
+     * Общая обработка попадания — порт applyHitEffects() из combat.js:
+     * контрудар по «занёсшему» юниту, смягчение через Endure, набор SP
+     * обеими сторонами, прерывание сна/замешательства уроном.
+     */
+    dealDamage(attacker, target, definition, rawDamage, element = null) {
+        const enduring = target.guard === 'endure';
+
+        // Цель, уже занёсшая оружие (IP >= 930), получает усиленный урон.
+        const isCounter = Boolean(target.pendingAction) && target.ip >= COUNTER_IP_THRESHOLD;
+        const countered = isCounter ? rawDamage * COUNTER_MULTIPLIER : rawDamage;
+        const mitigated = enduring ? countered * ENDURE_DAMAGE_MULTIPLIER : countered;
         const damage = Math.max(1, Math.round(mitigated));
 
         target.hp = clamp(target.hp - damage, 0, target.maxHp);
 
-        this.ui.showFloatingText(target.mesh, String(damage), 'damage');
+        // Урон будит спящих и приводит в чувство запутанных.
+        if (damage > 0) {
+            if ((target.statuses?.sleep ?? 0) > 0) target.statuses.sleep = 0;
+            if ((target.statuses?.confusion ?? 0) > 0) target.statuses.confusion = 0;
+        }
+
+        const kind = element ? `damage element-${element}` : 'damage';
+        this.ui.showFloatingText(target.mesh, String(damage), isCounter ? 'counter' : kind);
         this.ui.flashMesh(target.mesh);
+        if (isCounter) this.ui.showFloatingText(target.mesh, 'COUNTER!', 'counter');
 
-        // Атакующий копит SP за попадание.
+        // SP копят обе стороны: атакующий за попадание, цель за полученный удар.
         attacker.sp = clamp(attacker.sp + (definition.spGainOnHit ?? 0), 0, attacker.maxSp);
+        target.sp = clamp(
+            target.sp + (enduring ? SP_GAIN_ON_TAKING_HIT_ENDURE : SP_GAIN_ON_TAKING_HIT),
+            0,
+            target.maxSp,
+        );
 
-        this.applyIpDamage(target, definition);
+        this.applyIpDamage(target, definition, enduring);
 
         this.ui.updateUnit(attacker);
         this.ui.updateUnit(target);
@@ -517,7 +898,10 @@ export class BattleSystem {
     }
 
     applyHeal(caster, target, definition) {
-        const amount = calcHealAmount(caster, definition.powerBase ?? 0);
+        const base = definition.powerBase ?? definition.healBase ?? 0;
+        const amount = definition.powerBase != null
+            ? calcHealAmount(caster, definition.powerBase)
+            : base;
         const before = target.hp;
         target.hp = clamp(target.hp + amount, 0, target.maxHp);
 
@@ -529,13 +913,15 @@ export class BattleSystem {
      * Откат по шкале IP. Если цель уже занесла оружие (COM/ACT) и приём умеет
      * прерывать — это CANCEL: действие теряется целиком.
      */
-    applyIpDamage(target, definition) {
+    applyIpDamage(target, definition, enduring = false) {
         if (!this.isAlive(target)) return;
 
+        // Endure смягчает не только урон, но и откат по шкале.
+        const ipScale = enduring ? ENDURE_IP_MULTIPLIER : 1;
         const canCancel = definition.cancel && (target.phase === 'COM' || target.phase === 'ACT');
 
         if (canCancel) {
-            const pushback = definition.cancelPushback ?? definition.ipDamage ?? 0;
+            const pushback = (definition.cancelPushback ?? definition.ipDamage ?? 0) * ipScale;
             target.ip = clamp(target.ip - pushback, 0, IP_MAX);
             target.phase = 'WAIT';
             target.pendingAction = null;
@@ -553,7 +939,7 @@ export class BattleSystem {
         // Юнит в EXECUTE уже «выстрелил» — сбивать его поздно.
         if (target.phase === 'EXECUTE') return;
 
-        target.ip = clamp(target.ip - (definition.ipDamage ?? 0), 0, COM_START);
+        target.ip = clamp(target.ip - (definition.ipDamage ?? 0) * ipScale, 0, COM_START);
     }
 
     handleDeath(unit) {

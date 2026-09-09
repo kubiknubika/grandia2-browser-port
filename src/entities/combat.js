@@ -1893,7 +1893,7 @@ function getScaleForTeam(balance, team) {
   return mergeScale({}, teamScale);
 }
 
-function scaleActionDefinitionForLevel(definition, level) {
+export function scaleActionDefinitionForLevel(definition, level) {
   const lv = Math.max(1, Math.min(5, Number(level) || 1));
   if (lv <= 1) {
     return definition;
@@ -1958,7 +1958,7 @@ export function calcPhysicalDamage(attacker, defender, power, rng = Math.random)
   return Math.max(1, Math.round(base * randomVariance(rng)));
 }
 
-function elementalMultiplier(target, element) {
+export function elementalMultiplier(target, element) {
   if (!element) {
     return 1;
   }
@@ -2062,7 +2062,7 @@ function activeStatusLabels(fighter) {
   return [...statusFlags, ...buffFlags];
 }
 
-function applyStatus(target, effect, rng = Math.random) {
+export function applyStatus(target, effect, rng = Math.random) {
   if (!effect) {
     return false;
   }
@@ -2077,7 +2077,7 @@ function applyStatus(target, effect, rng = Math.random) {
   return true;
 }
 
-function applyStatShift(target, shift) {
+export function applyStatShift(target, shift) {
   if (!shift?.stat || !shift.amount) {
     return false;
   }
@@ -2090,7 +2090,7 @@ function applyStatShift(target, shift) {
   return true;
 }
 
-function processTimedModifiers(fighter) {
+export function processTimedModifiers(fighter) {
   const expired = [];
   for (const stat of ['atk', 'def', 'act', 'mov']) {
     if ((fighter.buffTimers?.[stat] ?? 0) > 0) {

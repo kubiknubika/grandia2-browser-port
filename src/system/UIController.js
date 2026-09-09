@@ -41,6 +41,7 @@ const STYLES = `
 .cmd-btn:hover:not(:disabled) { background: #e74c3c; border-color: #c0392b; }
 .cmd-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .cmd-cost { font-size: 12px; color: #f1c40f; font-weight: normal; margin-left: 8px; }
+.cmd-name { margin-right: 2px; }
 .cmd-hint { font-size: 12px; color: #8da3c7; margin-top: 4px; }
 
 .target-btn {
@@ -61,6 +62,39 @@ const STYLES = `
 .float-text.heal   { color: #2ecc71; font-size: 32px; }
 .float-text.cancel { color: #f1c40f; font-size: 30px; letter-spacing: 2px; }
 .float-text.guard  { color: #5dade2; font-size: 26px; letter-spacing: 2px; }
+.float-text.counter { color: #ff7b00; font-size: 40px; letter-spacing: 1px; }
+.float-text.poison { color: #9b59b6; font-size: 30px; }
+.float-text.status { color: #e67e22; font-size: 24px; letter-spacing: 2px; }
+.float-text.buff   { color: #1abc9c; font-size: 24px; letter-spacing: 2px; }
+.float-text.element-fire      { color: #ff6b35; }
+.float-text.element-lightning { color: #f7dc6f; }
+.float-text.element-ice       { color: #85c1e9; }
+.float-text.element-earth     { color: #b9770e; }
+.float-text.element-wind      { color: #a9dfbf; }
+
+/* Иконки статусов под карточкой и над юнитом на шкале */
+.status-row { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; min-height: 16px; }
+.status-chip {
+    font-size: 10px; padding: 1px 5px; border-radius: 3px; font-weight: bold;
+    text-transform: uppercase; letter-spacing: 0.5px; background: #7f8c8d; color: #fff;
+}
+.status-chip.poison { background: #8e44ad; }
+.status-chip.sleep { background: #34495e; }
+.status-chip.paralysis { background: #f39c12; color: #000; }
+.status-chip.confusion { background: #e91e63; }
+.status-chip.moveBlock { background: #c0392b; }
+.status-chip.magicBlock { background: #2980b9; }
+.status-chip.buff { background: #16a085; }
+.status-chip.debuff { background: #d35400; }
+
+/* Категории в кольце команд */
+.cmd-group-label {
+    font-size: 11px; color: #8da3c7; text-transform: uppercase; letter-spacing: 1px;
+    margin-top: 8px; border-bottom: 1px solid #2c3e50; padding-bottom: 2px;
+}
+.cmd-btn .cmd-reason { font-size: 11px; color: #e74c3c; font-weight: normal; margin-left: 8px; }
+.cmd-scroll { max-height: 58vh; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 4px; }
+.cmd-el { font-size: 11px; margin-left: 6px; padding: 1px 4px; border-radius: 3px; background: rgba(255,255,255,0.12); }
 
 .hp-bar-track {
     height: 6px; background: rgba(0,0,0,0.5); border-radius: 3px;
@@ -146,6 +180,7 @@ export class UIController {
             <div class="hp-bar-track"><div class="hp-bar-fill" data-hp-bar></div></div>
             <div class="stat-row" style="margin-top:6px"><span class="stat-label">SP</span><span class="stat-value sp" data-sp></span></div>
             <div class="stat-row"><span class="stat-label">MP</span><span class="stat-value mp" data-mp></span></div>
+            <div class="status-row" data-statuses></div>
         `;
         this.partyContainer.appendChild(card);
         this.cards[unit.id] = card;
@@ -179,10 +214,40 @@ export class UIController {
             bar.classList.toggle('crit', ratio <= 0.25);
 
             card.classList.toggle('dead', unit.phase === 'DEAD');
+
+            const statusRow = card.querySelector('[data-statuses]');
+            if (statusRow) {
+                statusRow.innerHTML = this.renderStatusChips(unit);
+            }
         }
     }
 
+    /** Активные статусы и модификаторы статов в виде компактных плашек. */
+    renderStatusChips(unit) {
+        const chips = [];
+
+        for (const [name, turns] of Object.entries(unit.statuses ?? {})) {
+            if (turns > 0) {
+                chips.push(`<span class="status-chip ${name}">${name} ${turns}</span>`);
+            }
+        }
+        for (const [stat, stage] of Object.entries(unit.buffs ?? {})) {
+            if (stage > 0) chips.push(`<span class="status-chip buff">${stat}+${stage}</span>`);
+        }
+        for (const [stat, stage] of Object.entries(unit.debuffs ?? {})) {
+            if (stage > 0) chips.push(`<span class="status-chip debuff">${stat}-${stage}</span>`);
+        }
+
+        return chips.join('');
+    }
+
     markDead(unit) {
+        this.updateUnit(unit);
+    }
+
+    markRevived(unit) {
+        const icon = this.gaugeIcons[unit.id];
+        if (icon) icon.classList.remove('dead');
         this.updateUnit(unit);
     }
 
@@ -208,7 +273,26 @@ export class UIController {
         title.textContent = `${unit.name}'s Turn`;
         ring.appendChild(title);
 
+        const scroll = document.createElement('div');
+        scroll.className = 'cmd-scroll';
+        ring.appendChild(scroll);
+
+        // Группируем команды по категориям, как в оригинальном кольце.
+        const GROUP_TITLES = {
+            basic: 'Attack', move: 'Special Moves', magic: 'Magic', item: 'Items', defense: 'Defense',
+        };
+        let lastCategory = null;
+
         for (const action of actions) {
+            const category = action.category ?? 'basic';
+            if (category !== lastCategory) {
+                const label = document.createElement('div');
+                label.className = 'cmd-group-label';
+                label.textContent = GROUP_TITLES[category] ?? category;
+                scroll.appendChild(label);
+                lastCategory = category;
+            }
+
             const button = document.createElement('button');
             button.className = 'cmd-btn';
             button.disabled = !action.enabled;
@@ -216,10 +300,19 @@ export class UIController {
             const cost = [];
             if (action.costSp) cost.push(`${action.costSp} SP`);
             if (action.costMp) cost.push(`${action.costMp} MP`);
-            button.innerHTML = `${action.label}${cost.length ? `<span class="cmd-cost">${cost.join(' / ')}</span>` : ''}`;
+            if (action.count != null) cost.push(`x${action.count}`);
+
+            const element = action.element
+                ? `<span class="cmd-el">${action.element}</span>` : '';
+            const reason = !action.enabled && action.disabledReason
+                ? `<span class="cmd-reason">${action.disabledReason}</span>` : '';
+            const costLabel = cost.length
+                ? `<span class="cmd-cost">${cost.join(' / ')}</span>` : '';
+
+            button.innerHTML = `<span class="cmd-name">${action.label}</span>${element}${costLabel}${reason}`;
 
             button.onclick = () => {
-                // Действие без выбора цели (Endure/Evade) выполняем сразу.
+                // Действие без выбора цели (Endure/Evade/групповые) выполняем сразу.
                 if (action.targets.length === 0) {
                     this.hideCommandRing();
                     onCommandSelected(action.id, null);
@@ -234,7 +327,7 @@ export class UIController {
                 this.showTargetPicker(unit, action, onCommandSelected);
             };
 
-            ring.appendChild(button);
+            scroll.appendChild(button);
         }
 
         this.uiLayer.appendChild(ring);
