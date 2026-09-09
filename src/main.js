@@ -1,6 +1,8 @@
 import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, DirectionalLight, MeshBuilder, StandardMaterial, Color3, ShadowGenerator, SceneLoader } from '@babylonjs/core';
 import '@babylonjs/loaders';
 import { DEFAULT_ENCOUNTER, DEFAULT_INVENTORY, makeUnitData } from './data/battle_data.js';
+import { createUnitModel } from './render/models.js';
+import { Animator } from './render/Animator.js';
 import { BattleSystem } from './system/BattleSystem.js';
 import { UIController } from './system/UIController.js';
 
@@ -19,7 +21,8 @@ toggle.addEventListener('change', (e) => {
 
 // Managers
 const ui = new UIController();
-const battleSystem = new BattleSystem(ui, { inventory: DEFAULT_INVENTORY });
+const animator = new Animator();
+const battleSystem = new BattleSystem(ui, { inventory: DEFAULT_INVENTORY, animator });
 
 // Карточки партии рисует и обновляет UIController (HP-бары живут по ходу боя),
 // поэтому статического рендерера здесь больше нет.
@@ -61,101 +64,17 @@ function createScene() {
     ring.position.y = 0.05;
     ring.material = ringMat;
 
-    // --- PROCEDURAL GENERATORS ---
+    // --- МОДЕЛИ ---------------------------------------------------------
+    // Процедурные модели с суставами живут в src/render/models.js,
+    // а их анимацию считает Animator. Здесь только регистрация в сцене.
 
-    function createRyudoFallback(id, color) {
-        const root = MeshBuilder.CreateBox(id + "_root", { size: 0.1 }, scene);
-        root.isVisible = false;
-
-        const mat = new StandardMaterial(id + "_mat", scene);
-        mat.diffuseColor = Color3.FromHexString(color);
-
-        const skin = new StandardMaterial(id + "_skin", scene);
-        skin.diffuseColor = new Color3(1, 0.8, 0.6);
-
-        // Body
-        const body = MeshBuilder.CreateCylinder(id + "_body", { height: 2.5, diameter: 1.0 }, scene);
-        body.parent = root;
-        body.position.y = 1.25;
-        body.material = mat;
-
-        // Head
-        const head = MeshBuilder.CreateSphere(id + "_head", { diameter: 1.1 }, scene);
-        head.parent = root;
-        head.position.y = 2.5 + 0.2;
-        head.material = skin;
-
-        // Nose (facing direction)
-        const nose = MeshBuilder.CreateBox(id + "_nose", { size: 0.3 }, scene);
-        nose.parent = head;
-        nose.position = new Vector3(0, 0, 0.55);
-        nose.material = skin;
-
-        // Sword!
-        const swordMat = new StandardMaterial(id + "_sword", scene);
-        swordMat.diffuseColor = new Color3(0.7, 0.7, 0.75); // Silver
-        const sword = MeshBuilder.CreateBox(id + "_sword", { width: 0.15, height: 2.2, depth: 0.4 }, scene);
-        sword.parent = root;
-        sword.position = new Vector3(0.7, 1.5, 0.5); // Hold in right hand, pointing slightly forward
-        sword.rotation.x = Math.PI / 4; 
-        sword.material = swordMat;
-
-        shadowGenerator.addShadowCaster(body, true);
-        shadowGenerator.addShadowCaster(head, true);
-        shadowGenerator.addShadowCaster(sword, true);
-
-        return root;
-    }
-
-    function createSpiderFallback(id, color) {
-        const root = MeshBuilder.CreateBox(id + "_root", { size: 0.1 }, scene);
-        root.isVisible = false;
-
-        // Важно: в Babylon.js меш без позиции имеет 0,0,0, но оригинальная позиция клонируется при добавлении в систему.
-        // Заставим UIController находить body корректно
-
-
-        const mat = new StandardMaterial(id + "_mat", scene);
-        mat.diffuseColor = Color3.FromHexString(color);
-
-        // Body (Flattened sphere)
-        const body = MeshBuilder.CreateSphere(id + "_body", { diameterX: 2.2, diameterY: 1.0, diameterZ: 2.5 }, scene);
-        body.parent = root;
-        body.position.y = 0.6; // Low to the ground
-        body.material = mat;
-
-        // Eyes (Multiple little red spheres in front)
-        const eyeMat = new StandardMaterial(id + "_eye", scene);
-        eyeMat.diffuseColor = new Color3(1, 0, 0); // Red
-        eyeMat.emissiveColor = new Color3(0.5, 0, 0);
-
-        for(let i=0; i<4; i++) {
-            const eye = MeshBuilder.CreateSphere(id + "_eye"+i, { diameter: 0.25 }, scene);
-            eye.parent = body;
-            const xOffset = -0.45 + (i * 0.3);
-            eye.position = new Vector3(xOffset, 0.2, 1.15); // Front of the body
-            eye.material = eyeMat;
+    function buildModel(data) {
+        const model = createUnitModel(scene, data);
+        for (const mesh of model.meshes) {
+            shadowGenerator.addShadowCaster(mesh, true);
+            mesh.receiveShadows = true;
         }
-
-        // Legs
-        const legMat = new StandardMaterial(id + "_leg", scene);
-        legMat.diffuseColor = new Color3(0.1, 0.1, 0.1); // Dark legs
-
-        for(let i=0; i<4; i++) {
-            // Create a long thin cylinder that goes through the body to stick out both sides
-            const leg = MeshBuilder.CreateCylinder(id + "_leg"+i, { height: 3.5, diameter: 0.15 }, scene);
-            leg.parent = body;
-            // Rotate them out like spider legs
-            leg.rotation.y = (Math.PI / 6) * (i - 1.5);
-            leg.rotation.x = Math.PI / 2; // Flat on the ground
-            leg.position.y = -0.2; // Legs slightly below center of body
-            leg.material = legMat;
-            shadowGenerator.addShadowCaster(leg, true);
-        }
-
-        shadowGenerator.addShadowCaster(body, true);
-        
-        return root;
+        return model;
     }
 
     // Vite serves index.html for unknown paths, so a missing .glb returns
@@ -173,49 +92,51 @@ function createScene() {
     }
 
     async function createUnit(data, isPlayer) {
-        let rootMesh;
         const { x, z } = data.position;
         const fileName = data.meshKind === "spider" ? "spider.glb" : "ryudo.glb";
 
-        const makeFallback = () => (data.meshKind === "spider"
-            ? createSpiderFallback(data.id, data.color)
-            : createRyudoFallback(data.id, data.color));
+        let model = null;
 
+        // Готовые GLB опциональны: если файла нет, играем на процедурных
+        // моделях, которые тоже анимируются.
         if (useModels) {
             const modelUrl = `/assets/models/${fileName}`;
             if (await glbExists(modelUrl)) {
                 try {
                     const result = await SceneLoader.ImportMeshAsync("", "/assets/models/", fileName, scene);
-                    rootMesh = result.meshes[0];
-                    result.meshes.forEach(m => {
+                    const imported = result.meshes[0];
+                    result.meshes.forEach((m) => {
                         shadowGenerator.addShadowCaster(m, true);
                         m.receiveShadows = true;
                     });
+                    model = { root: imported, meshes: result.meshes, rig: { kind: 'imported' } };
                     console.log(`Loaded real model for ${data.id}`);
                 } catch (error) {
-                    console.warn(`Failed to parse ${fileName}, using placeholder mesh.`, error);
-                    rootMesh = makeFallback();
+                    console.warn(`Failed to parse ${fileName}, using procedural model.`, error);
                 }
             } else {
                 console.warn(
                     `${fileName} not found in public/assets/models/. `
-                    + `Run "python3 download_model.py" to fetch it. Using placeholder mesh.`
+                    + `Run "python3 download_model.py" to fetch it. Using procedural model.`
                 );
                 ui.showModelWarning();
-                rootMesh = makeFallback();
             }
-        } else {
-            // Direct Fallback mode
-            rootMesh = makeFallback();
         }
 
-        rootMesh.position = new Vector3(x, 0, z);
-        rootMesh.lookAt(Vector3.Zero());
+        if (!model) {
+            model = buildModel(data);
+        }
 
-        const unitData = { id: data.id, data, mesh: rootMesh };
+        model.root.position = new Vector3(x, 0, z);
+        model.root.lookAt(Vector3.Zero());
 
-        // Регистрируем юнит в системе боя
+        const unitData = { id: data.id, data, mesh: model.root };
+
+        // Регистрируем юнит в системе боя и в аниматоре.
         battleSystem.addUnit(unitData, isPlayer);
+        if (model.rig.kind !== 'imported') {
+            animator.register(data.id, model);
+        }
 
         return unitData;
     }
@@ -244,5 +165,6 @@ engine.runRenderLoop(() => {
     // Обновляем логику боя с учетом дельты времени (в секундах)
     const deltaTime = engine.getDeltaTime() / 1000;
     battleSystem.update(deltaTime);
+    animator.update(battleSystem.units, deltaTime);
 });
 window.addEventListener("resize", () => engine.resize());

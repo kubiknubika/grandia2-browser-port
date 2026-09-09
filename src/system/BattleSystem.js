@@ -59,10 +59,12 @@ function clamp(value, min, max) {
  * и симулятор баланса не разъезжались.
  */
 export class BattleSystem {
-    constructor(uiController, { inventory, rng = Math.random } = {}) {
+    constructor(uiController, { inventory, rng = Math.random, animator = null } = {}) {
         this.units = [];
         this.ui = uiController;
         this.rng = rng;
+        // Аниматор опционален: в headless-тестах его нет.
+        this.animator = animator;
 
         this.isPaused = false;      // пауза на время выбора команды игроком
         this.outcome = null;        // null | 'victory' | 'defeat'
@@ -714,6 +716,13 @@ export class BattleSystem {
             return;
         }
 
+        // Замах/каст проигрываем ровно в момент нанесения удара.
+        if (definition.kind === 'magic') {
+            this.animator?.playCast(unit.id);
+        } else {
+            this.animator?.playSwing(unit.id);
+        }
+
         this.applyActionToTargets(unit, definition, targets);
 
         unit.hitsDone += 1;
@@ -877,6 +886,7 @@ export class BattleSystem {
         const kind = element ? `damage element-${element}` : 'damage';
         this.ui.showFloatingText(target.mesh, String(damage), isCounter ? 'counter' : kind);
         this.ui.flashMesh(target.mesh);
+        this.animator?.playHit(target.id);
         if (isCounter) this.ui.showFloatingText(target.mesh, 'COUNTER!', 'counter');
 
         // SP копят обе стороны: атакующий за попадание, цель за полученный удар.

@@ -420,7 +420,15 @@ export class UIController {
 
     flashMesh(mesh, hexColor = '#ff0000', duration = 200) {
         if (!mesh) return;
-        const body = mesh.getChildren().find((child) => child.name.includes('_body')) ?? mesh;
+
+        // Модели собраны из вложенных суставов, поэтому тело ищем рекурсивно:
+        // getChildren() без флага смотрит только на прямых потомков.
+        const descendants = typeof mesh.getChildMeshes === 'function'
+            ? mesh.getChildMeshes(false)
+            : mesh.getChildren();
+        const body = descendants.find((child) => child.name.includes('_body'))
+            ?? descendants.find((child) => child.material)
+            ?? mesh;
         if (!body.material) return;
 
         const previous = body.material.emissiveColor;
