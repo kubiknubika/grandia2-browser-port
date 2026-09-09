@@ -61,8 +61,9 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     const hips = joint(scene, `${id}_hips`, root, new Vector3(0, 1.45, 0));
     const torso = joint(scene, `${id}_torso`, hips, Vector3.Zero());
     const neck = joint(scene, `${id}_neck`, torso, new Vector3(0, 1.02, 0));
-    const shoulderL = joint(scene, `${id}_shoulderL`, torso, new Vector3(-0.44, 0.82, 0));
-    const shoulderR = joint(scene, `${id}_shoulderR`, torso, new Vector3(0.44, 0.82, 0));
+    // Плечи выносим за радиус груди (0.34), иначе руки тонут в торсе.
+    const shoulderL = joint(scene, `${id}_shoulderL`, torso, new Vector3(-0.52, 0.8, 0));
+    const shoulderR = joint(scene, `${id}_shoulderR`, torso, new Vector3(0.52, 0.8, 0));
     const elbowL = joint(scene, `${id}_elbowL`, shoulderL, new Vector3(0, -0.52, 0));
     const elbowR = joint(scene, `${id}_elbowR`, shoulderR, new Vector3(0, -0.52, 0));
     const hipL = joint(scene, `${id}_hipL`, hips, new Vector3(-0.21, -0.08, 0));
@@ -88,10 +89,11 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
 
     // Плащ/накидка — силуэт, который отличает персонажа издалека.
     const cape = track(MeshBuilder.CreateBox(`${id}_cape`, {
-        width: 0.78, height: 1.15, depth: 0.08,
+        width: 0.6, height: 1.0, depth: 0.06,
     }, scene));
     cape.parent = torso;
-    cape.position.set(0, 0.6, -0.3);
+    cape.position.set(0, 0.58, -0.34);
+    cape.rotation.x = -0.06;
     cape.material = weapon === 'staff' ? trim : clothDark;
 
     // --- Голова -----------------------------------------------------------
