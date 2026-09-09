@@ -1880,7 +1880,7 @@ function mergeScale(base = {}, extra = {}) {
   };
 }
 
-function randomVariance(rng = Math.random) {
+export function randomVariance(rng = Math.random) {
   return 0.94 + rng() * 0.12;
 }
 
@@ -1951,7 +1951,7 @@ function estimatePhysicalDamage(attacker, defender, power) {
   return Math.max(1, Math.round(base));
 }
 
-function calcPhysicalDamage(attacker, defender, power, rng = Math.random) {
+export function calcPhysicalDamage(attacker, defender, power, rng = Math.random) {
   const attackValue = getBattleStat(attacker, 'ATK');
   const defenseValue = getBattleStat(defender, 'DEF');
   const base = attackValue * power - defenseValue * 0.45;
@@ -1966,12 +1966,12 @@ function elementalMultiplier(target, element) {
   return target.resistances?.[element] ?? 1;
 }
 
-function calcMagicDamage(attacker, defender, spellPower, spellBase = 0, rng = Math.random, element = null) {
+export function calcMagicDamage(attacker, defender, spellPower, spellBase = 0, rng = Math.random, element = null) {
   const base = attacker.mag * spellPower - defender.men * 0.35 + spellBase;
   return Math.max(1, Math.round(base * elementalMultiplier(defender, element) * randomVariance(rng)));
 }
 
-function calcHealAmount(caster, spellBase) {
+export function calcHealAmount(caster, spellBase) {
   return Math.max(1, Math.round(caster.mag * 0.55 + caster.men * 0.3 + spellBase));
 }
 

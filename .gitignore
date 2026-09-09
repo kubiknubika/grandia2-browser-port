@@ -12,6 +12,10 @@ dist-ssr/
 # Downloaded 3D models (fetch with `python3 download_model.py`)
 public/assets/models/
 
+# Python
+__pycache__/
+*.py[cod]
+
 # Logs
 logs/
 *.log

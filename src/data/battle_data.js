@@ -1,47 +1,61 @@
-// Каноничные характеристики из Grandia II (начало игры)
+// Боевые данные для 3D-прототипа.
+//
+// Единственный источник правды по характеристикам — PRESETS из combat.js
+// (80 юнитов, выверенный баланс). Здесь мы только выбираем нужных бойцов и
+// добавляем то, что нужно исключительно 3D-слою: цвет заглушки и тип модели.
+//
+// Раньше этот файл содержал собственные копии статов (str/vit/act/mov), которые
+// расходились с движком. Теперь расхождение невозможно by design.
 
-export const PartyData = {
-    ryudo: {
-        id: "ryudo",
-        name: "Ryudo",
-        level: 10, // Рюдо начинает игру на 10 уровне
-        hp: 460,
-        maxHp: 460,
-        mp: 20,
-        maxMp: 20,
-        sp: 32,
-        maxSp: 32,
-        stats: {
-            str: 55, // Strength (Физ. урон)
-            vit: 45, // Vitality (Физ. защита)
-            act: 40, // Action (Скорость движения по шкале IP WAIT -> COM)
-            mov: 45, // Movement (Скорость бега по 3D-арене)
-            mag: 30, // Magic (Маг. урон)
-            men: 35  // Mentality (Маг. защита)
-        },
-        color: "#3498db" // Синий для 3D заглушки
-    }
+import { PRESETS } from '../entities/combat.js';
+
+// Как рисовать юнита процедурной заглушкой, пока нет реальных GLB-моделей.
+const MESH_KINDS = {
+    ryudo: 'humanoid',
+    elena: 'humanoid',
+    mottledSpider: 'spider',
+    tarantula: 'spider',
 };
 
-export const BestiaryData = {
-    mottledSpider: {
-        id: "mottledSpider",
-        name: "Mottled Spider",
-        level: 4, // Мобы в Башне Гармия (Garmia Tower)
-        hp: 240,
-        maxHp: 240,
-        mp: 0,
-        maxMp: 0,
-        sp: 0,
-        maxSp: 0,
-        stats: {
-            str: 32, 
-            vit: 20, 
-            act: 25, // Медленнее Рюдо
-            mov: 35, // Но бегают по арене довольно шустро
-            mag: 10,
-            men: 15
-        },
-        color: "#8e44ad" // Фиолетово-пурпурный для паука
+// Цвета заглушек. Берём из пресета, если он есть, иначе — запасной вариант.
+const MESH_COLORS = {
+    ryudo: '#3498db',
+    elena: '#c084fc',
+    mottledSpider: '#8e44ad',
+    tarantula: '#3f6212',
+};
+
+/**
+ * Собирает описание юнита для 3D-сцены из канонического пресета.
+ * @param {string} presetKey ключ в PRESETS
+ * @param {object} overrides поля, которые нужно переопределить (id, name, ...)
+ */
+export function makeUnitData(presetKey, overrides = {}) {
+    const preset = PRESETS[presetKey];
+    if (!preset) {
+        throw new Error(`Unknown preset "${presetKey}". Available: ${Object.keys(PRESETS).join(', ')}`);
     }
+
+    return {
+        // Всё из пресета: maxHp/str/vit/agi/spd/mag/men, loadout, resistances...
+        ...preset,
+        presetKey,
+        // id пресета вида 'mottled-spider' не годится как уникальный ключ сцены,
+        // когда на арене два одинаковых паука — вызывающий код передаёт свой.
+        id: overrides.id ?? preset.id,
+        meshKind: MESH_KINDS[presetKey] ?? 'humanoid',
+        color: MESH_COLORS[presetKey] ?? preset.color ?? '#95a5a6',
+        ...overrides,
+    };
+}
+
+// Состав боя по умолчанию: Рюдо против двух пятнистых пауков (Башня Гармия).
+export const DEFAULT_ENCOUNTER = {
+    players: [
+        { presetKey: 'ryudo', id: 'ryudo', position: { x: -6, z: 0 } },
+    ],
+    enemies: [
+        { presetKey: 'mottledSpider', id: 'spider1', name: 'Mottled Spider A', position: { x: 4, z: 3 } },
+        { presetKey: 'mottledSpider', id: 'spider2', name: 'Mottled Spider B', position: { x: 5, z: -2 } },
+    ],
 };

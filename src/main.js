@@ -1,6 +1,6 @@
 import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, DirectionalLight, MeshBuilder, StandardMaterial, Color3, ShadowGenerator, SceneLoader } from '@babylonjs/core';
 import '@babylonjs/loaders';
-import { PartyData, BestiaryData } from './data/battle_data.js';
+import { DEFAULT_ENCOUNTER, makeUnitData } from './data/battle_data.js';
 import { BattleSystem } from './system/BattleSystem.js';
 import { UIController } from './system/UIController.js';
 
@@ -21,21 +21,8 @@ toggle.addEventListener('change', (e) => {
 const ui = new UIController();
 const battleSystem = new BattleSystem(ui);
 
-function renderPartyCards(party) {
-    const container = document.getElementById('party-container');
-    container.innerHTML = ''; 
-    party.forEach(char => {
-        const card = document.createElement('div');
-        card.className = 'character-card';
-        card.innerHTML = `
-            <div class="char-name">${char.name} <span style="font-size:12px; color:#aaa;">Lv.${char.level}</span></div>
-            <div class="stat-row"><span class="stat-label">HP</span><span class="stat-value hp">${char.hp} / ${char.maxHp}</span></div>
-            <div class="stat-row"><span class="stat-label">SP</span><span class="stat-value sp">${char.sp} / ${char.maxSp}</span></div>
-            <div class="stat-row"><span class="stat-label">MP</span><span class="stat-value mp">${char.mp} / ${char.maxMp}</span></div>
-        `;
-        container.appendChild(card);
-    });
-}
+// Карточки партии рисует и обновляет UIController (HP-бары живут по ходу боя),
+// поэтому статического рендерера здесь больше нет.
 
 function createScene() {
     const scene = new Scene(engine);
@@ -171,39 +158,64 @@ function createScene() {
         return root;
     }
 
-    async function createUnit(data, x, z) {
+    // Vite serves index.html for unknown paths, so a missing .glb returns
+    // "200 OK" with an HTML body instead of a network error. Check the glTF
+    // magic bytes before handing the file to the loader.
+    async function glbExists(url) {
+        try {
+            const response = await fetch(url, { headers: { Range: 'bytes=0-3' } });
+            if (!response.ok) return false;
+            const magic = new Uint8Array(await response.arrayBuffer()).subarray(0, 4);
+            return String.fromCharCode(...magic) === 'glTF';
+        } catch (error) {
+            return false;
+        }
+    }
+
+    async function createUnit(data, isPlayer) {
         let rootMesh;
-        const fileName = data.id === "ryudo" ? "ryudo.glb" : "spider.glb";
+        const { x, z } = data.position;
+        const fileName = data.meshKind === "spider" ? "spider.glb" : "ryudo.glb";
+
+        const makeFallback = () => (data.meshKind === "spider"
+            ? createSpiderFallback(data.id, data.color)
+            : createRyudoFallback(data.id, data.color));
 
         if (useModels) {
-            try {
-                const result = await SceneLoader.ImportMeshAsync("", "/assets/models/", fileName, scene);
-                rootMesh = result.meshes[0];
-                result.meshes.forEach(m => {
-                    shadowGenerator.addShadowCaster(m, true);
-                    m.receiveShadows = true;
-                });
-                console.log(`Loaded real model for ${data.id}`);
-            } catch (error) {
-                console.warn(`Failed to load ${fileName}. Try disabling 3D models in settings.`);
-                rootMesh = data.id === "ryudo" 
-                    ? createRyudoFallback(data.id, data.color) 
-                    : createSpiderFallback(data.id, data.color);
+            const modelUrl = `/assets/models/${fileName}`;
+            if (await glbExists(modelUrl)) {
+                try {
+                    const result = await SceneLoader.ImportMeshAsync("", "/assets/models/", fileName, scene);
+                    rootMesh = result.meshes[0];
+                    result.meshes.forEach(m => {
+                        shadowGenerator.addShadowCaster(m, true);
+                        m.receiveShadows = true;
+                    });
+                    console.log(`Loaded real model for ${data.id}`);
+                } catch (error) {
+                    console.warn(`Failed to parse ${fileName}, using placeholder mesh.`, error);
+                    rootMesh = makeFallback();
+                }
+            } else {
+                console.warn(
+                    `${fileName} not found in public/assets/models/. `
+                    + `Run "python3 download_model.py" to fetch it. Using placeholder mesh.`
+                );
+                ui.showModelWarning();
+                rootMesh = makeFallback();
             }
         } else {
             // Direct Fallback mode
-            rootMesh = data.id === "ryudo" 
-                ? createRyudoFallback(data.id, data.color) 
-                : createSpiderFallback(data.id, data.color);
+            rootMesh = makeFallback();
         }
 
         rootMesh.position = new Vector3(x, 0, z);
         rootMesh.lookAt(Vector3.Zero());
 
-        const unitData = { id: data.id, data: data, mesh: rootMesh };
-        
+        const unitData = { id: data.id, data, mesh: rootMesh };
+
         // Регистрируем юнит в системе боя
-        battleSystem.addUnit(unitData, data.id === "ryudo");
+        battleSystem.addUnit(unitData, isPlayer);
 
         return unitData;
     }
@@ -211,15 +223,13 @@ function createScene() {
     async function setupBattle() {
         ui.setBabylonContext(scene, camera, engine); // Передаем ссылки на 3D сцену в UI
 
-        const ryudo = PartyData.ryudo;
-        const spider = BestiaryData.mottledSpider;
-
-        renderPartyCards([ryudo]);
+        // Юниты собираются из канонических PRESETS (combat.js) через makeUnitData,
+        // поэтому статы боя и статы симулятора баланса всегда совпадают.
+        const build = ({ presetKey, ...overrides }) => makeUnitData(presetKey, overrides);
 
         await Promise.all([
-            createUnit(ryudo, -6, 0),
-            createUnit({ ...spider, id: "spider1" }, 4, 3), 
-            createUnit({ ...spider, id: "spider2" }, 5, -2) 
+            ...DEFAULT_ENCOUNTER.players.map((entry) => createUnit(build(entry), true)),
+            ...DEFAULT_ENCOUNTER.enemies.map((entry) => createUnit(build(entry), false)),
         ]);
     }
 
@@ -230,7 +240,7 @@ function createScene() {
 const scene = createScene();
 engine.runRenderLoop(() => {
     scene.render();
-    
+
     // Обновляем логику боя с учетом дельты времени (в секундах)
     const deltaTime = engine.getDeltaTime() / 1000;
     battleSystem.update(deltaTime);
