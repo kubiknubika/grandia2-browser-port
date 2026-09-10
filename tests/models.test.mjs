@@ -1084,6 +1084,52 @@ check('ни древко, ни кисти не проходят перед ли�
     }
 });
 
+// --- Зона поражения линейного приёма ---------------------------------------
+
+check('полоса удара ложится между концами и смотрит вдоль них', async () => {
+    const { UIController } = await import('../src/system/UIController.js');
+    // UIController тянет DOM в конструкторе, поэтому берём только геометрию:
+    // вызываем метод на «пустом» объекте с одной лишь сценой.
+    const ui = Object.create(UIController.prototype);
+    ui.scene = scene;
+
+    const origin = new Vector3(-6, 0, 0);
+    const end = new Vector3(2, 0, 0);
+    ui.showStrikeZone(origin, end, 1.6);
+
+    const zone = ui.strikeZone;
+    assert.ok(zone, 'полоса не создана');
+    assert.ok(zone.isEnabled(), 'полоса создана, но выключена');
+
+    // Центр полосы — середина отрезка, и она лежит НА полу, а не парит.
+    assert.ok(Math.abs(zone.position.x - (-2)) < 1e-6, `центр по x: ${zone.position.x}`);
+    assert.ok(Math.abs(zone.position.z - 0) < 1e-6, `центр по z: ${zone.position.z}`);
+    assert.ok(zone.position.y > 0 && zone.position.y < 0.1, `полоса не у пола: y=${zone.position.y}`);
+
+    // Длина полосы равна расстоянию между концами, ширина — заданной.
+    assert.ok(Math.abs(zone.scaling.y - 8) < 1e-6, `длина полосы ${zone.scaling.y}, ожидалось 8`);
+    assert.ok(Math.abs(zone.scaling.x - 1.6) < 1e-6, `ширина полосы ${zone.scaling.x}`);
+
+    // Полоса развёрнута ВДОЛЬ удара: её локальная ось Y после поворота
+    // должна смотреть от origin к end.
+    zone.computeWorldMatrix(true);
+    const along = Vector3.TransformNormal(new Vector3(0, 1, 0), zone.getWorldMatrix()).normalize();
+    const expected = end.subtract(origin).normalize();
+    assert.ok(
+        Math.abs(Math.abs(Vector3.Dot(along, expected)) - 1) < 1e-3,
+        `полоса не вдоль удара: ось=(${along.x.toFixed(2)}, ${along.y.toFixed(2)}, ${along.z.toFixed(2)})`,
+    );
+
+    // Повторный вызов переиспользует меш, а не плодит плашки на арене.
+    const before = scene.meshes.length;
+    ui.showStrikeZone(new Vector3(0, 0, -3), new Vector3(0, 0, 5), 2);
+    assert.equal(scene.meshes.length, before, 'повторный показ создал новый меш');
+    assert.equal(ui.strikeZone, zone, 'меш полосы подменён');
+
+    ui.hideStrikeZone();
+    assert.equal(zone.isEnabled(), false, 'полоса не скрылась');
+});
+
 // --- Итог -----------------------------------------------------------------
 
 await Promise.all(pending);

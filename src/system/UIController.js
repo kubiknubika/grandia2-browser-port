@@ -1,4 +1,4 @@
-import { Vector3, Matrix, Color3 } from '@babylonjs/core';
+import { Vector3, Matrix, Color3, MeshBuilder, StandardMaterial } from '@babylonjs/core';
 import { COM_START, IP_MAX } from '../entities/combat.js';
 
 // Все стили инжектятся ровно один раз при создании контроллера.
@@ -189,6 +189,54 @@ export class UIController {
         this.scene = scene;
         this.camera = camera;
         this.engine = engine;
+    }
+
+    // --- Зона поражения линейного приёма ------------------------------------
+
+    /**
+     * Подсвечивает на арене полосу, по которой ударит линейный приём: игрок
+     * должен видеть, кого заденет, до того как удар случится.
+     *
+     * `origin` и `end` — концы полосы, `width` — её ширина в единицах сцены.
+     * Полоса живёт до `hideStrikeZone()`; повторные вызовы переиспользуют
+     * один меш, иначе за бой на арене копятся десятки плашек.
+     */
+    showStrikeZone(origin, end, width) {
+        if (!this.scene) return;
+
+        const direction = end.subtract(origin);
+        const length = direction.length();
+        if (length < 1e-3) return;
+
+        if (!this.strikeZone) {
+            this.strikeZone = MeshBuilder.CreatePlane(
+                'strikeZone', { width: 1, height: 1 }, this.scene,
+            );
+            // Плашка лежит на земле и не должна ловить свет и тени.
+            this.strikeZone.rotation.x = Math.PI / 2;
+            this.strikeZone.isPickable = false;
+            this.strikeZone.receiveShadows = false;
+
+            const material = new StandardMaterial('strikeZoneMat', this.scene);
+            material.emissiveColor = Color3.FromHexString('#ff8844');
+            material.disableLighting = true;
+            material.alpha = 0.28;
+            this.strikeZone.material = material;
+        }
+
+        // Плоскость строится в XY, поэтому ширина — X, длина — Y (после
+        // поворота она ложится вдоль Z).
+        this.strikeZone.scaling.set(width, length, 1);
+
+        const middle = origin.add(end).scale(0.5);
+        // Чуть выше пола, иначе плашка мерцает, споря с землёй за глубину.
+        this.strikeZone.position.set(middle.x, 0.02, middle.z);
+        this.strikeZone.rotation.y = Math.atan2(direction.x, direction.z);
+        this.strikeZone.setEnabled(true);
+    }
+
+    hideStrikeZone() {
+        if (this.strikeZone) this.strikeZone.setEnabled(false);
     }
 
     // --- Регистрация юнита в интерфейсе ------------------------------------

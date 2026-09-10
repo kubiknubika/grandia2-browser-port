@@ -872,6 +872,21 @@ export class BattleSystem {
         // иначе долгий приём выглядит как зависание, а потом рывок.
         if (!unit.castStarted) {
             unit.castStarted = true;
+            if (definition.targeting === 'line') {
+                // Линейный приём бьёт вдоль полосы, а не в конкретного врага:
+                // разворачиваем бойца по её направлению. Полосу считаем здесь
+                // же, чтобы замах уже смотрел туда, куда придётся удар.
+                this.resolveLineTargets(unit, definition);
+                if (unit.lineEndPoint) {
+                    this.faceTowards(unit, unit.lineEndPoint);
+                    // Показываем полосу заранее: видно, кого заденет.
+                    this.ui.showStrikeZone?.(
+                        unit.mesh.position, unit.lineEndPoint,
+                        definition.lineWidth * WORLD_SCALE,
+                    );
+                }
+            }
+
             if (definition.kind === 'magic') {
                 // Кастующий поворачивается к тому, на кого направлено
                 // заклинание. Для групповых — в общий центр целей.
@@ -906,6 +921,8 @@ export class BattleSystem {
             unit.castStarted = false; // следующий удар — новый замах
         } else {
             unit.actionState = 'RUN_BACK';
+            // Полоса больше не нужна: иначе она висит на арене до конца боя.
+            if (definition.targeting === 'line') this.ui.hideStrikeZone?.();
         }
     }
 
@@ -1122,6 +1139,9 @@ export class BattleSystem {
 
             // Юнит, стоявший в очереди на приказ, больше в ней не нужен.
             this.commandQueue = this.commandQueue.filter((queued) => queued !== target);
+
+            // Отменённый линейный приём не должен оставлять полосу на арене.
+            this.ui.hideStrikeZone?.();
 
             this.ui.showFloatingText(target.mesh, 'CANCEL!', 'cancel');
             return;
