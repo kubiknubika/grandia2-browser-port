@@ -77,11 +77,11 @@ if (POSE === 'cast') {
 
 const VIEWS = {
     front: { eye: new Vector3(0, 3.0, 12.5), target: new Vector3(0, 1.1, 0) },
-    heroes: { eye: new Vector3(-3.4, 2.1, 3.6), target: new Vector3(-3.4, 1.4, 0) },
+    heroes: { eye: new Vector3(-3.4, 2.3, 4.3), target: new Vector3(-3.4, 1.6, 0) },
     face: { eye: new Vector3(-3.4, 2.7, 2.0), target: new Vector3(-3.4, 2.3, 0) },
-    head: { eye: new Vector3(-3.4, 2.85, 1.15), target: new Vector3(-3.4, 2.72, 0) },
-    head34: { eye: new Vector3(-2.55, 2.95, 1.05), target: new Vector3(-3.4, 2.72, 0) },
-    headside: { eye: new Vector3(-2.05, 2.8, 0.05), target: new Vector3(-3.4, 2.72, 0) },
+    head: { eye: new Vector3(-3.4, 2.92, 1.1), target: new Vector3(-3.4, 2.82, 0) },
+    head34: { eye: new Vector3(-2.6, 3.0, 1.0), target: new Vector3(-3.4, 2.82, 0) },
+    headside: { eye: new Vector3(-2.1, 2.88, 0.05), target: new Vector3(-3.4, 2.82, 0) },
     back: { eye: new Vector3(-3.4, 2.1, -3.6), target: new Vector3(-3.4, 1.4, 0) },
     spider: { eye: new Vector3(4.3, 2.2, 5.2), target: new Vector3(4.3, 0.7, 0) },
     duel: { eye: new Vector3(-0.4, 2.6, 3.4), target: new Vector3(-3.4, 1.6, 0) },

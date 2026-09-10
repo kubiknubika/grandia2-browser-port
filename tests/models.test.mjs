@@ -469,6 +469,54 @@ check('павшее тело не проваливается сквозь аре
     }
 });
 
+check('голова — единая поверхность, а не стопка шаров', () => {
+    // Регрессия: голова собиралась из сфер (череп, челюсть, скулы, нос),
+    // отсюда «всё из кружочков». Теперь это один меш по сечениям.
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'headMesh', position: { x: 0, z: 0 },
+    }));
+    const names = model.meshes.map((m) => m.name);
+
+    for (const gone of ['_skull', '_jaw', '_chin', '_cheek']) {
+        assert.ok(
+            !names.some((n) => n.includes(gone)),
+            `${gone} должен был исчезнуть вместе со сборкой из шаров`,
+        );
+    }
+
+    const head = model.meshes.find((m) => m.name.endsWith('_head'));
+    assert.ok(head, 'меш головы должен существовать');
+
+    // Настоящая поверхность: сотни вершин, а не примитив на десяток граней.
+    const vertexCount = head.getTotalVertices();
+    assert.ok(vertexCount > 150, `голова слишком бедная: ${vertexCount} вершин`);
+
+    // Нормали нужны для гладкого затенения — без них будут фасетки.
+    assert.ok(head.isVerticesDataPresent('normal'), 'у головы должны быть нормали');
+});
+
+check('пропорции головы человеческие', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'headProp', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+
+    const head = model.meshes.find((m) => m.name.endsWith('_head'));
+    const box = head.getBoundingInfo().boundingBox;
+    const height = box.maximumWorld.y - box.minimumWorld.y;
+    const width = box.maximumWorld.x - box.minimumWorld.x;
+
+    // У человека голова заметно выше, чем шире.
+    const ratio = width / height;
+    assert.ok(ratio > 0.6 && ratio < 0.85, `голова круглая как мяч: ш/в = ${ratio.toFixed(2)}`);
+
+    // И укладывается в рост примерно 5-7 раз, а не 4 (карлик) и не 9.
+    const total = model.root.getHierarchyBoundingVectors();
+    const heads = (total.max.y - total.min.y) / height;
+    assert.ok(heads > 5 && heads < 7.5, `нарушены пропорции тела: ${heads.toFixed(1)} голов в росте`);
+});
+
 check('у Рюдо есть наушники, шарф и рюкзак, но нет плаща', () => {
     // Атрибуты из оригинального дизайна. Плащ носит только Елена — вместе
     // с рюкзаком за спиной они сливались в кашу.
