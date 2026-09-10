@@ -103,13 +103,124 @@ for (let y = 0; y < H; y += 1) {
     for (let x = 0; x < W; x += 1) {
         const i = (y * W + x) * 3;
         const t = y / H;
-        color[i] = 0.09 + 0.05 * t;
-        color[i + 1] = 0.10 + 0.06 * t;
-        color[i + 2] = 0.15 + 0.09 * t;
+        color[i] = (0.29 + 0.06 * t) ** 2.2;
+        color[i + 1] = (0.31 + 0.07 * t) ** 2.2;
+        color[i + 2] = (0.38 + 0.09 * t) ** 2.2;
     }
 }
 
-const light = new Vector3(-0.45, 1, -0.75).normalize();
+// Трёхточечная схема вместо одного источника: рисующий сверху-слева,
+// заполняющий снизу-справа (мягкие полутона в тенях) и контровой сзади,
+// который отделяет силуэт от фона.
+const keyLight = new Vector3(-0.45, 1, -0.75).normalize();
+const fillLight = new Vector3(0.7, -0.15, -0.55).normalize();
+const rimLight = new Vector3(0.15, 0.35, 0.95).normalize();
+
+function shadeAt(n, ao, shadow = 1) {
+    // Мягкий переход света в тень (wrap lighting) — на округлых формах
+    // получается плавный градиент вместо резкой границы.
+    const raw = Vector3.Dot(n, keyLight);
+    const key = Math.max(0, (raw + 0.32) / 1.32) * shadow;
+    const fill = Math.max(0, Vector3.Dot(n, fillLight));
+    const rim = Math.pow(Math.max(0, Vector3.Dot(n, rimLight)), 3) * shadow;
+    const sky = 0.5 + 0.5 * n.y;
+
+    const ambient = (0.1 + 0.16 * sky) * ao;
+    const direct = (0.95 * key + 0.16 * fill) * ao;
+
+    // Тени холоднее и синее, света теплее — так работает глаз, и объём
+    // читается даже на однотонной коже.
+    return {
+        level: ambient + direct + rim * 0.16,
+        // 0 — глубокая тень, 1 — полный свет. Нужен для подцветки.
+        lit: Math.min(1, key),
+    };
+}
+
+// --- Карта теней ----------------------------------------------------------
+// Рендерим глубину сцены со стороны рисующего света. Без неё брови, нос и
+// причёска не отбрасывали тень на лицо, и оно выглядело плоским.
+const SHADOW_SIZE = 1400;
+const shadowDepth = new Float32Array(SHADOW_SIZE * SHADOW_SIZE).fill(Infinity);
+
+const lightTarget = target.clone();
+const lightEye = lightTarget.add(keyLight.scale(9));
+const lightView = Matrix.LookAtLH(lightEye, lightTarget, Vector3.Up());
+const lightProj = Matrix.OrthoLH(7.5, 7.5, 0.1, 22);
+const lightVp = lightView.multiply(lightProj);
+
+function toShadowMap(worldPoint) {
+    const c = Vector3.TransformCoordinates(worldPoint, lightVp);
+    return {
+        x: (c.x * 0.5 + 0.5) * SHADOW_SIZE,
+        y: (1 - (c.y * 0.5 + 0.5)) * SHADOW_SIZE,
+        z: c.z,
+    };
+}
+
+for (const { model } of actors) {
+    model.root.computeWorldMatrix(true);
+    model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+
+    for (const mesh of model.meshes) {
+        const positions = mesh.getVerticesData(VertexBuffer.PositionKind);
+        const indices = mesh.getIndices();
+        if (!positions || !indices) continue;
+        const world = mesh.getWorldMatrix();
+
+        for (let t = 0; t < indices.length; t += 3) {
+            const tri = [indices[t], indices[t + 1], indices[t + 2]].map((i) => toShadowMap(
+                Vector3.TransformCoordinates(
+                    new Vector3(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]),
+                    world,
+                ),
+            ));
+            if (tri.some((p) => p.z < 0 || p.z > 1)) continue;
+
+            const minx = Math.max(0, Math.floor(Math.min(...tri.map((p) => p.x))));
+            const maxx = Math.min(SHADOW_SIZE - 1, Math.ceil(Math.max(...tri.map((p) => p.x))));
+            const miny = Math.max(0, Math.floor(Math.min(...tri.map((p) => p.y))));
+            const maxy = Math.min(SHADOW_SIZE - 1, Math.ceil(Math.max(...tri.map((p) => p.y))));
+
+            const area = (tri[1].x - tri[0].x) * (tri[2].y - tri[0].y)
+                - (tri[2].x - tri[0].x) * (tri[1].y - tri[0].y);
+            if (Math.abs(area) < 1e-9) continue;
+
+            for (let y = miny; y <= maxy; y += 1) {
+                for (let x = minx; x <= maxx; x += 1) {
+                    const px = x + 0.5;
+                    const py = y + 0.5;
+                    const w0 = ((tri[1].x - px) * (tri[2].y - py) - (tri[2].x - px) * (tri[1].y - py)) / area;
+                    const w1 = ((tri[2].x - px) * (tri[0].y - py) - (tri[0].x - px) * (tri[2].y - py)) / area;
+                    const w2 = 1 - w0 - w1;
+                    if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+
+                    const z = w0 * tri[0].z + w1 * tri[1].z + w2 * tri[2].z;
+                    const di = y * SHADOW_SIZE + x;
+                    if (z < shadowDepth[di]) shadowDepth[di] = z;
+                }
+            }
+        }
+    }
+}
+
+/** Доля света в точке: 1 — освещена, 0.35 — в тени. Края мягкие (PCF 3x3). */
+function shadowFactor(worldPoint) {
+    const s = toShadowMap(worldPoint);
+    if (s.x < 1 || s.y < 1 || s.x >= SHADOW_SIZE - 1 || s.y >= SHADOW_SIZE - 1) return 1;
+
+    let lit = 0;
+    let taps = 0;
+    for (let oy = -1; oy <= 1; oy += 1) {
+        for (let ox = -1; ox <= 1; ox += 1) {
+            const di = (Math.floor(s.y) + oy) * SHADOW_SIZE + (Math.floor(s.x) + ox);
+            const nearest = shadowDepth[di];
+            lit += (nearest === Infinity || s.z <= nearest + 0.0022) ? 1 : 0;
+            taps += 1;
+        }
+    }
+    return 0.22 + 0.78 * (lit / taps);
+}
 
 for (const { model } of actors) {
     model.root.computeWorldMatrix(true);
@@ -122,11 +233,17 @@ for (const { model } of actors) {
         if (!positions || !indices) continue;
 
         const world = mesh.getWorldMatrix();
-        const diffuse = mesh.material?.diffuseColor ?? { r: 0.8, g: 0.8, b: 0.8 };
+        const srgb = mesh.material?.diffuseColor ?? { r: 0.8, g: 0.8, b: 0.8 };
+        const diffuse = {
+            r: srgb.r ** 2.2,
+            g: srgb.g ** 2.2,
+            b: srgb.b ** 2.2,
+        };
         const count = positions.length / 3;
 
         const wp = new Array(count);
         const wn = new Array(count);
+        const ao = mesh.getVerticesData('ao') ?? null;
         for (let i = 0; i < count; i += 1) {
             wp[i] = Vector3.TransformCoordinates(
                 new Vector3(positions[i * 3], positions[i * 3 + 1], positions[i * 3 + 2]), world,
@@ -138,10 +255,16 @@ for (const { model } of actors) {
                 : Vector3.Up();
         }
 
+        // Затенение складок: если меша нет собственного AO, считаем 1.
+        const aoData = ao ?? new Float32Array(count).fill(1);
+
         for (let t = 0; t < indices.length; t += 3) {
             const tri = [indices[t], indices[t + 1], indices[t + 2]].map((i) => {
                 const c = Vector3.TransformCoordinates(wp[i], vp);
-                return { x: (c.x * 0.5 + 0.5) * W, y: (1 - (c.y * 0.5 + 0.5)) * H, z: c.z, n: wn[i] };
+                return {
+                    x: (c.x * 0.5 + 0.5) * W, y: (1 - (c.y * 0.5 + 0.5)) * H,
+                    z: c.z, n: wn[i], ao: aoData[i], w: wp[i],
+                };
             });
             if (tri.some((p) => p.z < 0.01 || p.z > 1)) continue;
 
@@ -173,12 +296,25 @@ for (const { model } of actors) {
                         w0 * tri[0].n.y + w1 * tri[1].n.y + w2 * tri[2].n.y,
                         w0 * tri[0].n.z + w1 * tri[1].n.z + w2 * tri[2].n.z,
                     ).normalize();
-                    const shade = 0.32 + 0.78 * Math.max(0, Vector3.Dot(n, light));
+                    const ao = w0 * tri[0].ao + w1 * tri[1].ao + w2 * tri[2].ao;
+
+                    // Мировая точка нужна, чтобы спросить карту теней.
+                    const world = new Vector3(
+                        w0 * tri[0].w.x + w1 * tri[1].w.x + w2 * tri[2].w.x,
+                        w0 * tri[0].w.y + w1 * tri[1].w.y + w2 * tri[2].w.y,
+                        w0 * tri[0].w.z + w1 * tri[1].w.z + w2 * tri[2].w.z,
+                    );
+                    const shade = shadeAt(n, ao, shadowFactor(world));
+
+                    // Тёплый свет / холодная тень: сдвигаем оттенок, но не
+                    // трогаем насыщенность, иначе кожа сереет.
+                    const warmth = 0.06 * shade.lit;
+                    const chill = 0.05 * (1 - shade.lit);
 
                     const ci = di * 3;
-                    color[ci] = Math.min(1, diffuse.r * shade);
-                    color[ci + 1] = Math.min(1, diffuse.g * shade);
-                    color[ci + 2] = Math.min(1, diffuse.b * shade);
+                    color[ci] = Math.min(1, diffuse.r * shade.level * (1 + warmth));
+                    color[ci + 1] = Math.min(1, diffuse.g * shade.level * (1 + warmth * 0.35));
+                    color[ci + 2] = Math.min(1, diffuse.b * shade.level * (1 + chill));
                 }
             }
         }

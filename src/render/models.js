@@ -709,11 +709,12 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     elbowL.rotation.x = -0.22;
 
     if (weapon === 'sword') {
-        // Меч уводим остриём вверх-вбок: клинок читается, а не режет ногу.
-        shoulderR.rotation.x = -0.1;
-        elbowR.rotation.x = -0.62;
-        weaponPivot.rotation.x = -0.55;
-        weaponPivot.rotation.z = -0.35;
+        // Меч держим остриём ВВЕРХ-ВПЕРЁД. Прежний наклон (-0.55) заваливал
+        // клинок за спину: остриё уходило на z=-0.78 при рукояти z=+0.52.
+        shoulderR.rotation.x = 0.18;
+        elbowR.rotation.x = -0.5;
+        weaponPivot.rotation.x = 1.45;
+        weaponPivot.rotation.z = -0.25;
     } else {
         // Посох стоит вертикально в опущенной руке, орб над плечом.
         elbowR.rotation.x = -0.16;

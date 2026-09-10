@@ -153,5 +153,58 @@ export function createHeadMesh(scene, name) {
     data.normals = normals;
     data.applyToMesh(mesh);
 
+    // Затенение складок (ambient occlusion), запечённое в вершины: без него
+    // лицо оставалось «плоским» — не было тени под бровями, носом и
+    // подбородком, а переходы между планами не читались.
+    mesh.setVerticesData('ao', computeAmbientOcclusion(positions, normals), false, 1);
+
     return mesh;
+}
+
+/**
+ * Мягкое затенение впадин. Для каждой вершины смотрим, насколько соседи
+ * «нависают» над ней: чем больше точек лежит перед её плоскостью, тем
+ * глубже вершина сидит и тем темнее должна быть.
+ *
+ * Это грубая, но дешёвая замена трассировке: считается один раз при сборке
+ * модели и даёт тени в глазницах, под бровью, под носом и под челюстью.
+ */
+function computeAmbientOcclusion(positions, normals) {
+    const count = positions.length / 3;
+    const ao = new Float32Array(count);
+    const RADIUS = 0.17;
+
+    for (let i = 0; i < count; i += 1) {
+        const px = positions[i * 3];
+        const py = positions[i * 3 + 1];
+        const pz = positions[i * 3 + 2];
+        const nx = normals[i * 3];
+        const ny = normals[i * 3 + 1];
+        const nz = normals[i * 3 + 2];
+
+        let occlusion = 0;
+        let samples = 0;
+
+        for (let j = 0; j < count; j += 1) {
+            if (j === i) continue;
+            const dx = positions[j * 3] - px;
+            const dy = positions[j * 3 + 1] - py;
+            const dz = positions[j * 3 + 2] - pz;
+
+            const distanceSq = dx * dx + dy * dy + dz * dz;
+            if (distanceSq > RADIUS * RADIUS || distanceSq < 1e-8) continue;
+
+            const distance = Math.sqrt(distanceSq);
+            // Насколько сосед находится «над» поверхностью в этой точке.
+            const above = (dx * nx + dy * ny + dz * nz) / distance;
+            if (above > 0.12) occlusion += (above - 0.12) * (1 - distance / RADIUS);
+            samples += 1;
+        }
+
+        const raw = samples > 0 ? occlusion / Math.sqrt(samples) : 0;
+        // 1 — открытая поверхность, ~0.55 — глубокая складка.
+        ao[i] = Math.max(0.55, 1 - raw * 1.6);
+    }
+
+    return ao;
 }

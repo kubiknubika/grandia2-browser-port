@@ -45,17 +45,47 @@ function createScene() {
     battleCamera = new BattleCamera(camera);
     battleSystem.camera = battleCamera;
 
+    // Трёхточечная схема. Раньше были только «полусфера + один направленный источник»,
+    // из-за чего модели выглядели плоско: не было ни полутонов, ни
+    // контрового света, отделяющего фигуру от фона.
     const ambientLight = new HemisphericLight("ambientLight", new Vector3(0, 1, 0), scene);
-    ambientLight.intensity = 0.4;
-    ambientLight.groundColor = new Color3(0.1, 0.1, 0.1);
+    ambientLight.intensity = 0.45;
+    ambientLight.diffuse = new Color3(0.78, 0.84, 1.0);      // небо холодное
+    ambientLight.groundColor = new Color3(0.22, 0.19, 0.16); // отражение от земли тёплое
 
-    const dirLight = new DirectionalLight("dirLight", new Vector3(-1, -2, -1), scene);
-    dirLight.position = new Vector3(20, 40, 20);
-    dirLight.intensity = 0.8;
+    const dirLight = new DirectionalLight("dirLight", new Vector3(-0.55, -1.15, 0.85), scene);
+    dirLight.position = new Vector3(14, 26, -18);
+    dirLight.intensity = 1.15;
+    dirLight.diffuse = new Color3(1.0, 0.96, 0.88);          // рисующий — тёплый
 
-    const shadowGenerator = new ShadowGenerator(1024, dirLight);
-    shadowGenerator.useBlurExponentialShadowMap = true;
-    shadowGenerator.blurKernel = 32;
+    // Заполняющий: подсвечивает теневую сторону, чтобы она не проваливалась
+    // в чёрное, и даёт мягкий переход между планами лица.
+    const fillLight = new DirectionalLight("fillLight", new Vector3(0.8, -0.25, 0.6), scene);
+    fillLight.intensity = 0.32;
+    fillLight.diffuse = new Color3(0.62, 0.72, 0.95);
+    fillLight.specular = new Color3(0, 0, 0);
+
+    // Контровой сзади — тонкая светлая кромка по силуэту.
+    const rimLight = new DirectionalLight("rimLight", new Vector3(0.1, -0.4, -1), scene);
+    rimLight.intensity = 0.5;
+    rimLight.diffuse = new Color3(0.75, 0.85, 1.0);
+
+    const shadowGenerator = new ShadowGenerator(2048, dirLight);
+    shadowGenerator.usePercentageCloserFiltering = true;
+    shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_HIGH;
+    shadowGenerator.bias = 0.0018;
+    shadowGenerator.normalBias = 0.012;
+    shadowGenerator.darkness = 0.32;
+    // Тени от мелких деталей (брови, нос, пряди) нужны вблизи.
+    dirLight.shadowMinZ = 8;
+    dirLight.shadowMaxZ = 70;
+
+    // Тональная компрессия: без неё света уходили в чистый белый, а
+    // цвета выглядели вымытыми.
+    scene.imageProcessingConfiguration.toneMappingEnabled = true;
+    scene.imageProcessingConfiguration.toneMappingType = 1; // ACES
+    scene.imageProcessingConfiguration.contrast = 1.35;
+    scene.imageProcessingConfiguration.exposure = 1.05;
 
     const arenaMat = new StandardMaterial("arenaMat", scene);
     arenaMat.diffuseColor = new Color3(0.24, 0.29, 0.36);
