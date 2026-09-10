@@ -43,6 +43,10 @@ function joint(scene, name, parent, position) {
  * Гуманоид: Рюдо (мечник) и Елена (магичка) отличаются оружием,
  * палитрой и силуэтом, но используют один риг.
  */
+function shadeMat(scene, name, color, weapon) {
+    return makeMaterial(scene, name, shade(color, weapon === 'staff' ? 1.3 : 0.52));
+}
+
 export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword', accent = null } = {}) {
     const meshes = [];
     const track = (mesh) => { meshes.push(mesh); return mesh; };
@@ -53,7 +57,10 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     const skin = makeMaterial(scene, `${id}_skin`, '#f2c9a0');
     const hair = makeMaterial(scene, `${id}_hair`, weapon === 'staff' ? '#f5d76e' : '#3b2b22');
     const steel = makeMaterial(scene, `${id}_steel`, '#c9ced6', { specular: 0.8 });
+    const steelDark = makeMaterial(scene, `${id}_steelDark`, '#8f97a3', { specular: 0.6 });
     const leather = makeMaterial(scene, `${id}_leather`, '#4a3728');
+    const leatherLight = makeMaterial(scene, `${id}_leatherLight`, '#6b5233');
+    const gold = makeMaterial(scene, `${id}_gold`, '#d4a537', { specular: 0.7 });
 
     const root = new TransformNode(`${id}_root`, scene);
 
@@ -116,14 +123,114 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     buckle.position.set(0, 0.02, 0.22);
     buckle.material = trim;
 
+    if (weapon === 'sword') {
+        // Нагрудная пластина: плоский торс выглядел «доской в рубашке».
+        const plate = track(MeshBuilder.CreateCylinder(`${id}_chestPlate`, {
+            height: 0.5, diameterTop: 0.7, diameterBottom: 0.52, tessellation: 14,
+        }, scene));
+        plate.parent = torso;
+        plate.position.set(0, 0.72, 0.09);
+        plate.scaling.z = 0.5;
+        plate.material = steelDark;
+
+        // Ремень через грудь — за спиной ножны.
+        const strap = track(MeshBuilder.CreateBox(`${id}_strap`, {
+            width: 0.12, height: 0.8, depth: 0.05,
+        }, scene));
+        strap.parent = torso;
+        // z=0.13 держит ремень НА груди: при 0.2 он висел в воздухе перед ней.
+        strap.position.set(0.03, 0.68, 0.13);
+        strap.rotation.z = 0.42;
+        strap.material = leatherLight;
+
+        // Ножны на поясе, а не на лопатке: раньше верх упирался в наплечник.
+        const scabbard = track(MeshBuilder.CreateCylinder(`${id}_scabbard`, {
+            height: 1.0, diameterTop: 0.09, diameterBottom: 0.12, tessellation: 8,
+        }, scene));
+        scabbard.parent = torso;
+        scabbard.position.set(-0.28, 0.06, -0.16);
+        scabbard.rotation.set(0.42, 0, -0.5);
+        scabbard.material = leather;
+
+        const scabbardTip = track(MeshBuilder.CreateCylinder(`${id}_scabbardTip`, {
+            height: 0.14, diameterTop: 0.13, diameterBottom: 0.06, tessellation: 8,
+        }, scene));
+        scabbardTip.parent = torso;
+        scabbardTip.position.set(-0.5, -0.35, -0.36);
+        scabbardTip.rotation.set(0.42, 0, -0.5);
+        scabbardTip.material = gold;
+
+        // Наручи.
+        for (const [name, parent] of [[`${id}_bracerL`, elbowL], [`${id}_bracerR`, elbowR]]) {
+            const bracer = track(MeshBuilder.CreateCylinder(name, {
+                height: 0.26, diameterTop: 0.26, diameterBottom: 0.22, tessellation: 10,
+            }, scene));
+            bracer.parent = parent;
+            bracer.position.y = -0.34;
+            bracer.material = steelDark;
+        }
+
+        // Набедренные щитки поверх бёдер.
+        for (const [name, parent, side] of [[`${id}_tassetL`, hipL, -1], [`${id}_tassetR`, hipR, 1]]) {
+            const tasset = track(MeshBuilder.CreateBox(name, {
+                width: 0.26, height: 0.3, depth: 0.2,
+            }, scene));
+            tasset.parent = parent;
+            tasset.position.set(0.04 * side, -0.16, 0.06);
+            tasset.rotation.z = side * 0.12;
+            tasset.material = leatherLight;
+        }
+    }
+
     // Плащ/накидка — силуэт, который отличает персонажа издалека.
-    const cape = track(MeshBuilder.CreateBox(`${id}_cape`, {
-        width: 0.6, height: 1.0, depth: 0.06,
+    // Расширяется книзу: плоская доска сзади читалась как кусок картона.
+    const cape = track(MeshBuilder.CreateCylinder(`${id}_cape`, {
+        height: 1.05, diameterTop: 0.62, diameterBottom: 0.98,
+        tessellation: 4, faceted: true,
     }, scene));
     cape.parent = torso;
     cape.position.set(0, 0.58, -0.34);
-    cape.rotation.x = -0.06;
+    cape.rotation.set(-0.06, Math.PI / 4, 0);
+    cape.scaling.z = 0.12;
     cape.material = weapon === 'staff' ? trim : clothDark;
+
+    // Складки: две вертикальные грани ломают плоскость плаща.
+    for (const side of [-1, 1]) {
+        const fold = track(MeshBuilder.CreateCylinder(`${id}_capeFold${side}`, {
+            height: 1.0, diameterTop: 0.16, diameterBottom: 0.3,
+            tessellation: 4, faceted: true,
+        }, scene));
+        fold.parent = cape;
+        // Родитель уже сплющен по z, поэтому компенсируем масштаб.
+        fold.position.set(0.26 * side, 0.0, -0.6);
+        fold.rotation.y = Math.PI / 4;
+        fold.scaling.set(1, 0.98, 1);
+        fold.material = weapon === 'staff' ? trim : shadeMat(scene, `${id}_capeFoldMat`, color, weapon);
+    }
+
+    // Застёжка плаща у горла.
+    const clasp = track(MeshBuilder.CreateSphere(`${id}_capeClasp`, {
+        diameterX: 0.14, diameterY: 0.1, diameterZ: 0.1,
+    }, scene));
+    clasp.parent = torso;
+    clasp.position.set(0, 1.02, -0.18);
+    clasp.material = gold;
+
+    // Шея и воротник: без них голова просто висела над торсом.
+    const neckMesh = track(MeshBuilder.CreateCylinder(`${id}_neckMesh`, {
+        height: 0.2, diameter: 0.19, tessellation: 10,
+    }, scene));
+    neckMesh.parent = neck;
+    neckMesh.position.y = 0.06;
+    neckMesh.material = skin;
+
+    const collar = track(MeshBuilder.CreateCylinder(`${id}_collar`, {
+        height: 0.1, diameterTop: 0.27, diameterBottom: 0.36, tessellation: 12,
+    }, scene));
+    collar.parent = neck;
+    collar.position.y = -0.05;
+    collar.scaling.z = 0.78;
+    collar.material = clothDark;
 
     // --- Голова -----------------------------------------------------------
     const head = track(MeshBuilder.CreateSphere(`${id}_head`, {
@@ -248,25 +355,71 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     const weaponPivot = joint(scene, `${id}_weaponPivot`, hand, Vector3.Zero());
 
     if (weapon === 'sword') {
+        // Клинок: широкое основание, сужение к острию и дол по центру.
         const blade = track(MeshBuilder.CreateBox(`${id}_blade`, {
-            width: 0.1, height: 1.5, depth: 0.03,
+            width: 0.15, height: 1.2, depth: 0.045,
         }, scene));
         blade.parent = weaponPivot;
-        blade.position.y = 0.72;
+        blade.position.y = 0.63;
         blade.material = steel;
 
+        const fuller = track(MeshBuilder.CreateBox(`${id}_fuller`, {
+            width: 0.05, height: 1.04, depth: 0.055,
+        }, scene));
+        fuller.parent = weaponPivot;
+        fuller.position.y = 0.61;
+        fuller.material = steelDark;
+
+        // Остриё отдельным клином — прямоугольная «линейка» выглядела бедно.
+        const tip = track(MeshBuilder.CreateCylinder(`${id}_bladeTip`, {
+            height: 0.3, diameterTop: 0.01, diameterBottom: 0.15,
+            tessellation: 4, faceted: true,
+        }, scene));
+        tip.parent = weaponPivot;
+        tip.position.y = 1.32;
+        tip.scaling.z = 0.3;
+        tip.material = steel;
+
         const guard = track(MeshBuilder.CreateBox(`${id}_guard`, {
-            width: 0.34, height: 0.07, depth: 0.09,
+            width: 0.42, height: 0.08, depth: 0.11,
         }, scene));
         guard.parent = weaponPivot;
-        guard.material = trim;
+        guard.position.y = 0.03;
+        guard.material = gold;
+
+        // Загнутые концы гарды.
+        for (const side of [-1, 1]) {
+            const quillon = track(MeshBuilder.CreateSphere(`${id}_quillon${side}`, {
+                diameterX: 0.1, diameterY: 0.14, diameterZ: 0.1,
+            }, scene));
+            quillon.parent = weaponPivot;
+            quillon.position.set(0.2 * side, 0.07, 0);
+            quillon.material = gold;
+        }
 
         const grip = track(MeshBuilder.CreateCylinder(`${id}_grip`, {
-            height: 0.26, diameter: 0.075, tessellation: 8,
+            height: 0.28, diameter: 0.08, tessellation: 8,
         }, scene));
         grip.parent = weaponPivot;
-        grip.position.y = -0.15;
+        grip.position.y = -0.14;
         grip.material = leather;
+
+        // Обмотка рукояти.
+        for (let i = 0; i < 3; i += 1) {
+            const wrap = track(MeshBuilder.CreateCylinder(`${id}_gripWrap${i}`, {
+                height: 0.035, diameter: 0.095, tessellation: 8,
+            }, scene));
+            wrap.parent = weaponPivot;
+            wrap.position.y = -0.05 - i * 0.08;
+            wrap.material = leatherLight;
+        }
+
+        const pommel = track(MeshBuilder.CreateSphere(`${id}_pommel`, {
+            diameterX: 0.13, diameterY: 0.12, diameterZ: 0.13,
+        }, scene));
+        pommel.parent = weaponPivot;
+        pommel.position.y = -0.3;
+        pommel.material = gold;
     } else {
         // Посох делаем толще и светлее: тонкая тёмная палка терялась на фоне.
         const wood = makeMaterial(scene, `${id}_wood`, '#b98a56');

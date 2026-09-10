@@ -150,15 +150,15 @@ check('панель описания объясняет разницу межд�
 });
 
 check('вкладки переключают показанные команды', () => {
-  const elena = system.units.find((u) => u.id === 'elena');
-  ui.showCommandRing(elena, system.getAvailableActions(elena), () => {});
+  const ryudo = system.units.find((u) => u.id === 'ryudo');
+  ui.showCommandRing(ryudo, system.getAvailableActions(ryudo), () => {});
 
   const tabs = [...$('#command-ring .cmd-tab')];
   assert.ok(tabs.length >= 3, `должно быть несколько вкладок, найдено ${tabs.length}`);
 
   const firstCount = document.querySelector('#command-ring .cmd-scroll').children.length;
   const magicTab = tabs.find((t) => /магия/i.test(t.textContent));
-  assert.ok(magicTab, 'у Елены должна быть вкладка магии');
+  assert.ok(magicTab, 'у Рюдо должна быть вкладка магии поддержки');
   magicTab.click();
 
   const magicButtons = [...$('#command-ring .cmd-btn')];
@@ -182,7 +182,7 @@ check('выбор цели: клик по Critical открывает списо
   const targets = [...$('#command-ring .target-btn')];
   assert.equal(targets.length, 2, 'должно быть 2 живых паука');
   assert.ok(/Mottled Spider A/.test(targets[0].textContent));
-  assert.ok(/230 \/ 230/.test(targets[0].textContent), 'должно показываться HP цели');
+  assert.ok(/145 \/ 145/.test(targets[0].textContent), 'должно показываться HP цели');
 
   targets[1].click();
   assert.deepEqual(chosen, { id: 'critical', target: 'spider2' }, 'должна выбраться вторая цель');

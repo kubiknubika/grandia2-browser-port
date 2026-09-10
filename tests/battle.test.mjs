@@ -13,8 +13,8 @@ import assert from 'node:assert/strict';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector.js';
 
 import { BattleSystem } from '../src/system/BattleSystem.js';
-import { makeUnitData, DEFAULT_ENCOUNTER } from '../src/data/battle_data.js';
-import { COM_START, IP_MAX, getBattleStat } from '../src/entities/combat.js';
+import { makeUnitData, DEFAULT_ENCOUNTER, PARTY_ENCOUNTER } from '../src/data/battle_data.js';
+import { COM_START, IP_MAX, PRESETS, getBattleStat } from '../src/entities/combat.js';
 
 // --- Заглушки -------------------------------------------------------------
 
@@ -107,26 +107,115 @@ const test = (name, fn) => tests.push({ name, fn });
 test('юниты стартуют с полным HP из канонических пресетов', () => {
     const { system } = buildBattle();
     const ryudo = system.units.find((u) => u.id === 'ryudo');
-    const spider = system.units.find((u) => u.id === 'spider1');
 
     assert.equal(ryudo.hp, 340, 'HP Рюдо должно браться из PRESETS.ryudo');
     assert.equal(ryudo.maxHp, 340);
-    assert.equal(spider.hp, 230, 'HP паука должно браться из PRESETS.mottledSpider');
     assert.ok(ryudo.str > 0 && ryudo.vit > 0, 'статы должны быть перенесены в корень юнита');
+
+    // Пресет без правок энкаунтера отдаёт канонические числа.
+    const canonical = makeUnitData('mottledSpider', { id: 'canon' });
+    assert.equal(canonical.maxHp, 230, 'PRESETS.mottledSpider не должен меняться');
+});
+
+test('энкаунтер может переопределить статы, не трогая пресет', () => {
+    // Пауки в DEFAULT_ENCOUNTER ослаблены под соло-бой Рюдо, но правка
+    // обязана жить только в энкаунтере: PRESETS — общий источник правды.
+    const { system } = buildBattle();
+    const spider = system.units.find((u) => u.id === 'spider1');
+
+    assert.equal(spider.maxHp, 145, 'в бою используется настройка энкаунтера');
+    assert.equal(spider.hp, spider.maxHp, 'юнит стартует с полным HP');
+    assert.equal(PRESETS.mottledSpider.maxHp, 230, 'канонический пресет не мутирован');
 });
 
 test('бой доходит до исхода и не зависает', () => {
-    const { system, ui } = buildBattle({
-        autoCommand: (unit, actions) => {
-            const combo = actions.find((a) => a.id === 'combo' && a.enabled);
-            return { actionId: combo.id, target: combo.targets[0] };
-        },
-    });
+    // Проверяем отсутствие зависаний, а НЕ конкретный исход: пауки в соло-бою
+    // настроены так, что небрежная игра (только Combo) иногда проигрывает.
+    // Сид фиксируем, чтобы тест не мигал от прогона к прогону.
+    for (let seed = 1; seed <= 12; seed += 1) {
+        const { system, ui } = buildBattle({
+            rng: makeRng(seed),
+            autoCommand: (unit, actions) => {
+                const combo = actions.find((a) => a.id === 'combo' && a.enabled);
+                return { actionId: combo.id, target: combo.targets[0] };
+            },
+        });
 
-    const elapsed = runBattle(system, ui);
-    assert.ok(system.outcome !== null, `бой не завершился за ${elapsed.toFixed(1)} с (зависание)`);
-    assert.equal(system.outcome, 'victory');
-    assert.ok(ui.events.some((e) => e.type === 'outcome'), 'UI должен получить событие исхода');
+        const elapsed = runBattle(system, ui);
+        assert.ok(
+            system.outcome !== null,
+            `сид ${seed}: бой не завершился за ${elapsed.toFixed(1)} с (зависание)`,
+        );
+        assert.ok(
+            system.outcome === 'victory' || system.outcome === 'defeat',
+            `сид ${seed}: неожиданный исход ${system.outcome}`,
+        );
+        assert.ok(ui.events.some((e) => e.type === 'outcome'), 'UI должен получить событие исхода');
+    }
+});
+
+test('внимательная игра стабильно выигрывает соло-бой', () => {
+    // Баланс: Рюдо один против двух пауков. Если игрок лечится и сбивает
+    // заряженные ходы Critical'ом, бой должен выигрываться всегда.
+    let wins = 0;
+    const total = 12;
+
+    for (let seed = 1; seed <= total; seed += 1) {
+        const { system, ui } = buildBattle({
+            rng: makeRng(seed),
+            autoCommand: (unit, actions) => {
+                const enabled = actions.filter((a) => a.enabled);
+                const byId = (id) => enabled.find((a) => a.id === id);
+                const foes = system.livingOpponents(unit);
+                const weakest = [...foes].sort((a, b) => a.hp - b.hp)[0];
+
+                if (byId('medicinalHerb') && unit.hp / unit.maxHp < 0.34) {
+                    return { actionId: 'medicinalHerb', target: unit };
+                }
+                const charging = foes.find((f) => f.phase === 'COM' || f.phase === 'ACT');
+                if (charging && byId('critical')) {
+                    return { actionId: 'critical', target: charging };
+                }
+                if (byId('tenseiken') && weakest.hp > 60) {
+                    return { actionId: 'tenseiken', target: weakest };
+                }
+                const combo = byId('combo') ?? enabled[0];
+                return { actionId: combo.id, target: combo.targets?.[0] ?? null };
+            },
+        });
+
+        runBattle(system, ui, { maxSeconds: 300 });
+        if (system.outcome === 'victory') wins += 1;
+    }
+
+    assert.ok(wins >= total - 1, `внимательная игра должна побеждать: ${wins}/${total}`);
+});
+
+test('соло-бой не превращается в затяжную пилёжку', () => {
+    // До настройки пауков бой шёл ~88 с почти без риска. Проверяем, что
+    // он укладывается в разумное время при внимательной игре.
+    const durations = [];
+
+    for (let seed = 1; seed <= 6; seed += 1) {
+        const { system, ui } = buildBattle({
+            rng: makeRng(seed + 100),
+            autoCommand: (unit, actions) => {
+                const enabled = actions.filter((a) => a.enabled);
+                const byId = (id) => enabled.find((a) => a.id === id);
+                if (byId('medicinalHerb') && unit.hp / unit.maxHp < 0.34) {
+                    return { actionId: 'medicinalHerb', target: unit };
+                }
+                const combo = byId('combo') ?? enabled[0];
+                return { actionId: combo.id, target: combo.targets?.[0] ?? null };
+            },
+        });
+        durations.push(runBattle(system, ui, { maxSeconds: 300 }));
+    }
+
+    durations.sort((a, b) => a - b);
+    const median = durations[Math.floor(durations.length / 2)];
+    assert.ok(median < 80, `бой слишком долгий: медиана ${median.toFixed(1)} с`);
+    assert.ok(median > 15, `бой подозрительно короткий: медиана ${median.toFixed(1)} с`);
 });
 
 test('HP никогда не уходит в минус и мертвые не воскресают', () => {
@@ -498,7 +587,7 @@ test('защищающийся копит SP за полученный удар'
 });
 
 test('магия учитывает стихию и сопротивление цели', () => {
-    const { system } = buildBattle({ rng: () => 0.5 });
+    const { system } = buildBattle({ encounter: PARTY_ENCOUNTER, rng: () => 0.5 });
     const elena = system.units.find((u) => u.id === 'elena');
     const spider = system.units.find((u) => u.id === 'spider1');
 
@@ -578,7 +667,7 @@ test('антидот снимает яд', () => {
 });
 
 test('воскрешение поднимает павшего союзника', () => {
-    const { system } = buildBattle({ inventory: { yomisElixir: 1 } });
+    const { system } = buildBattle({ encounter: PARTY_ENCOUNTER, inventory: { yomisElixir: 1 } });
     const ryudo = system.units.find((u) => u.id === 'ryudo');
     const elena = system.units.find((u) => u.id === 'elena');
 
@@ -593,7 +682,7 @@ test('воскрешение поднимает павшего союзника'
 });
 
 test('magicBlock запрещает магию, но не обычную атаку', () => {
-    const { system } = buildBattle();
+    const { system } = buildBattle({ encounter: PARTY_ENCOUNTER });
     const elena = system.units.find((u) => u.id === 'elena');
     elena.mp = elena.maxMp;
     elena.statuses.magicBlock = 2;
@@ -643,7 +732,7 @@ test('групповая атака задевает всех живых вра�
 });
 
 test('лечение и воскрешение выбирают правильные цели', () => {
-    const { system } = buildBattle();
+    const { system } = buildBattle({ encounter: PARTY_ENCOUNTER });
     const elena = system.units.find((u) => u.id === 'elena');
     const ryudo = system.units.find((u) => u.id === 'ryudo');
 
@@ -658,7 +747,7 @@ test('лечение и воскрешение выбирают правильн
 });
 
 test('кольцо команд содержит магию Елены и предметы партии', () => {
-    const { system } = buildBattle({ inventory: { medicinalHerb: 2 } });
+    const { system } = buildBattle({ encounter: PARTY_ENCOUNTER, inventory: { medicinalHerb: 2 } });
     const elena = system.units.find((u) => u.id === 'elena');
     elena.mp = elena.maxMp;
 
@@ -791,7 +880,7 @@ test('длинный приём тратит своё animationSeconds', () => {
 test('враги не фокусируются вечно на одном герое', () => {
     // Баг: цель выбиралась строгим минимумом доли HP, поэтому Елена
     // (меньший максимум HP) получала весь урон, а Рюдо — ноль.
-    const { system } = buildBattle();
+    const { system } = buildBattle({ encounter: PARTY_ENCOUNTER });
     const spider = system.units.find((u) => u.id === 'spider1');
 
     const picks = new Map();
@@ -807,7 +896,7 @@ test('враги не фокусируются вечно на одном гер
 });
 
 test('раненый герой притягивает больше внимания', () => {
-    const { system } = buildBattle();
+    const { system } = buildBattle({ encounter: PARTY_ENCOUNTER });
     const spider = system.units.find((u) => u.id === 'spider1');
     const ryudo = system.units.find((u) => u.id === 'ryudo');
     const elena = system.units.find((u) => u.id === 'elena');
@@ -831,6 +920,7 @@ test('и Рюдо, и Елена получают урон за бой', () => {
 
     for (let seed = 0; seed < 6; seed += 1) {
         const { system, ui } = buildBattle({
+            encounter: PARTY_ENCOUNTER,
             autoCommand: (unit, actions) => {
                 const combo = actions.find((a) => a.id === 'combo' && a.enabled) ?? actions[0];
                 return { actionId: combo.id, target: combo.targets?.[0] ?? null };
@@ -851,7 +941,7 @@ test('и Рюдо, и Елена получают урон за бой', () => {
 // --- Описания приёмов -----------------------------------------------------
 
 test('у каждой команды есть описание, а Combo и Critical различимы', () => {
-    const { system } = buildBattle();
+    const { system } = buildBattle({ encounter: PARTY_ENCOUNTER });
     const elena = system.units.find((u) => u.id === 'elena');
 
     const actions = system.getAvailableActions(elena);

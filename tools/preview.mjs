@@ -38,10 +38,9 @@ const scene = new Scene(engine);
 const animator = new Animator();
 
 const LINEUP = [
-    ['ryudo', 'ryudo', -6.0],
-    ['elena', 'elena', -2.0],
-    ['mottledSpider', 'spiderA', 2.2],
-    ['mottledSpider', 'spiderB', 6.4],
+    ['ryudo', 'ryudo', -3.4],
+    ['mottledSpider', 'spiderA', 1.4],
+    ['mottledSpider', 'spiderB', 5.6],
 ];
 
 const actors = [];
@@ -61,7 +60,6 @@ for (let i = 0; i < 240; i += 1) animator.update(actors.map((a) => a.unit), 1 / 
 
 if (POSE === 'action') {
     animator.playSwing('ryudo');
-    animator.playCast('elena');
     animator.playHit('spiderA');
     for (let i = 0; i < 7; i += 1) animator.update(actors.map((a) => a.unit), 1 / 60);
 }
@@ -70,7 +68,9 @@ if (POSE === 'action') {
 
 const VIEWS = {
     front: { eye: new Vector3(0, 3.0, 12.5), target: new Vector3(0, 1.1, 0) },
-    heroes: { eye: new Vector3(-4.0, 2.2, 4.6), target: new Vector3(-4.0, 1.3, 0) },
+    heroes: { eye: new Vector3(-3.4, 2.1, 3.6), target: new Vector3(-3.4, 1.4, 0) },
+    face: { eye: new Vector3(-3.4, 2.7, 2.0), target: new Vector3(-3.4, 2.3, 0) },
+    back: { eye: new Vector3(-3.4, 2.1, -3.6), target: new Vector3(-3.4, 1.4, 0) },
     spider: { eye: new Vector3(4.3, 2.2, 5.2), target: new Vector3(4.3, 0.7, 0) },
     side: { eye: new Vector3(13, 3.0, 0.5), target: new Vector3(0, 1.1, 0) },
     top: { eye: new Vector3(0.01, 12, 0.01), target: new Vector3(0, 0, 0) },
