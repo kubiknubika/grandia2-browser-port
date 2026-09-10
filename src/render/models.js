@@ -164,10 +164,10 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
 
         // Красный шарф — самая узнаваемая деталь силуэта Рюдо.
         const scarf = track(MeshBuilder.CreateTorus(`${id}_scarf`, {
-            diameter: 0.42, thickness: 0.14, tessellation: 12,
+            diameter: 0.4, thickness: 0.12, tessellation: 12,
         }, scene));
         scarf.parent = torso;
-        scarf.position.set(0, 1.0, 0.02);
+        scarf.position.set(0, 0.9, 0.02);
         scarf.rotation.x = Math.PI / 2;
         scarf.scaling.z = 0.8;
         scarf.material = scarfMat;
@@ -295,30 +295,106 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
 
     // --- Голова -----------------------------------------------------------
     const head = track(MeshBuilder.CreateSphere(`${id}_head`, {
-        diameterX: 0.5, diameterY: 0.56, diameterZ: 0.5,
+        diameterX: 0.42, diameterY: 0.55, diameterZ: 0.48,
     }, scene));
     head.parent = neck;
     head.position.y = 0.28;
     head.material = skin;
 
-    const jaw = track(MeshBuilder.CreateSphere(`${id}_jaw`, {
-        diameterX: 0.4, diameterY: 0.3, diameterZ: 0.42,
+    // Затылок: сфера головы одна давала «мячик», череп должен быть длиннее.
+    const skull = track(MeshBuilder.CreateSphere(`${id}_skull`, {
+        diameterX: 0.4, diameterY: 0.49, diameterZ: 0.45,
+    }, scene));
+    skull.parent = head;
+    skull.position.set(0, 0.04, -0.09);
+    skull.material = skin;
+
+    // Челюсть сужается к подбородку — раньше это был шар шире лица.
+    const jaw = track(MeshBuilder.CreateCylinder(`${id}_jaw`, {
+        height: 0.24, diameterTop: 0.39, diameterBottom: 0.27, tessellation: 12,
     }, scene));
     jaw.parent = head;
-    jaw.position.set(0, -0.15, 0.03);
+    jaw.position.set(0, -0.13, 0.02);
+    jaw.scaling.z = 0.92;
     jaw.material = skin;
 
-    const nose = track(MeshBuilder.CreateSphere(`${id}_nose`, { diameter: 0.09 }, scene));
+    const chin = track(MeshBuilder.CreateSphere(`${id}_chin`, {
+        diameterX: 0.18, diameterY: 0.13, diameterZ: 0.18,
+    }, scene));
+    chin.parent = head;
+    chin.position.set(0, -0.22, 0.09);
+    chin.material = skin;
+
+    // Скулы: без них лицо было плоским блином.
+    for (const side of [-1, 1]) {
+        const cheek = track(MeshBuilder.CreateSphere(`${id}_cheek${side}`, {
+            diameterX: 0.13, diameterY: 0.11, diameterZ: 0.14,
+        }, scene));
+        cheek.parent = head;
+        cheek.position.set(0.125 * side, -0.045, 0.15);
+        cheek.material = skin;
+    }
+
+    // Нос: переносица + кончик вместо одного шарика.
+    const noseBridge = track(MeshBuilder.CreateCylinder(`${id}_noseBridge`, {
+        height: 0.15, diameterTop: 0.035, diameterBottom: 0.075, tessellation: 6,
+    }, scene));
+    noseBridge.parent = head;
+    noseBridge.position.set(0, -0.005, 0.225);
+    noseBridge.rotation.x = -0.12;
+    noseBridge.material = skin;
+
+    const nose = track(MeshBuilder.CreateSphere(`${id}_nose`, {
+        diameterX: 0.085, diameterY: 0.075, diameterZ: 0.1,
+    }, scene));
     nose.parent = head;
-    nose.position.set(0, -0.02, 0.26);
+    nose.position.set(0, -0.072, 0.268);
     nose.material = skin;
 
+    // Рот: тонкая тёмная щель, а не отсутствие рта вовсе.
+    const mouth = track(MeshBuilder.CreateBox(`${id}_mouth`, {
+        width: 0.12, height: 0.02, depth: 0.03,
+    }, scene));
+    mouth.parent = head;
+    mouth.position.set(0, -0.155, 0.245);
+    mouth.material = makeMaterial(scene, `${id}_mouthMat`, '#7d4a42');
+
+    // Уши.
+    for (const side of [-1, 1]) {
+        const ear = track(MeshBuilder.CreateSphere(`${id}_ear${side}`, {
+            diameterX: 0.07, diameterY: 0.15, diameterZ: 0.12,
+        }, scene));
+        ear.parent = head;
+        ear.position.set(0.205 * side, -0.03, 0.0);
+        ear.material = skin;
+    }
+
     const hairMesh = track(MeshBuilder.CreateSphere(`${id}_hair`, {
-        diameterX: 0.56, diameterY: 0.5, diameterZ: 0.56, slice: 0.58,
+        diameterX: 0.48, diameterY: 0.5, diameterZ: 0.54, slice: 0.62,
     }, scene));
     hairMesh.parent = head;
-    hairMesh.position.y = 0.08;
+    hairMesh.position.set(0, 0.075, -0.03);
     hairMesh.material = hair;
+
+    if (weapon !== 'staff') {
+        // Чёлка: несколько клиньев вниз-на-лоб.одна коробка торчала козырьком.
+        const bangs = [
+            [-0.145, 0.225, 0.15, 0.3],
+            [-0.05, 0.215, 0.185, -0.16],
+            [0.06, 0.218, 0.18, 0.18],
+            [0.15, 0.228, 0.142, -0.32],
+        ];
+        bangs.forEach(([x, y, z, rz], i) => {
+            const lock = track(MeshBuilder.CreateCylinder(`${id}_bang${i}`, {
+                height: 0.13, diameterTop: 0.015, diameterBottom: 0.095,
+                tessellation: 4, faceted: true,
+            }, scene));
+            lock.parent = head;
+            lock.position.set(x, y, z);
+            lock.rotation.set(Math.PI - 0.5, 0, rz);
+            lock.material = hair;
+        });
+    }
 
     if (weapon === 'staff') {
         // Елена: длинные волосы по плечи — узнаваемый силуэт со спины.
@@ -346,15 +422,15 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
 
         // Торчащие пряди — в оригинале причёска колючая, а не гладкий шлем.
         const spikes = [
-            [0.0, 0.26, 0.14, -0.5, 0.0],
-            [-0.17, 0.24, 0.06, -0.35, -0.4],
-            [0.17, 0.24, 0.06, -0.35, 0.4],
-            [-0.1, 0.2, -0.2, 0.5, -0.2],
-            [0.12, 0.2, -0.2, 0.5, 0.25],
+            [0.0, 0.3, 0.02, -0.9, 0.0],
+            [-0.14, 0.29, -0.04, -0.7, -0.5],
+            [0.14, 0.29, -0.04, -0.7, 0.5],
+            [-0.08, 0.25, -0.19, 0.7, -0.25],
+            [0.1, 0.25, -0.19, 0.7, 0.3],
         ];
         spikes.forEach(([x, y, z, rx, rz], i) => {
             const spike = track(MeshBuilder.CreateCylinder(`${id}_spike${i}`, {
-                height: 0.3, diameterTop: 0.01, diameterBottom: 0.13,
+                height: 0.19, diameterTop: 0.01, diameterBottom: 0.1,
                 tessellation: 4, faceted: true,
             }, scene));
             spike.parent = head;
@@ -369,7 +445,7 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
                 height: 0.09, diameter: 0.26, tessellation: 8, faceted: true,
             }, scene));
             cup.parent = head;
-            cup.position.set(0.27 * side, -0.01, 0);
+            cup.position.set(0.235 * side, -0.01, 0);
             cup.rotation.z = Math.PI / 2;
             cup.material = gold;
 
@@ -377,14 +453,14 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
                 height: 0.04, diameter: 0.19, tessellation: 8,
             }, scene));
             pad.parent = head;
-            pad.position.set(0.23 * side, -0.01, 0);
+            pad.position.set(0.2 * side, -0.01, 0);
             pad.rotation.z = Math.PI / 2;
             pad.material = leather;
         }
 
         // Дужка через макушку.
         const band = track(MeshBuilder.CreateTorus(`${id}_phoneBand`, {
-            diameter: 0.54, thickness: 0.055, tessellation: 16,
+            diameter: 0.48, thickness: 0.05, tessellation: 16,
         }, scene));
         band.parent = head;
         band.position.y = 0.03;
@@ -395,22 +471,61 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
 
     for (const side of [-1, 1]) {
         const brow = track(MeshBuilder.CreateBox(`${id}_brow${side}`, {
-            width: 0.13, height: 0.035, depth: 0.05,
+            width: 0.115, height: 0.03, depth: 0.045,
         }, scene));
         brow.parent = head;
-        brow.position.set(0.1 * side, 0.1, 0.22);
+        brow.position.set(0.092 * side, 0.108, 0.218);
         brow.rotation.z = side * (weapon === 'staff' ? -0.1 : 0.22);
         brow.material = hair;
     }
 
-    // Взгляд: чтобы было видно, куда повёрнут юнит.
+    // Глаза: белок + радужка + зрачок. Раньше это был один тёмный шарик,
+    // из-за чего лицо читалось как маска с дырками.
+    const scleraMat = makeMaterial(scene, `${id}_scleraMat`, '#f4f1ea');
+    const irisMat = makeMaterial(scene, `${id}_irisMat`, weapon === 'staff' ? '#2f6f4f' : '#2e6b8f');
+    const pupilMat = makeMaterial(scene, `${id}_pupilMat`, '#15171c');
+    const lidMat = makeMaterial(scene, `${id}_lidMat`, shade('#f2c9a0', 0.82));
+
     for (const side of [-1, 1]) {
-        const eye = track(MeshBuilder.CreateSphere(`${id}_eye${side > 0 ? 'R' : 'L'}`, {
-            diameter: 0.075,
+        const tag = side > 0 ? 'R' : 'L';
+
+        // Глазница — небольшое затемнение под бровью.
+        const socket = track(MeshBuilder.CreateSphere(`${id}_socket${tag}`, {
+            diameterX: 0.128, diameterY: 0.095, diameterZ: 0.055,
+        }, scene));
+        socket.parent = head;
+        socket.position.set(0.092 * side, 0.025, 0.198);
+        socket.material = lidMat;
+
+        const eye = track(MeshBuilder.CreateSphere(`${id}_eye${tag}`, {
+            diameterX: 0.1, diameterY: 0.072, diameterZ: 0.065,
         }, scene));
         eye.parent = head;
-        eye.position.set(0.1 * side, 0.02, 0.23);
-        eye.material = makeMaterial(scene, `${id}_eyeMat${side}`, '#20232a');
+        eye.position.set(0.092 * side, 0.025, 0.203);
+        eye.material = scleraMat;
+
+        const iris = track(MeshBuilder.CreateSphere(`${id}_iris${tag}`, {
+            diameterX: 0.048, diameterY: 0.048, diameterZ: 0.038,
+        }, scene));
+        iris.parent = head;
+        iris.position.set(0.092 * side, 0.022, 0.222);
+        iris.material = irisMat;
+
+        const pupil = track(MeshBuilder.CreateSphere(`${id}_pupil${tag}`, {
+            diameterX: 0.026, diameterY: 0.03, diameterZ: 0.02,
+        }, scene));
+        pupil.parent = head;
+        pupil.position.set(0.092 * side, 0.022, 0.229);
+        pupil.material = pupilMat;
+
+        // Верхнее веко — прикрывает глаз сверху, придаёт взгляду тяжесть.
+        const lid = track(MeshBuilder.CreateBox(`${id}_lid${tag}`, {
+            width: 0.108, height: 0.02, depth: 0.033,
+        }, scene));
+        lid.parent = head;
+        lid.position.set(0.092 * side, 0.058, 0.216);
+        lid.rotation.z = side * (weapon === 'staff' ? -0.06 : 0.16);
+        lid.material = lidMat;
     }
 
     // --- Руки и ноги ------------------------------------------------------
