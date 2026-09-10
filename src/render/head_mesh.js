@@ -42,11 +42,41 @@ const PROFILE = [
 /** Направления обхода контура: 0 — строго вперёд, PI — назад. */
 const SEGMENTS = 16;
 
+/** Верх черепа — на этой высоте сечения сходятся в полюс. */
+export const SKULL_APEX_Y = 0.648;
+
+/**
+ * Радиус черепа на произвольной высоте: между табличными сечениями
+ * интерполируем. Нужен причёске, чтобы лежать НА голове, а не пересекать её.
+ */
+export function skullRadiusAt(angle, y) {
+    if (y <= PROFILE[0].y) return contourRadius(angle, PROFILE[0]);
+
+    const last = PROFILE[PROFILE.length - 1];
+    if (y >= last.y) return contourRadius(angle, last);
+
+    for (let i = 0; i < PROFILE.length - 1; i += 1) {
+        const a = PROFILE[i];
+        const b = PROFILE[i + 1];
+        if (y < a.y || y > b.y) continue;
+
+        const t = (y - a.y) / (b.y - a.y);
+        return contourRadius(angle, {
+            back: a.back + (b.back - a.back) * t,
+            front: a.front + (b.front - a.front) * t,
+            half: a.half + (b.half - a.half) * t,
+            squareness: a.squareness + (b.squareness - a.squareness) * t,
+        });
+    }
+
+    return contourRadius(angle, last);
+}
+
 /**
  * Радиус контура в заданном направлении.
  * Смешиваем круг и прямоугольник: `squareness` придаёт лицу плоские планы.
  */
-function contourRadius(angle, section) {
+export function contourRadius(angle, section) {
     const forward = Math.cos(angle);
     const side = Math.sin(angle);
 
@@ -169,10 +199,10 @@ export function createHeadMesh(scene, name) {
  * Это грубая, но дешёвая замена трассировке: считается один раз при сборке
  * модели и даёт тени в глазницах, под бровью, под носом и под челюстью.
  */
-function computeAmbientOcclusion(positions, normals) {
+export function computeAmbientOcclusion(positions, normals, options = {}) {
+    const { radius: RADIUS = 0.17, strength = 1.6, floor = 0.55 } = options;
     const count = positions.length / 3;
     const ao = new Float32Array(count);
-    const RADIUS = 0.17;
 
     for (let i = 0; i < count; i += 1) {
         const px = positions[i * 3];
@@ -202,8 +232,8 @@ function computeAmbientOcclusion(positions, normals) {
         }
 
         const raw = samples > 0 ? occlusion / Math.sqrt(samples) : 0;
-        // 1 — открытая поверхность, ~0.55 — глубокая складка.
-        ao[i] = Math.max(0.55, 1 - raw * 1.6);
+        // 1 — открытая поверхность, `floor` — самая глубокая складка.
+        ao[i] = Math.max(floor, 1 - raw * strength);
     }
 
     return ao;

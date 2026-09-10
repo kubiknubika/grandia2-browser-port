@@ -15,6 +15,7 @@
 
 import { Color3, MeshBuilder, StandardMaterial, TransformNode, Vector3 } from '@babylonjs/core';
 import { createHeadMesh } from './head_mesh.js';
+import { createHairMesh } from './hair_mesh.js';
 
 function makeMaterial(scene, name, hex, { emissive = null, specular = 0.2 } = {}) {
     const material = new StandardMaterial(name, scene);
@@ -349,104 +350,48 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         ear.material = skin;
     }
 
-    const hairMesh = track(MeshBuilder.CreateSphere(`${id}_hair`, {
-        diameterX: 0.44, diameterY: 0.46, diameterZ: 0.48, slice: 0.66,
-    }, scene));
+    // Причёска — оболочка по форме черепа (см. hair_mesh.js). Раньше это была
+    // половина сферы с воткнутыми конусами: они пересекали купол под
+    // случайными углами, и волосы читались как шлем с шипами.
+    const hairMesh = track(createHairMesh(
+        scene, `${id}_hair`, weapon === 'staff' ? 'smooth' : 'spiky',
+    ));
     hairMesh.parent = head;
-    hairMesh.position.set(0, 0.492, -0.015);
     hairMesh.material = hair;
 
-    if (weapon !== 'staff') {
-        // Чёлка: несколько клиньев вниз-на-лоб.одна коробка торчала козырьком.
-        const bangs = [
-            [-0.125, 0.518, 0.108, 0.3],
-            [-0.045, 0.508, 0.132, -0.16],
-            [0.055, 0.51, 0.128, 0.18],
-            [0.13, 0.52, 0.1, -0.32],
-        ];
-        bangs.forEach(([x, y, z, rz], i) => {
-            const lock = track(MeshBuilder.CreateCylinder(`${id}_bang${i}`, {
-                height: 0.13, diameterTop: 0.015, diameterBottom: 0.095,
-                tessellation: 4, faceted: true,
+    if (weapon === 'staff') {
+        // Длину волос Елены даёт подол самой оболочки (hair_mesh.js).
+        // Раньше здесь висели две капсулы-«пряди» и шар на затылке —
+        // они читались как приклеенные трубы.
+        for (const side of [-1, 1]) {
+            const lock = track(MeshBuilder.CreateCapsule(`${id}_strand${side}`, {
+                height: 0.34, radius: 0.045, capSubdivisions: 3, subdivisions: 3,
             }, scene));
             lock.parent = head;
-            lock.position.set(x, y, z);
-            lock.rotation.set(Math.PI - 0.5, 0, rz);
+            // Передняя прядь вдоль щеки — обрамляет лицо.
+            lock.position.set(0.196 * side, 0.235, 0.055);
+            lock.rotation.set(0.12, 0, side * 0.07);
             lock.material = hair;
-        });
-    }
-
-    if (weapon === 'staff') {
-        // Елена: длинные волосы по плечи — узнаваемый силуэт со спины.
-        for (const side of [-1, 1]) {
-            const strand = track(MeshBuilder.CreateCapsule(`${id}_strand${side}`, {
-                height: 0.62, radius: 0.1, capSubdivisions: 3, subdivisions: 3,
-            }, scene));
-            strand.parent = head;
-            strand.position.set(0.17 * side, 0.2, -0.05);
-            strand.material = hair;
         }
-        const bun = track(MeshBuilder.CreateSphere(`${id}_bun`, { diameter: 0.3 }, scene));
-        bun.parent = head;
-        bun.position.set(0, 0.3, -0.2);
-        bun.material = hair;
     } else {
-        // Рюдо: короткий ёжик и хвостик сзади.
+        // Рюдо: хвостик у затылка. Шипы уже часть меша причёски.
         const tail = track(MeshBuilder.CreateCapsule(`${id}_tail`, {
-            height: 0.34, radius: 0.07, capSubdivisions: 3, subdivisions: 3,
+            height: 0.26, radius: 0.055, capSubdivisions: 3, subdivisions: 3,
         }, scene));
         tail.parent = head;
-        tail.position.set(0, 0.42, -0.21);
-        tail.rotation.x = 0.9;
+        // Лежит на затылке и спускается вниз. При rotation.x = 1.0 он торчал
+        // назад поперёк головы обрубком.
+        tail.position.set(0, 0.34, -0.212);
+        tail.rotation.x = 0.42;
         tail.material = hair;
 
-        // Торчащие пряди — в оригинале причёска колючая, а не гладкий шлем.
-        const spikes = [
-            [0.0, 0.6, -0.02, -0.35, 0.0],
-            [-0.115, 0.585, -0.06, -0.2, -0.45],
-            [0.115, 0.585, -0.06, -0.2, 0.45],
-            [-0.07, 0.552, -0.16, 0.5, -0.2],
-            [0.085, 0.552, -0.16, 0.5, 0.25],
-        ];
-        spikes.forEach(([x, y, z, rx, rz], i) => {
-            const spike = track(MeshBuilder.CreateCylinder(`${id}_spike${i}`, {
-                height: 0.13, diameterTop: 0.012, diameterBottom: 0.085,
-                tessellation: 4, faceted: true,
-            }, scene));
-            spike.parent = head;
-            spike.position.set(x, y, z);
-            spike.rotation.set(rx, 0, rz);
-            spike.material = hair;
-        });
-
-        // Пряди поверх шапки: гладкий купол читался как шлем.
-        const locks = [
-            [-0.13, 0.6, 0.055, -0.5, 0.35, 0.2],
-            [-0.05, 0.628, 0.018, -0.35, 0.1, 0.22],
-            [0.06, 0.624, 0.028, -0.4, -0.15, 0.21],
-            [0.14, 0.6, 0.0, -0.3, -0.4, 0.19],
-            [-0.16, 0.554, -0.095, 0.25, 0.5, 0.18],
-            [0.16, 0.554, -0.095, 0.25, -0.5, 0.18],
-            [0.0, 0.572, -0.17, 0.7, 0.0, 0.2],
-        ];
-        locks.forEach(([x, y, z, rx, rz, len], i) => {
-            const lock = track(MeshBuilder.CreateCylinder(`${id}_lock${i}`, {
-                height: len, diameterTop: 0.02, diameterBottom: 0.105,
-                tessellation: 4, faceted: true,
-            }, scene));
-            lock.parent = head;
-            lock.position.set(x, y, z);
-            lock.rotation.set(rx, 0, rz);
-            lock.material = hair;
-        });
-
-        // Бакенбарды перед ушами.
+        // Бакенбарды перед ушами — стык причёски с лицом.
         for (const side of [-1, 1]) {
             const burn = track(MeshBuilder.CreateBox(`${id}_sideburn${side}`, {
-                width: 0.035, height: 0.09, depth: 0.075,
+                width: 0.03, height: 0.075, depth: 0.062,
             }, scene));
             burn.parent = head;
-            burn.position.set(0.145 * side, 0.395, 0.045);
+            burn.position.set(0.152 * side, 0.372, 0.038);
             burn.material = hair;
         }
 
@@ -590,19 +535,26 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     const weaponPivot = joint(scene, `${id}_weaponPivot`, hand, Vector3.Zero());
 
     if (weapon === 'sword') {
+        // Меч лежит в ладони СЕРЕДИНОЙ РУКОЯТИ. Раньше геометрия строилась
+        // от гарды (y = 0), поэтому в кулаке оказывалась гарда, а рукоять с
+        // навершием торчала за кистью — меч будто висел рядом с рукой.
+        // Весь клинок поднят на GRIP_SHIFT: теперь центр рукояти совпадает
+        // с центром кулака, и оружие ведёт себя как продолжение кисти.
+        const GRIP_SHIFT = 0.14;
+
         // Клинок: широкое основание, сужение к острию и дол по центру.
         const blade = track(MeshBuilder.CreateBox(`${id}_blade`, {
             width: 0.15, height: 1.2, depth: 0.045,
         }, scene));
         blade.parent = weaponPivot;
-        blade.position.y = 0.63;
+        blade.position.y = 0.63 + GRIP_SHIFT;
         blade.material = steel;
 
         const fuller = track(MeshBuilder.CreateBox(`${id}_fuller`, {
             width: 0.05, height: 1.04, depth: 0.055,
         }, scene));
         fuller.parent = weaponPivot;
-        fuller.position.y = 0.61;
+        fuller.position.y = 0.61 + GRIP_SHIFT;
         fuller.material = steelDark;
 
         // Остриё отдельным клином — прямоугольная «линейка» выглядела бедно.
@@ -611,7 +563,7 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
             tessellation: 4, faceted: true,
         }, scene));
         tip.parent = weaponPivot;
-        tip.position.y = 1.32;
+        tip.position.y = 1.32 + GRIP_SHIFT;
         tip.scaling.z = 0.3;
         tip.material = steel;
 
@@ -619,7 +571,7 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
             width: 0.42, height: 0.08, depth: 0.11,
         }, scene));
         guard.parent = weaponPivot;
-        guard.position.y = 0.03;
+        guard.position.y = 0.03 + GRIP_SHIFT;
         guard.material = gold;
 
         // Загнутые концы гарды.
@@ -628,7 +580,7 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
                 diameterX: 0.1, diameterY: 0.14, diameterZ: 0.1,
             }, scene));
             quillon.parent = weaponPivot;
-            quillon.position.set(0.2 * side, 0.07, 0);
+            quillon.position.set(0.2 * side, 0.07 + GRIP_SHIFT, 0);
             quillon.material = gold;
         }
 
@@ -636,7 +588,7 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
             height: 0.28, diameter: 0.08, tessellation: 8,
         }, scene));
         grip.parent = weaponPivot;
-        grip.position.y = -0.14;
+        grip.position.y = -0.14 + GRIP_SHIFT;
         grip.material = leather;
 
         // Обмотка рукояти.
@@ -645,7 +597,7 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
                 height: 0.035, diameter: 0.095, tessellation: 8,
             }, scene));
             wrap.parent = weaponPivot;
-            wrap.position.y = -0.05 - i * 0.08;
+            wrap.position.y = -0.05 - i * 0.08 + GRIP_SHIFT;
             wrap.material = leatherLight;
         }
 
@@ -653,7 +605,7 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
             diameterX: 0.13, diameterY: 0.12, diameterZ: 0.13,
         }, scene));
         pommel.parent = weaponPivot;
-        pommel.position.y = -0.3;
+        pommel.position.y = -0.3 + GRIP_SHIFT;
         pommel.material = gold;
     } else {
         // Посох делаем толще и светлее: тонкая тёмная палка терялась на фоне.

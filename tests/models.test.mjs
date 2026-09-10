@@ -577,6 +577,138 @@ check('подсветка попадания снимается даже при 
     );
 });
 
+check('меч лежит рукоятью в ладони и следует за кистью', () => {
+    // Регрессия: геометрия меча строилась от гарды, поэтому в кулаке
+    // оказывалась гарда, а рукоять с навершием торчала за кистью —
+    // меч будто висел в воздухе рядом с рукой.
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'gripTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+
+    const find = (suffix) => model.meshes.find((m) => m.name === `gripTest_${suffix}`);
+    const fist = find('fistR');
+    const grip = find('grip');
+    assert.ok(fist && grip, 'нет кулака или рукояти');
+
+    const fistPos = fist.getBoundingInfo().boundingBox.centerWorld;
+    const gripPos = grip.getBoundingInfo().boundingBox.centerWorld;
+    const gap = gripPos.subtract(fistPos).length();
+
+    assert.ok(
+        gap < 0.05,
+        `рукоять не в ладони: расстояние до кулака ${gap.toFixed(3)} (радиус кулака ~0.08)`,
+    );
+
+    // Меч должен двигаться ВМЕСТЕ с кистью: поворачиваем кисть и проверяем,
+    // что остриё сместилось. Если оружие подвешено к корпусу — не сдвинется.
+    const { rig } = model;
+    const tip = find('bladeTip');
+    const before = tip.getBoundingInfo().boundingBox.centerWorld.clone();
+
+    rig.elbowR.rotation.x -= 0.8;
+    model.root.computeWorldMatrix(true);
+    model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+    const after = tip.getBoundingInfo().boundingBox.centerWorld;
+
+    assert.ok(
+        after.subtract(before).length() > 0.2,
+        'остриё не поехало за рукой — меч не привязан к кисти',
+    );
+});
+
+check('меч направлен остриём вперёд, а не за спину', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'aimTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+
+    const find = (suffix) => model.meshes.find((m) => m.name === `aimTest_${suffix}`);
+    const grip = find('grip').getBoundingInfo().boundingBox.centerWorld;
+    const tip = find('bladeTip').getBoundingInfo().boundingBox.centerWorld;
+    const aim = tip.subtract(grip);
+
+    assert.ok(aim.z > 0.2, `клинок смотрит назад: z = ${aim.z.toFixed(2)}`);
+    assert.ok(aim.y > 0.2, `клинок опущен: y = ${aim.y.toFixed(2)}`);
+});
+
+check('причёска — оболочка на черепе, а не шар с конусами', () => {
+    // Регрессия: волосы были полусферой с воткнутыми конусами-прядями,
+    // из-за чего читались как шлем с шипами.
+    for (const preset of ['ryudo', 'elena']) {
+        const model = createUnitModel(scene, makeUnitData(preset, {
+            id: `hair_${preset}`, position: { x: 0, z: 0 },
+        }));
+        const names = model.meshes.map((m) => m.name);
+
+        for (const junk of ['bang0', 'spike0', 'lock0']) {
+            assert.ok(
+                !names.includes(`hair_${preset}_${junk}`),
+                `${preset}: остался примитив причёски ${junk}`,
+            );
+        }
+
+        const hair = model.meshes.find((m) => m.name === `hair_${preset}_hair`);
+        assert.ok(hair, `${preset}: нет меша причёски`);
+        assert.ok(
+            hair.getTotalVertices() > 200,
+            `${preset}: причёска слишком грубая (${hair.getTotalVertices()} вершин)`,
+        );
+        assert.ok(
+            hair.getVerticesData('normal'),
+            `${preset}: у причёски нет нормалей — будет гранёной`,
+        );
+    }
+});
+
+check('волосы покрывают затылок и не висят над черепом', () => {
+    for (const preset of ['ryudo', 'elena']) {
+        const model = createUnitModel(scene, makeUnitData(preset, {
+            id: `cover_${preset}`, position: { x: 0, z: 0 },
+        }));
+        model.root.computeWorldMatrix(true);
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+
+        const hair = model.meshes.find((m) => m.name === `cover_${preset}_hair`);
+        const head = model.meshes.find((m) => m.name === `cover_${preset}_head`);
+        const hairBox = hair.getBoundingInfo().boundingBox;
+        const headBox = head.getBoundingInfo().boundingBox;
+
+        // Верх причёски примерно на макушке: если она «парит», зазор большой.
+        const lift = hairBox.maximumWorld.y - headBox.maximumWorld.y;
+        assert.ok(
+            lift > -0.02 && lift < 0.12,
+            `${preset}: причёска не сидит на голове, зазор по верху ${lift.toFixed(3)}`,
+        );
+
+        // Затылок должен быть закрыт: низ волос заметно ниже макушки.
+        const drop = headBox.maximumWorld.y - hairBox.minimumWorld.y;
+        assert.ok(
+            drop > 0.3,
+            `${preset}: волосы не закрывают затылок (спуск всего ${drop.toFixed(3)})`,
+        );
+    }
+
+    // У Елены волосы длиннее, чем у Рюдо, — это разные силуэты.
+    const lengths = {};
+    for (const preset of ['ryudo', 'elena']) {
+        const model = createUnitModel(scene, makeUnitData(preset, {
+            id: `len_${preset}`, position: { x: 0, z: 0 },
+        }));
+        model.root.computeWorldMatrix(true);
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+        const hair = model.meshes.find((m) => m.name === `len_${preset}_hair`);
+        const box = hair.getBoundingInfo().boundingBox;
+        lengths[preset] = box.maximumWorld.y - box.minimumWorld.y;
+    }
+    assert.ok(
+        lengths.elena > lengths.ryudo + 0.2,
+        `у Елены волосы не длиннее: ${lengths.elena.toFixed(2)} против ${lengths.ryudo.toFixed(2)}`,
+    );
+});
+
 // --- Итог -----------------------------------------------------------------
 
 await Promise.all(pending);
