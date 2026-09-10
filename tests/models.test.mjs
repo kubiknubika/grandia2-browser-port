@@ -956,6 +956,134 @@ check('клинок режет кромкой на протяжении удар
     );
 });
 
+// --- Посох Елены ----------------------------------------------------------
+
+/**
+ * Прогоняет модель Елены через аниматор и возвращает замеры посоха на
+ * кадре, где поза раскрыта полностью. Точка древка задаётся долей t:
+ * 0 — нижний конец, 1 — навершие с орбом.
+ */
+function staffProbe(id, { cast = null, swing = false, frames = 28 } = {}) {
+    const model = createUnitModel(scene, makeUnitData('elena', {
+        id, position: { x: 0, z: 0 },
+    }));
+    const animator = new Animator();
+    animator.register(id, model);
+    const unit = fakeUnit(id, model);
+
+    // Сначала успокаиваем позу покоя, иначе замер поймает переходный кадр.
+    for (let i = 0; i < 120; i += 1) animator.update([unit], 1 / 60);
+    if (swing) animator.playSwing(id, 0.6);
+    if (cast) animator.playCast(id, 0.8, { onSelf: cast === 'self' });
+    for (let i = 0; i < frames; i += 1) animator.update([unit], 1 / 60);
+
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => n.computeWorldMatrix(true));
+
+    const point = (t) => Vector3.TransformCoordinates(
+        new Vector3(0, -0.40 + t * 2.02, 0), model.rig.weaponPivot.getWorldMatrix(),
+    );
+    const orb = point(1);
+    const axis = orb.subtract(point(0)).normalize();
+
+    // Насколько левая кисть далека от древка — рвётся ли двуручный хват.
+    const handL = model.rig.handL.getAbsolutePosition();
+    let grip = Infinity;
+    for (let k = 0; k <= 80; k += 1) {
+        grip = Math.min(grip, Vector3.Distance(point(k / 80), handL));
+    }
+
+    const head = model.meshes.find((m) => m.name === `${id}_head`);
+    return {
+        orb, axis, grip, point,
+        crown: head.getBoundingInfo().boundingBox.maximumWorld.y,
+        handR: model.rig.hand.getAbsolutePosition(),
+        handL,
+    };
+}
+
+check('посох держат ДВУМЯ руками: обе кисти на древке', () => {
+    const rest = staffProbe('elenaGrip', { frames: 1 });
+    assert.ok(
+        rest.grip < 0.12,
+        `левая кисть не на древке: промах ${rest.grip.toFixed(3)}`,
+    );
+    // Локти согнуты: кисти держатся перед корпусом, а не висят плетьми.
+    assert.ok(
+        rest.handR.z > 0.25 && rest.handL.z > 0.10,
+        `кисти не вынесены вперёд: R.z=${rest.handR.z.toFixed(2)} L.z=${rest.handL.z.toFixed(2)}`,
+    );
+    // Правая ниже левой: правая у живота, левая выше на древке.
+    assert.ok(
+        rest.handR.y < rest.handL.y,
+        `правая кисть не ниже левой: R.y=${rest.handR.y.toFixed(2)} L.y=${rest.handL.y.toFixed(2)}`,
+    );
+});
+
+check('хват не рвётся ни на замахе, ни на касте', () => {
+    for (const [name, opts] of [
+        ['замах', { swing: true, frames: 14 }],
+        ['каст в цель', { cast: 'target' }],
+        ['каст на себя', { cast: 'self' }],
+    ]) {
+        const probe = staffProbe(`elenaHold_${name.replace(/ /g, '')}`, opts);
+        assert.ok(
+            probe.grip < 0.16,
+            `${name}: кисть сорвалась с древка, промах ${probe.grip.toFixed(3)}`,
+        );
+    }
+});
+
+check('каст на себя поднимает посох над головой кончиком ВВЕРХ', () => {
+    const probe = staffProbe('elenaSelf', { cast: 'self' });
+    // Главное отличие от замаха: кончик смотрит вверх, а не заваливается
+    // назад за голову.
+    assert.ok(
+        probe.axis.y > 0.85,
+        `посох не вертикален: ось.y=${probe.axis.y.toFixed(2)}`,
+    );
+    assert.ok(
+        probe.orb.y > probe.crown + 0.5,
+        `орб не над головой: орб=${probe.orb.y.toFixed(2)} макушка=${probe.crown.toFixed(2)}`,
+    );
+    // Руки действительно подняты, а не держат посох у груди.
+    assert.ok(
+        probe.handL.y > 2.6,
+        `левая кисть не поднята: y=${probe.handL.y.toFixed(2)}`,
+    );
+});
+
+check('каст в цель выносит посох вперёд, а не над голову', () => {
+    const target = staffProbe('elenaAim', { cast: 'target' });
+    const self = staffProbe('elenaAimSelf', { cast: 'self' });
+    assert.ok(
+        target.orb.z > 0.6,
+        `посох не вынесен в сторону цели: орб.z=${target.orb.z.toFixed(2)}`,
+    );
+    // Две позы каста должны заметно различаться, иначе «на себя» не читается.
+    assert.ok(
+        self.orb.y - target.orb.y > 0.8,
+        `каст на себя не выше каста в цель: ${self.orb.y.toFixed(2)} vs ${target.orb.y.toFixed(2)}`,
+    );
+});
+
+check('ни древко, ни кисти не проходят перед лицом', () => {
+    for (const [name, opts] of [
+        ['замах', { swing: true, frames: 14 }],
+        ['каст на себя', { cast: 'self' }],
+    ]) {
+        const probe = staffProbe(`elenaFace_${name.replace(/ /g, '')}`, opts);
+        // Голова Елены — примерно сфера с центром (0, 2.85, 0.05).
+        for (let k = 0; k <= 20; k += 1) {
+            const p = probe.point(k / 20);
+            if (p.y < 2.6 || p.y > 3.1) continue;
+            const gap = Math.hypot(p.x, p.z - 0.05);
+            assert.ok(gap > 0.24, `${name}: древко перед лицом, зазор ${gap.toFixed(2)}`);
+        }
+    }
+});
+
 // --- Итог -----------------------------------------------------------------
 
 await Promise.all(pending);

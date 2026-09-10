@@ -1065,6 +1065,61 @@ test('у каждой команды есть описание, а Combo и Crit
 let passed = 0;
 let failed = 0;
 
+test('каст на группу целится в центр масс, каст на себя — никуда', () => {
+    const { system } = buildBattle({ encounter: PARTY_ENCOUNTER });
+    const caster = system.units.find((u) => u.isPlayer && u.hp > 0);
+    const enemies = system.units.filter((u) => !u.isPlayer && u.hp > 0);
+
+    // Расставляем врагов заведомо асимметрично, чтобы центр не совпал
+    // ни с одним из них.
+    enemies[0].mesh.position.x = -4;
+    enemies[0].mesh.position.z = 2;
+    if (enemies[1]) {
+        enemies[1].mesh.position.x = 6;
+        enemies[1].mesh.position.z = 8;
+    }
+
+    const group = system.castAim(caster, { targeting: 'all-enemies' });
+    assert.equal(group.onSelf, false, 'каст по врагам не может быть «на себя»');
+
+    const expectedX = enemies.reduce((sum, u) => sum + u.mesh.position.x, 0) / enemies.length;
+    const expectedZ = enemies.reduce((sum, u) => sum + u.mesh.position.z, 0) / enemies.length;
+    assert.ok(
+        Math.abs(group.position.x - expectedX) < 1e-6
+        && Math.abs(group.position.z - expectedZ) < 1e-6,
+        `центр целей неверен: (${group.position.x}, ${group.position.z})`,
+    );
+
+    // Группа, включающая саму Елену, — это каст «на себя»: поза над головой.
+    const allies = system.castAim(caster, { targeting: 'all-allies' });
+    assert.equal(allies.onSelf, true, 'каст на свою группу должен считаться «на себя»');
+    assert.equal(allies.position, null, 'на себя поворачиваться не нужно');
+
+    assert.equal(system.castAim(caster, { targeting: 'self' }).onSelf, true);
+});
+
+test('одиночный каст целится ровно в цель и разворачивает кастующего', () => {
+    const { system } = buildBattle({ encounter: PARTY_ENCOUNTER });
+    const caster = system.units.find((u) => u.isPlayer && u.hp > 0);
+    const enemy = system.units.find((u) => !u.isPlayer && u.hp > 0);
+    enemy.mesh.position.x = 5;
+    enemy.mesh.position.z = -3;
+    // Без явной цели resolveTargets берёт цель по умолчанию — фиксируем её,
+    // иначе проверяем не тот юнит, что подвинули.
+    caster.target = enemy;
+
+    const aim = system.castAim(caster, { targeting: 'single' });
+    assert.equal(aim.onSelf, false);
+    assert.ok(
+        aim.position.x === 5 && aim.position.z === -3,
+        `цель одиночного каста неверна: (${aim.position.x}, ${aim.position.z})`,
+    );
+
+    // Возвращается копия: сдвиг цели не должен задним числом менять прицел.
+    enemy.mesh.position.x = 99;
+    assert.equal(aim.position.x, 5, 'castAim вернул ссылку на позицию цели');
+});
+
 for (const { name, fn } of tests) {
     try {
         fn();
