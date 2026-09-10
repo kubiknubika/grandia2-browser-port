@@ -661,12 +661,19 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     elbowL.rotation.x = -0.22;
 
     if (weapon === 'sword') {
-        // Меч держим остриём ВВЕРХ-ВПЕРЁД. Прежний наклон (-0.55) заваливал
-        // клинок за спину: остриё уходило на z=-0.78 при рукояти z=+0.52.
-        shoulderR.rotation.x = 0.18;
-        elbowR.rotation.x = -0.5;
-        weaponPivot.rotation.x = 1.45;
-        weaponPivot.rotation.z = -0.25;
+        // Стойка с опущенным мечом. Углы подобраны численно под три условия:
+        //   1) остриё чуть выше земли (низ клинка ~0.22 при росте 3.1);
+        //   2) клинок смотрит ВПЕРЁД, а не вбок (направление к острию z≈0.79);
+        //   3) плоскость клинка развёрнута вбок — меч держат РЕЖУЩЕЙ КРОМКОЙ
+        //      вперёд, а не плашмя (нормаль плоскости почти строго по X).
+        // Кисть довёрнута под весом клинка, поэтому меч не параллелен полу,
+        // а наклонён остриём вниз (составляющая y≈-0.61).
+        shoulderR.rotation.x = 0.0;
+        shoulderR.rotation.z = -0.3;
+        elbowR.rotation.x = -0.1;
+        weaponPivot.rotation.x = 2.8;
+        weaponPivot.rotation.y = 1.5;
+        weaponPivot.rotation.z = 0.8;
     } else {
         // Посох стоит вертикально в опущенной руке, орб над плечом.
         elbowR.rotation.x = -0.16;
@@ -695,6 +702,7 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
                 elbowLX: elbowL.rotation.x,
                 elbowRX: elbowR.rotation.x,
                 weaponX: weaponPivot.rotation.x,
+                weaponY: weaponPivot.rotation.y,
                 weaponZ: weaponPivot.rotation.z,
             },
         },

@@ -68,6 +68,17 @@ if (POSE === 'action') {
     for (let i = 0; i < frames; i += 1) animator.update(actors.map((a) => a.unit), 1 / 60);
 }
 
+if (POSE === 'run') {
+    // Гоним героя вперёд с боевой скоростью, чтобы устоялась поза бега:
+    // клинок выводится параллельно полу, локоть сгибается.
+    const hero = actors.find((a) => a.unit.id === 'ryudo');
+    for (let i = 0; i < 180; i += 1) {
+        if (hero) hero.model.root.position.z += 11.13 / 60;
+        animator.update(actors.map((a) => a.unit), 1 / 60);
+    }
+    if (hero) hero.model.root.position.z = 0;
+}
+
 if (POSE === 'cast') {
     const frames = Number(args.frame ?? 20);
     animator.playCast('ryudo');

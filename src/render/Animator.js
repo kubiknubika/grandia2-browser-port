@@ -14,6 +14,12 @@ const TWO_PI = Math.PI * 2;
 // Позы смерти: угол падения и подъём корня, который не даёт телу
 // провалиться сквозь пол арены. Значения подобраны по габаритам моделей.
 const SWING_SECONDS = 0.42;
+
+// Доворот кисти на бегу. Основную работу делает сгиб локтя (он и выводит
+// клинок параллельно полу), кисть лишь довершает поворот, поэтому значения
+// небольшие. Замер: без сгиба локтя клинок висит на y=-0.69, со сгибом 0.02.
+const CARRY_WRIST_X = 0.30;
+const CARRY_WRIST_Z = 0.10;
 const CAST_SECONDS = 0.8;
 const HUMANOID_DEATH_ROT = 1.45;
 const HUMANOID_DEATH_LIFT = 0.68;
@@ -32,6 +38,31 @@ function damp(current, target, lambda, dt) {
 function clamp01(value) {
     return Math.max(0, Math.min(1, value));
 }
+
+function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+}
+
+/**
+ * Анатомические пределы суставов (радианы). Процедурная анимация легко
+ * заводит сустав за естественный предел — рука выгибается в обратную
+ * сторону, и удар выглядит как вывих. Позы клампятся этими рамками.
+ *
+ * Замер на текущих приёмах: локоть упирается в верхнюю границу (-0.05) —
+ * без клампа он разгибался бы в обратную сторону. Плечо доходит до -2.41
+ * при пределе -2.7, то есть его рамка сейчас с запасом; она оставлена как
+ * страховка для более размашистых приёмов.
+ */
+const LIMITS = {
+    // Локоть только сгибается: 0 — прямая рука, отрицательное — сгиб.
+    elbow: [-2.5, -0.05],
+    // Плечо: рука свободно поднимается над головой (назад-вверх) и
+    // выносится вперёд. Прежний предел -1.0 блокировал замах и каст.
+    shoulderX: [-2.7, 3.0],
+    shoulderZ: [-1.5, 1.5],
+    // Кисть отсчитывается от хвата, поэтому предел задаётся отклонением.
+    wristDeviation: 1.45,
+};
 
 /**
  * Профиль удара: занос поднимает оружие до 1, удар сбрасывает до −1
@@ -181,7 +212,7 @@ export class Animator {
         // Скручивание корпуса: замах уводит плечо назад, удар проносит вперёд.
         rig.torso.rotation.y = damp(
             rig.torso.rotation.y,
-            attacking ? (windup * 0.62 - strike * 1.15) * (1 - recover) : 0,
+            attacking ? (windup * 0.85 - strike * 1.5) * (1 - recover) : 0,
             attacking ? 24 : 16, dt,
         );
         // Приседание перед ударом и подъём на проводке — вес тела.
@@ -194,7 +225,7 @@ export class Animator {
         if (rig.hips.rotation) {
             rig.hips.rotation.y = damp(
                 rig.hips.rotation.y,
-                attacking ? (windup * 0.3 - strike * 0.5) * (1 - recover) : 0,
+                attacking ? (windup * 0.42 - strike * 0.7) * (1 - recover) : 0,
                 attacking ? 20 : 12, dt,
             );
         }
@@ -215,49 +246,71 @@ export class Animator {
             attacking ? 20 : 16, dt,
         );
         rig.shoulderL.rotation.z = damp(rig.shoulderL.rotation.z, rest.shoulderLZ, 10, dt);
-        rig.elbowL.rotation.x = damp(
+        rig.elbowL.rotation.x = clamp(damp(
             rig.elbowL.rotation.x,
             rest.elbowLX - castP * 0.95 + castPush * 0.8,
             casting ? 18 : 12, dt,
-        );
+        ), LIMITS.elbow[0], LIMITS.elbow[1]);
+
+        // Бег с мечом: клинок выводится ПАРАЛЛЕЛЬНО полу, локоть сгибается,
+        // рука прижимается к корпусу. В стойке меч опущен остриём к земле —
+        // бежать в такой позе значило бы черпать остриём землю.
+        const carrying = rig.weapon === 'sword';
+        const carry = carrying ? runBlend : 0;
 
         // Правая рука с оружием: занос за плечо, затем рубящий удар вниз.
         const armTarget = attacking
-            ? rest.shoulderRX + (windup * 2.3 - strike * 3.6) * (1 - recover)
-            : rest.shoulderRX - legSwing * -0.4 - castP * 2.6 + castPush * 1.4;
+            ? rest.shoulderRX + (-windup * 2.6 + strike * 2.2) * (1 - recover)
+            : rest.shoulderRX - legSwing * -0.4 - castP * 2.6 + castPush * 1.4
+              + carry * 0.0;
 
         // На ударе руку ведём жёстче, чем на возврате: резкость важнее плавности.
-        rig.shoulderR.rotation.x = damp(
+        rig.shoulderR.rotation.x = clamp(damp(
             rig.shoulderR.rotation.x, armTarget,
             attacking ? (strikeRaw > 0 && recoverRaw === 0 ? 34 : 20) : 12, dt,
-        );
-        rig.shoulderR.rotation.z = damp(
+        ), LIMITS.shoulderX[0], LIMITS.shoulderX[1]);
+        rig.shoulderR.rotation.z = clamp(damp(
             rig.shoulderR.rotation.z,
-            rest.shoulderRZ - (attacking ? (windup * 0.75 - strike * 1.25) * (1 - recover) : 0)
-            - castP * 0.25,
+            rest.shoulderRZ + (attacking ? (-windup * 0.7 + strike * 0.95) * (1 - recover) : 0)
+            - castP * 0.25
+            + carry * 0.16, // локоть подбирается к рёбрам
             attacking ? 20 : 14, dt,
-        );
-        // Локоть сгибается на заносе и распрямляется в момент удара.
-        rig.elbowR.rotation.x = damp(
+        ), LIMITS.shoulderZ[0], LIMITS.shoulderZ[1]);
+        // Локоть: сгибается на заносе, распрямляется в момент удара, и
+        // заметно согнут на бегу — так несут оружие, чтобы не мешало шагу.
+        rig.elbowR.rotation.x = clamp(damp(
             rig.elbowR.rotation.x,
-            rest.elbowRX - (attacking ? (windup * 1.5 - strike * 1.7) * (1 - recover) : 0),
+            rest.elbowRX + (attacking ? (-windup * 0.66 + strike * 0.66) * (1 - recover) : 0)
+            - carry * 0.80,
             attacking ? 26 : 14, dt,
-        );
+        ), LIMITS.elbow[0], LIMITS.elbow[1]);
 
-        // Кисть довoрачивает оружие: клинок идёт плашмя -> на ребро.
+        // Кисть держит клинок. rest-углы уже задают режущую кромку вперёд,
+        // поэтому анимация только ДОБАВЛЯЕТ к ним, не перетирая разворот.
         if (rig.weaponPivot) {
-            rig.weaponPivot.rotation.x = damp(
+            // На бегу кисть распрямляется, выводя меч параллельно полу.
+            const carryX = carry * CARRY_WRIST_X;
+
+            const wristLimit = LIMITS.wristDeviation;
+            rig.weaponPivot.rotation.x = clamp(damp(
                 rig.weaponPivot.rotation.x,
-                rest.weaponX + (attacking ? (windup * 0.75 - strike * 1.5) * (1 - recover) : 0)
+                rest.weaponX + carryX
+                + (attacking ? (-windup * 0.9 + strike * 0.5) * (1 - recover) : 0)
                 - castP * 0.5 + castPush * 0.7,
                 attacking ? 26 : 16, dt,
+            ), rest.weaponX - wristLimit, rest.weaponX + wristLimit);
+            // Разворот хвата (режущая кромка вперёд) держится постоянно:
+            // анимация его не трогает, иначе меч уходит плашмя.
+            rig.weaponPivot.rotation.y = damp(
+                rig.weaponPivot.rotation.y, rest.weaponY ?? 0,
+                attacking ? 24 : 14, dt,
             );
-            rig.weaponPivot.rotation.z = damp(
+            rig.weaponPivot.rotation.z = clamp(damp(
                 rig.weaponPivot.rotation.z,
-                rest.weaponZ + castP * 0.4
-                + (attacking ? (windup * 0.5 - strike * 0.95) * (1 - recover) : 0),
+                rest.weaponZ + castP * 0.4 + carry * CARRY_WRIST_Z
+                + (attacking ? (-windup * 0.3 + strike * 0.8) * (1 - recover) : 0),
                 attacking ? 22 : 12, dt,
-            );
+            ), rest.weaponZ - wristLimit, rest.weaponZ + wristLimit);
         }
 
         // Плащ отстаёт от корпуса — простая имитация инерции ткани.

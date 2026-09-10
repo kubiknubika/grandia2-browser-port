@@ -185,9 +185,16 @@ check('удар: клинок заносится над головой и руб
         previous = now;
     }
 
-    assert.ok(highest > rest.y + 0.6, `замах должен поднять остриё (пик ${highest.toFixed(2)}, покой ${rest.y.toFixed(2)})`);
-    assert.ok(lowest < rest.y - 0.5, `удар должен опустить остриё (низ ${lowest.toFixed(2)})`);
-    assert.ok(highest - lowest > 1.5, `дуга слишком мелкая: ${(highest - lowest).toFixed(2)}`);
+    // В стойке остриё опущено к земле, поэтому замах меряем по подъёму над
+    // стойкой, а не по «провалу ниже покоя», как было в прежней позе.
+    assert.ok(
+        highest > rest.y + 1.0,
+        `замах должен высоко занести остриё (пик ${highest.toFixed(2)}, покой ${rest.y.toFixed(2)})`,
+    );
+    assert.ok(
+        highest - lowest > 1.2,
+        `дуга слишком мелкая: ${(highest - lowest).toFixed(2)}`,
+    );
 
     // Занос уходит назад, проводка выносит клинок вперёд.
     assert.ok(frontMost - backMost > 1.2, `дуга должна идти назад-вперёд: ${(frontMost - backMost).toFixed(2)}`);
@@ -630,8 +637,151 @@ check('меч направлен остриём вперёд, а не за сп�
     const tip = find('bladeTip').getBoundingInfo().boundingBox.centerWorld;
     const aim = tip.subtract(grip);
 
-    assert.ok(aim.z > 0.2, `клинок смотрит назад: z = ${aim.z.toFixed(2)}`);
-    assert.ok(aim.y > 0.2, `клинок опущен: y = ${aim.y.toFixed(2)}`);
+    assert.ok(aim.z > 0.5, `клинок смотрит не вперёд: z = ${aim.z.toFixed(2)}`);
+    assert.ok(
+        Math.abs(aim.x) < 0.3,
+        `клинок развёрнут вбок вместо «вперёд»: x = ${aim.x.toFixed(2)}`,
+    );
+
+    // Под весом клинка кисть довёрнута: меч НЕ параллелен полу, остриё
+    // наклонено вниз, но не втыкается в землю.
+    assert.ok(
+        aim.y < -0.25,
+        `меч держат параллельно полу, а должен быть наклонён: y = ${aim.y.toFixed(2)}`,
+    );
+
+    const tipLow = find('bladeTip').getBoundingInfo().boundingBox.minimumWorld.y;
+    assert.ok(
+        tipLow > 0.05 && tipLow < 0.6,
+        `остриё должно быть чуть выше земли, а оно на ${tipLow.toFixed(2)}`,
+    );
+});
+
+check('меч развёрнут режущей кромкой, а не плашмя', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'edgeTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+
+    // Клинок — плоская коробка: широкая ось X, тонкая Z. Нормаль плоскости
+    // (локальная Z) должна смотреть ВБОК, тогда вперёд идёт кромка.
+    const blade = model.meshes.find((m) => m.name === 'edgeTest_blade');
+    const flat = Vector3.TransformNormal(
+        new Vector3(0, 0, 1), blade.getWorldMatrix(),
+    ).normalize();
+
+    assert.ok(
+        Math.abs(flat.x) > 0.75,
+        `меч держат плашмя: нормаль плоскости (${flat.x.toFixed(2)}, ${flat.y.toFixed(2)}, ${flat.z.toFixed(2)})`,
+    );
+});
+
+check('на бегу меч выводится параллельно полу и локоть сгибается', () => {
+    const animator = new Animator();
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'carryTest', position: { x: 0, z: 0 },
+    }));
+    animator.register('carryTest', model);
+    const unit = fakeUnit('carryTest', model);
+
+    const sync = () => {
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((m) => m.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+    };
+    const aimNow = () => {
+        sync();
+        const find = (n) => model.meshes.find((m) => m.name === `carryTest_${n}`)
+            .getBoundingInfo().boundingBox.centerWorld;
+        return find('bladeTip').subtract(find('grip')).normalize();
+    };
+
+    for (let i = 0; i < 60; i += 1) animator.update([unit], 1 / 60);
+    const standing = aimNow();
+    const standingElbow = model.rig.elbowR.rotation.x;
+
+    // Бежим с боевой скоростью (MOV 356 * WORLD_SCALE ≈ 11 ед/с).
+    for (let i = 0; i < 120; i += 1) {
+        model.root.position.z += 11.13 / 60;
+        animator.update([unit], 1 / 60);
+    }
+    const runningElbow = model.rig.elbowR.rotation.x;
+
+    // Рука машет в такт шагам, поэтому клинок колеблется около среднего.
+    // Мерять один кадр бессмысленно — усредняем по нескольким шагам.
+    let sum = 0;
+    const samples = 90;
+    for (let i = 0; i < samples; i += 1) {
+        model.root.position.z += 11.13 / 60;
+        animator.update([unit], 1 / 60);
+        sum += aimNow().y;
+    }
+    const running = { y: sum / samples };
+
+    assert.ok(
+        Math.abs(running.y) < 0.15,
+        `на бегу клинок в среднем не параллелен полу: y = ${running.y.toFixed(2)}`,
+    );
+    assert.ok(
+        running.y > standing.y + 0.3,
+        `клинок не выровнялся при переходе на бег: ${standing.y.toFixed(2)} -> ${running.y.toFixed(2)}`,
+    );
+    assert.ok(
+        runningElbow < standingElbow - 0.4,
+        `локоть не согнулся на бегу: ${standingElbow.toFixed(2)} -> ${runningElbow.toFixed(2)}`,
+    );
+
+    // Возврат в стойку: меч снова опускается остриём вниз.
+    for (let i = 0; i < 150; i += 1) animator.update([unit], 1 / 60);
+    assert.ok(
+        aimNow().y < -0.25,
+        'после остановки меч не вернулся в опущенную стойку',
+    );
+});
+
+check('приёмы не выворачивают суставы', () => {
+    // Амплитудный замах легко заводит сустав за анатомический предел —
+    // рука выгибается в обратную сторону. Проверяем каждый кадр.
+    const animator = new Animator();
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'jointTest', position: { x: 0, z: 0 },
+    }));
+    animator.register('jointTest', model);
+    const unit = fakeUnit('jointTest', model);
+    const { rig } = model;
+    const { rest } = rig;
+
+    const violations = [];
+    const watch = (label, value, min, max) => {
+        if (value < min - 1e-6 || value > max + 1e-6) {
+            violations.push(`${label} = ${value.toFixed(2)} вне [${min}, ${max}]`);
+        }
+    };
+
+    for (const play of ['playSwing', 'playCast']) {
+        animator[play]('jointTest', 0.6);
+        for (let i = 0; i < 70; i += 1) {
+            animator.update([unit], 1 / 60);
+            // Локоть не разгибается в обратную сторону.
+            watch(`${play}: локоть R`, rig.elbowR.rotation.x, -2.5, 0);
+            watch(`${play}: локоть L`, rig.elbowL.rotation.x, -2.5, 0);
+            watch(`${play}: плечо R.x`, rig.shoulderR.rotation.x, -2.7, 3.0);
+            watch(`${play}: плечо R.z`, rig.shoulderR.rotation.z, -1.5, 1.5);
+            // Кисть отсчитываем от хвата: сам хват — не вывих.
+            watch(
+                `${play}: кисть.x`,
+                rig.weaponPivot.rotation.x - rest.weaponX, -1.5, 1.5,
+            );
+            watch(
+                `${play}: кисть.z`,
+                rig.weaponPivot.rotation.z - rest.weaponZ, -1.5, 1.5,
+            );
+        }
+        for (let i = 0; i < 90; i += 1) animator.update([unit], 1 / 60);
+    }
+
+    assert.ok(violations.length === 0, `вывихи: ${violations.slice(0, 3).join('; ')}`);
 });
 
 check('причёска — оболочка на черепе, а не шар с конусами', () => {
@@ -706,6 +856,103 @@ check('волосы покрывают затылок и не висят над 
     assert.ok(
         lengths.elena > lengths.ryudo + 0.2,
         `у Елены волосы не длиннее: ${lengths.elena.toFixed(2)} против ${lengths.ryudo.toFixed(2)}`,
+    );
+});
+
+check('замах амплитудный: клинок заносится над головой', () => {
+    const animator = new Animator();
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'ampTest', position: { x: 0, z: 0 },
+    }));
+    animator.register('ampTest', model);
+    const unit = fakeUnit('ampTest', model);
+
+    const sync = () => {
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((m) => m.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+    };
+    const tipY = () => {
+        sync();
+        return model.meshes.find((m) => m.name === 'ampTest_bladeTip')
+            .getBoundingInfo().boundingBox.centerWorld.y;
+    };
+    const headTop = () => {
+        sync();
+        return model.meshes.find((m) => m.name === 'ampTest_head')
+            .getBoundingInfo().boundingBox.maximumWorld.y;
+    };
+
+    for (let i = 0; i < 60; i += 1) animator.update([unit], 1 / 60);
+    const crown = headTop();
+
+    animator.playSwing('ampTest', 0.42);
+    let peak = -Infinity;
+    let lowest = Infinity;
+    for (let i = 0; i < 30; i += 1) {
+        animator.update([unit], 1 / 60);
+        const y = tipY();
+        peak = Math.max(peak, y);
+        lowest = Math.min(lowest, y);
+    }
+
+    assert.ok(
+        peak > crown + 0.6,
+        `замах вялый: пик острия ${peak.toFixed(2)}, макушка ${crown.toFixed(2)}`,
+    );
+    // Проводка идёт вниз, но клинок не проваливается сквозь арену.
+    assert.ok(lowest > 0.03, `клинок ушёл под пол: ${lowest.toFixed(2)}`);
+});
+
+check('клинок режет кромкой на протяжении удара, а не шлёпает плашмя', () => {
+    const animator = new Animator();
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'cutTest', position: { x: 0, z: 0 },
+    }));
+    animator.register('cutTest', model);
+    const unit = fakeUnit('cutTest', model);
+
+    const sync = () => {
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((m) => m.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+    };
+    const sample = () => {
+        sync();
+        const blade = model.meshes.find((m) => m.name === 'cutTest_blade');
+        return {
+            tip: model.meshes.find((m) => m.name === 'cutTest_bladeTip')
+                .getBoundingInfo().boundingBox.centerWorld.clone(),
+            flat: Vector3.TransformNormal(
+                new Vector3(0, 0, 1), blade.getWorldMatrix(),
+            ).normalize(),
+        };
+    };
+
+    for (let i = 0; i < 60; i += 1) animator.update([unit], 1 / 60);
+    animator.playSwing('cutTest', 0.42);
+
+    // Меч режет, если плоскость клинка перпендикулярна движению острия.
+    // Считаем с весом по скорости: медленная проводка в конце не важна.
+    let previous = sample().tip;
+    let weighted = 0;
+    let total = 0;
+    for (let i = 0; i < 24; i += 1) {
+        animator.update([unit], 1 / 60);
+        const now = sample();
+        const delta = now.tip.subtract(previous);
+        const speed = delta.length() * 60;
+        if (speed > 5) {
+            weighted += Math.abs(Vector3.Dot(now.flat, delta.normalize())) * speed;
+            total += speed;
+        }
+        previous = now.tip;
+    }
+
+    const flatness = weighted / total;
+    assert.ok(
+        flatness < 0.55,
+        `клинок идёт плашмя: взвешенная плашмя-ность ${flatness.toFixed(2)} (0 = режет)`,
     );
 });
 
