@@ -283,36 +283,42 @@ test('Critical по юниту в фазе ACT срабатывает как CAN
     assert.ok(ui.events.some((e) => e.text === 'CANCEL!'), 'должна показаться надпись CANCEL!');
 });
 
-test('юнит на замахе сбивается: ход теряется вместе с уроном', () => {
-    // Ключевое правило Grandia: успеть ударить раньше — значит не получить
-    // удар вовсе. Пока hitsDone === 0, приём ещё можно отменить.
+test('приём в фазе EXECUTE не сбивается — урон дойдёт', () => {
+    // Регрессия: когда отмена работала и в EXECUTE, взаимные атаки в начале
+    // боя гасили друг друга и никто не получал урона вовсе.
     const { system } = buildBattle();
     const spider = system.units.find((u) => u.id === 'spider1');
     spider.phase = 'EXECUTE';
     spider.ip = IP_MAX;
     spider.hitsDone = 0;
     spider.pendingAction = { definition: { id: 'bite', power: 1 } };
-    spider.actionState = 'ATTACK';
 
     system.applyIpDamage(spider, { cancel: true, cancelPushback: 260, ipDamage: 180 });
 
-    assert.equal(spider.phase, 'WAIT', 'замах должен быть сбит');
-    assert.equal(spider.pendingAction, null, 'приём теряется целиком');
-    assert.ok(spider.ip < IP_MAX, 'шкалу должно откатить');
+    assert.equal(spider.phase, 'EXECUTE', 'начатый приём отыгрывается до конца');
+    assert.ok(spider.pendingAction, 'приём не должен теряться');
+    assert.equal(spider.ip, IP_MAX);
 });
 
-test('после первого попадания сбить приём уже нельзя', () => {
-    const { system } = buildBattle();
-    const spider = system.units.find((u) => u.id === 'spider1');
-    spider.phase = 'EXECUTE';
-    spider.ip = IP_MAX;
-    spider.hitsDone = 1; // урон уже прошёл — откатывать нечего
-    spider.pendingAction = { definition: { id: 'bite', power: 1 } };
+test('размен ударами в начале боя доводит урон до обеих сторон', () => {
+    // Прямая проверка жалобы: раньше первое же combo обнуляло и урон Рюдо,
+    // и урон пауков — бой начинался с обоюдного «ничего не произошло».
+    const { system, ui } = buildBattle({
+        autoCommand: (unit, actions) => {
+            const combo = actions.find((a) => a.id === 'combo' && a.enabled);
+            return { actionId: combo.id, target: combo.targets[0] };
+        },
+        rng: makeRng(7),
+    });
 
-    system.applyIpDamage(spider, { cancel: true, cancelPushback: 260, ipDamage: 180 });
+    runBattle(system, ui, { maxSeconds: 60 });
 
-    assert.equal(spider.phase, 'EXECUTE', 'нанесённый удар не отменяется задним числом');
-    assert.equal(spider.ip, IP_MAX);
+    const cancels = ui.events.filter((e) => e.type === 'text' && e.text === 'CANCEL!');
+    assert.equal(cancels.length, 0, 'обычное combo не должно ничего отменять');
+
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    assert.ok(ryudo.hp < ryudo.maxHp, 'пауки должны были нанести урон Рюдо');
+    assert.equal(system.outcome, 'victory');
 });
 
 test('описания баффов не содержат NaN', () => {

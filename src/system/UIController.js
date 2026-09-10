@@ -565,24 +565,28 @@ export class UIController {
 
         const color = Color3.FromHexString(hexColor);
 
-        // Один материал может висеть на нескольких мешах — идём по уникальным,
-        // иначе восстановление затрёт исходный цвет соседа.
+        // Исходные цвета запоминаем ОДИН раз на материал и держим на самом
+        // материале. Иначе повторная вспышка сохраняла бы уже подсвеченный
+        // цвет как «исходный», и модель оставалась красной навсегда.
         const seen = new Set();
-        const restore = [];
+        const materials = [];
         for (const part of parts) {
             const material = part.material;
             if (seen.has(material)) continue;
             seen.add(material);
-            restore.push([material, material.emissiveColor?.clone?.() ?? null]);
+            if (material._flashBaseColor === undefined) {
+                material._flashBaseColor = material.emissiveColor?.clone?.() ?? null;
+            }
             material.emissiveColor = color;
+            materials.push(material);
         }
 
-        // Повторный удар по той же цели не должен обрывать подсветку раньше срока.
-        mesh._flashTimer ??= null;
+        // Повторный удар продлевает подсветку, а не плодит таймеры.
         if (mesh._flashTimer) clearTimeout(mesh._flashTimer);
         mesh._flashTimer = setTimeout(() => {
-            for (const [material, previous] of restore) {
-                material.emissiveColor = previous ?? new Color3(0, 0, 0);
+            for (const material of materials) {
+                material.emissiveColor = material._flashBaseColor ?? new Color3(0, 0, 0);
+                delete material._flashBaseColor;
             }
             mesh._flashTimer = null;
         }, duration);

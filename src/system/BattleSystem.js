@@ -1021,12 +1021,11 @@ export class BattleSystem {
         // Endure смягчает не только урон, но и откат по шкале.
         const ipScale = enduring ? ENDURE_IP_MULTIPLIER : 1;
 
-        // Сбить можно и уже начатый приём — пока замах не дошёл до удара
-        // (hitsDone === 0). Раньше юнит в EXECUTE был неуязвим для отмены и
-        // спокойно добивал свой ход, из-за чего контрудар «не отменял урон».
-        const windingUp = target.phase === 'EXECUTE' && (target.hitsDone ?? 0) === 0;
+        // Сбить можно только ход, который ещё НЕ начал исполняться: в COM/ACT
+        // юнит стоит на шкале. Дошедший до EXECUTE приём отыгрывается до
+        // конца — контрудар усиливает урон, но не отменяет чужой.
         const canCancel = definition.cancel
-            && (target.phase === 'COM' || target.phase === 'ACT' || windingUp);
+            && (target.phase === 'COM' || target.phase === 'ACT');
 
         if (canCancel) {
             const pushback = (definition.cancelPushback ?? definition.ipDamage ?? 0) * ipScale;
@@ -1047,7 +1046,8 @@ export class BattleSystem {
             return;
         }
 
-        // Удар уже нанесён — откатывать нечего.
+        // Приём уже исполняется — его не сбить, иначе взаимные атаки в начале
+        // боя гасили бы урон друг друга и никто ничего не получал.
         if (target.phase === 'EXECUTE') return;
 
         target.ip = clamp(target.ip - (definition.ipDamage ?? 0) * ipScale, 0, COM_START);

@@ -23,9 +23,23 @@ const engine = new NullEngine();
 const scene = new Scene(engine);
 
 const results = [];
+// Асинхронные проверки складываем в очередь и дожидаемся перед итогом:
+// иначе упавший await печатался уже ПОСЛЕ счётчика и не попадал в него.
+const pending = [];
 const check = (name, fn) => {
-    try { fn(); results.push(`  ok   ${name}`); }
-    catch (error) { results.push(`  FAIL ${name}\n       ${error.message}`); process.exitCode = 1; }
+    const ok = () => results.push(`  ok   ${name}`);
+    const fail = (error) => {
+        results.push(`  FAIL ${name}\n       ${error.message}`);
+        process.exitCode = 1;
+    };
+    try {
+        const result = fn();
+        if (result && typeof result.then === 'function') {
+            pending.push(result.then(ok, fail));
+        } else {
+            ok();
+        }
+    } catch (error) { fail(error); }
 };
 
 /** Юнит-заглушка поверх модели — как его видит BattleSystem. */
@@ -410,7 +424,40 @@ check('у Елены остаётся плащ и нет снаряжения Р
     assert.ok(!names.some((n) => n.includes('_phoneCup')), 'наушники только у Рюдо');
 });
 
+check('подсветка попадания снимается даже при ударах внахлёст', async () => {
+    // Регрессия: вторая вспышка запоминала уже КРАСНЫЙ цвет как исходный,
+    // и модель оставалась подсвеченной навсегда.
+    const { UIController } = await import('../src/system/UIController.js');
+    const ui = Object.create(UIController.prototype);
+    ui.gaugeIcons = {};
+    ui.gaugeFlashTimers = {};
+
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'flashUnit', position: { x: 0, z: 0 },
+    }));
+    const body = model.meshes.find((m) => m.name.includes('_body'));
+    const before = body.material.emissiveColor.clone();
+
+    ui.flashMesh(model.root, '#ff0000', 40);
+    assert.ok(body.material.emissiveColor.r > 0.5, 'первая вспышка должна подсветить');
+
+    // Второй удар приходит, пока первая подсветка ещё горит.
+    ui.flashMesh(model.root, '#ff0000', 40);
+
+    await new Promise((resolve) => setTimeout(resolve, 120));
+
+    const after = body.material.emissiveColor;
+    assert.ok(
+        Math.abs(after.r - before.r) < 0.01
+        && Math.abs(after.g - before.g) < 0.01
+        && Math.abs(after.b - before.b) < 0.01,
+        `подсветка залипла: было (${before.r},${before.g},${before.b}), стало (${after.r},${after.g},${after.b})`,
+    );
+});
+
 // --- Итог -----------------------------------------------------------------
+
+await Promise.all(pending);
 
 console.log(results.join('\n'));
 const passed = results.filter((r) => r.includes(' ok ')).length;
