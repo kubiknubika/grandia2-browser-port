@@ -38,6 +38,7 @@ const scene = new Scene(engine);
 const animator = new Animator();
 
 const LINEUP = [
+    ['elena', 'elena', -7.2],
     ['ryudo', 'ryudo', -3.4],
     ['mottledSpider', 'spiderA', 1.4],
     ['mottledSpider', 'spiderB', 5.6],
@@ -82,6 +83,7 @@ const VIEWS = {
     head: { eye: new Vector3(-3.4, 2.92, 1.1), target: new Vector3(-3.4, 2.82, 0) },
     head34: { eye: new Vector3(-2.6, 3.0, 1.0), target: new Vector3(-3.4, 2.82, 0) },
     headside: { eye: new Vector3(-2.1, 2.88, 0.05), target: new Vector3(-3.4, 2.82, 0) },
+    elena: { eye: new Vector3(-7.2, 2.9, 1.1), target: new Vector3(-7.2, 2.8, 0) },
     back: { eye: new Vector3(-3.4, 2.1, -3.6), target: new Vector3(-3.4, 1.4, 0) },
     spider: { eye: new Vector3(4.3, 2.2, 5.2), target: new Vector3(4.3, 0.7, 0) },
     duel: { eye: new Vector3(-0.4, 2.6, 3.4), target: new Vector3(-3.4, 1.6, 0) },
