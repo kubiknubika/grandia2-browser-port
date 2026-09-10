@@ -18,6 +18,36 @@ const SWING_SECONDS = 0.42;
 // Доворот кисти на бегу. Основную работу делает сгиб локтя (он и выводит
 // клинок параллельно полу), кисть лишь довершает поворот, поэтому значения
 // небольшие. Замер: без сгиба локтя клинок висит на y=-0.69, со сгибом 0.02.
+/**
+ * Позы двуручного посоха, подобранные численным перебором при условии, что
+ * ОБЕ кисти остаются на древке (промах хвата < 0.09). Значения — добавка к
+ * позе покоя. Разносить их по формулам вручную нельзя: суставы связаны, и
+ * правка одного угла заваливает посох набок.
+ *
+ *   castTarget — каст в цель: локти разгибаются, посох выносится вперёд;
+ *   castSelf   — каст на себя: руки подняты, посох над головой кончиком ВВЕРХ
+ *                (кисть упирается в анатомический предел 1.45). Подбирался
+ *                с учётом наклона корпуса -0.18, который даёт сам каст:
+ *                без него посох в бою заваливался набок;
+ *   windup     — занос замаха: посох поднимается НАД ГОЛОВОЙ, откуда идёт
+ *                удар сверху вниз. Занос за спину или вбок недостижим —
+ *                хват рвётся, а древко проходит перед лицом.
+ */
+const STAFF_POSES = {
+    castTarget: {
+        shoulderRX: 0.60, shoulderRZ: 0.00, elbowR: 0.60, wrist: -0.20,
+        shoulderLX: 0.20, shoulderLZ: 0.00, elbowL: 0.20,
+    },
+    castSelf: {
+        shoulderRX: -1.05, shoulderRZ: -0.50, elbowR: -0.20, wrist: 1.45,
+        shoulderLX: -1.50, shoulderLZ: -0.80, elbowL: 0.60,
+    },
+    windup: {
+        shoulderRX: -0.95, shoulderRZ: -0.50, elbowR: -0.20, wrist: 1.10,
+        shoulderLX: -1.40, shoulderLZ: -0.80, elbowL: 0.60,
+    },
+};
+
 const CARRY_WRIST_X = 0.30;
 const CARRY_WRIST_Z = 0.10;
 const CAST_SECONDS = 0.8;
@@ -85,6 +115,7 @@ export class Animator {
             swingSpan: SWING_SECONDS,
             hitFlash: 0,   // затухающее вздрагивание от урона
             cast: 0,       // 1 -> 0 подъём оружия при касте
+            selfCast: 0,   // 1 — каст на себя: посох идёт над головой
             castSpan: CAST_SECONDS,
             death: 0,      // 0..1 прогресс падения
             speed: 0,      // сглаженная скорость бега для микса поз
@@ -109,11 +140,17 @@ export class Animator {
         state.swingSpan = Math.max(0.2, duration);
     }
 
-    playCast(unitId, duration = CAST_SECONDS) {
+    /**
+     * Каст. `onSelf` — заклинание направлено на самого кастующего (или на
+     * группу, в которую он входит): посох поднимается над головой, а не
+     * выносится вперёд в цель.
+     */
+    playCast(unitId, duration = CAST_SECONDS, { onSelf = false } = {}) {
         const state = this.states.get(unitId);
         if (!state) return;
         state.cast = 1;
         state.castSpan = Math.max(0.25, duration);
+        state.selfCast = onSelf ? 1 : 0;
     }
 
     update(units, deltaTime) {
@@ -238,19 +275,51 @@ export class Animator {
         rig.kneeL.rotation.x = damp(rig.kneeL.rotation.x, Math.max(0, -legSwing) * 1.1, 18, dt);
         rig.kneeR.rotation.x = damp(rig.kneeR.rotation.x, Math.max(0, legSwing) * 1.1, 18, dt);
 
-        // Левая рука: маятник на бегу, поднимается при касте.
-        rig.shoulderL.rotation.x = damp(
-            rig.shoulderL.rotation.x,
-            -legSwing * 0.75 - castP * 1.9 + castPush * 1.1
-            + (attacking ? (windup * 0.5 - strike * 0.7) * (1 - recover) : 0),
-            attacking ? 20 : 16, dt,
-        );
-        rig.shoulderL.rotation.z = damp(rig.shoulderL.rotation.z, rest.shoulderLZ, 10, dt);
-        rig.elbowL.rotation.x = clamp(damp(
-            rig.elbowL.rotation.x,
-            rest.elbowLX - castP * 0.95 + castPush * 0.8,
-            casting ? 18 : 12, dt,
-        ), LIMITS.elbow[0], LIMITS.elbow[1]);
+        // Посох Елена держит ДВУМЯ руками, поэтому левая не машет маятником,
+        // а остаётся на древке: её поза строится от rest, а не от нуля.
+        const twoHanded = rig.weapon === 'staff';
+        const selfCast = state.selfCast;
+
+        // Добавка к позе покоя: замах (занос, затем пронос в обратную сторону)
+        // и каст (в цель или на себя). Обе берутся из STAFF_POSES целиком,
+        // чтобы суставы двигались согласованно и хват не рвался.
+        const swingAmt = attacking ? (windup - strike * 1.25) * (1 - recover) : 0;
+        const staffAdd = (key) => {
+            const castPose = lerp(STAFF_POSES.castTarget[key], STAFF_POSES.castSelf[key], selfCast);
+            return swingAmt * STAFF_POSES.windup[key] + castP * castPose;
+        };
+
+        if (twoHanded) {
+            rig.shoulderL.rotation.x = damp(
+                rig.shoulderL.rotation.x, (rest.shoulderLX ?? 0) + staffAdd('shoulderLX'),
+                attacking ? 22 : (casting ? 26 : 16), dt,
+            );
+            rig.shoulderL.rotation.y = damp(
+                rig.shoulderL.rotation.y, rest.shoulderLY ?? 0, 12, dt,
+            );
+            rig.shoulderL.rotation.z = damp(
+                rig.shoulderL.rotation.z, rest.shoulderLZ + staffAdd('shoulderLZ'),
+                casting ? 26 : 12, dt,
+            );
+            rig.elbowL.rotation.x = clamp(damp(
+                rig.elbowL.rotation.x, rest.elbowLX + staffAdd('elbowL'),
+                casting ? 26 : 14, dt,
+            ), LIMITS.elbow[0], LIMITS.elbow[1]);
+        } else {
+            // Левая рука: маятник на бегу, поднимается при касте.
+            rig.shoulderL.rotation.x = damp(
+                rig.shoulderL.rotation.x,
+                -legSwing * 0.75 - castP * 1.9 + castPush * 1.1
+                + (attacking ? (windup * 0.5 - strike * 0.7) * (1 - recover) : 0),
+                attacking ? 20 : 16, dt,
+            );
+            rig.shoulderL.rotation.z = damp(rig.shoulderL.rotation.z, rest.shoulderLZ, 10, dt);
+            rig.elbowL.rotation.x = clamp(damp(
+                rig.elbowL.rotation.x,
+                rest.elbowLX - castP * 0.95 + castPush * 0.8,
+                casting ? 18 : 12, dt,
+            ), LIMITS.elbow[0], LIMITS.elbow[1]);
+        }
 
         // Бег с мечом: клинок выводится ПАРАЛЛЕЛЬНО полу, локоть сгибается,
         // рука прижимается к корпусу. В стойке меч опущен остриём к земле —
@@ -259,10 +328,11 @@ export class Animator {
         const carry = carrying ? runBlend : 0;
 
         // Правая рука с оружием: занос за плечо, затем рубящий удар вниз.
-        const armTarget = attacking
-            ? rest.shoulderRX + (-windup * 2.6 + strike * 2.2) * (1 - recover)
-            : rest.shoulderRX - legSwing * -0.4 - castP * 2.6 + castPush * 1.4
-              + carry * 0.0;
+        const armTarget = twoHanded
+            ? rest.shoulderRX + staffAdd('shoulderRX')
+            : (attacking
+                ? rest.shoulderRX + (-windup * 2.6 + strike * 2.2) * (1 - recover)
+                : rest.shoulderRX - legSwing * -0.4 - castP * 2.6 + castPush * 1.4);
 
         // На ударе руку ведём жёстче, чем на возврате: резкость важнее плавности.
         rig.shoulderR.rotation.x = clamp(damp(
@@ -271,16 +341,22 @@ export class Animator {
         ), LIMITS.shoulderX[0], LIMITS.shoulderX[1]);
         rig.shoulderR.rotation.z = clamp(damp(
             rig.shoulderR.rotation.z,
-            rest.shoulderRZ + (attacking ? (-windup * 0.7 + strike * 0.95) * (1 - recover) : 0)
-            - castP * 0.25
+            rest.shoulderRZ
+            + (twoHanded
+                ? staffAdd('shoulderRZ')
+                : (attacking ? (-windup * 0.7 + strike * 0.95) * (1 - recover) : 0)
+                  - castP * 0.25)
             + carry * 0.16, // локоть подбирается к рёбрам
-            attacking ? 20 : 14, dt,
+            attacking ? 20 : (casting && twoHanded ? 26 : 14), dt,
         ), LIMITS.shoulderZ[0], LIMITS.shoulderZ[1]);
         // Локоть: сгибается на заносе, распрямляется в момент удара, и
         // заметно согнут на бегу — так несут оружие, чтобы не мешало шагу.
         rig.elbowR.rotation.x = clamp(damp(
             rig.elbowR.rotation.x,
-            rest.elbowRX + (attacking ? (-windup * 0.66 + strike * 0.66) * (1 - recover) : 0)
+            rest.elbowRX
+            + (twoHanded
+                ? staffAdd('elbowR')
+                : (attacking ? (-windup * 0.66 + strike * 0.66) * (1 - recover) : 0))
             - carry * 0.80,
             attacking ? 26 : 14, dt,
         ), LIMITS.elbow[0], LIMITS.elbow[1]);
@@ -295,9 +371,13 @@ export class Animator {
             rig.weaponPivot.rotation.x = clamp(damp(
                 rig.weaponPivot.rotation.x,
                 rest.weaponX + carryX
-                + (attacking ? (-windup * 0.9 + strike * 0.5) * (1 - recover) : 0)
-                - castP * 0.5 + castPush * 0.7,
-                attacking ? 26 : 16, dt,
+                + (twoHanded
+                    // На себя доворот кисти выводит КОНЧИК посоха вверх,
+                    // а не назад за голову, как было бы на замахе.
+                    ? staffAdd('wrist')
+                    : (attacking ? (-windup * 0.9 + strike * 0.5) * (1 - recover) : 0)
+                      - castP * 0.5 + castPush * 0.7),
+                attacking ? 26 : (casting && twoHanded ? 26 : 16), dt,
             ), rest.weaponX - wristLimit, rest.weaponX + wristLimit);
             // Разворот хвата (режущая кромка вперёд) держится постоянно:
             // анимация его не трогает, иначе меч уходит плашмя.
@@ -307,8 +387,12 @@ export class Animator {
             );
             rig.weaponPivot.rotation.z = clamp(damp(
                 rig.weaponPivot.rotation.z,
-                rest.weaponZ + castP * 0.4 + carry * CARRY_WRIST_Z
-                + (attacking ? (-windup * 0.3 + strike * 0.8) * (1 - recover) : 0),
+                // Боковой доворот кисти — только для меча. Посох он валит
+                // набок: подъём над головой считался при rest.weaponZ.
+                rest.weaponZ + (twoHanded ? 0 : castP * 0.4) + carry * CARRY_WRIST_Z
+                + (twoHanded
+                    ? 0
+                    : (attacking ? (-windup * 0.3 + strike * 0.8) * (1 - recover) : 0)),
                 attacking ? 22 : 12, dt,
             ), rest.weaponZ - wristLimit, rest.weaponZ + wristLimit);
         }

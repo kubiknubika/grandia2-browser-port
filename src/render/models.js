@@ -675,11 +675,18 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         weaponPivot.rotation.y = 1.5;
         weaponPivot.rotation.z = 0.8;
     } else {
-        // Посох стоит вертикально в опущенной руке, орб над плечом.
-        elbowR.rotation.x = -0.16;
-        shoulderR.rotation.z = -0.34;
-        weaponPivot.rotation.x = 0.16;    // навершие уходит вперёд от плеча
-        weaponPivot.rotation.z = -0.2;    // и наружу, чтобы не прятаться за корпус
+        // Посох держат ДВУМЯ руками на согнутых локтях: правая у живота,
+        // левая выше на древке, посох идёт наискось через грудь, орб над
+        // плечом. Раньше он висел в одной опущенной руке как трость.
+        // Углы подобраны численно: сперва правая кисть и ориентация древка,
+        // затем левая кисть подводится к точке хвата (промах 0.02).
+        shoulderR.rotation.x = -0.29;
+        shoulderR.rotation.z = -0.28;
+        elbowR.rotation.x = -0.50;
+        weaponPivot.rotation.set(0.80, -0.60, -0.20);
+
+        shoulderL.rotation.set(-0.75, 0.30, 0.80);
+        elbowL.rotation.x = -0.80;
     }
 
     return {
@@ -696,6 +703,8 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
             // Поза покоя: аниматор возвращается к ней, а не к константам.
             rest: {
                 hipsY: hips.position.y,
+                shoulderLX: shoulderL.rotation.x,
+                shoulderLY: shoulderL.rotation.y,
                 shoulderLZ: shoulderL.rotation.z,
                 shoulderRZ: shoulderR.rotation.z,
                 shoulderRX: shoulderR.rotation.x,

@@ -85,6 +85,14 @@ if (POSE === 'cast') {
     for (let i = 0; i < frames; i += 1) animator.update(actors.map((a) => a.unit), 1 / 60);
 }
 
+// Касты Елены: --pose=ecast (в цель), --pose=eself (на себя), --pose=eswing.
+if (POSE === 'ecast' || POSE === 'eself' || POSE === 'eswing') {
+    const frames = Number(args.frame ?? 24);
+    if (POSE === 'eswing') animator.playSwing('elena', 0.6);
+    else animator.playCast('elena', 0.8, { onSelf: POSE === 'eself' });
+    for (let i = 0; i < frames; i += 1) animator.update(actors.map((a) => a.unit), 1 / 60);
+}
+
 // --- Камера ---------------------------------------------------------------
 
 const VIEWS = {
@@ -97,6 +105,9 @@ const VIEWS = {
     elena: { eye: new Vector3(-7.2, 2.9, 1.1), target: new Vector3(-7.2, 2.8, 0) },
     headback: { eye: new Vector3(-3.4, 2.95, -1.15), target: new Vector3(-3.4, 2.82, 0) },
     elenaback: { eye: new Vector3(-7.2, 2.95, -1.2), target: new Vector3(-7.2, 2.78, 0) },
+    elenafull: { eye: new Vector3(-7.2, 1.9, 4.2), target: new Vector3(-7.2, 1.7, 0) },
+    elena34: { eye: new Vector3(-5.1, 2.2, 3.4), target: new Vector3(-7.2, 1.7, 0) },
+    elenaside: { eye: new Vector3(-3.9, 2.0, 0.2), target: new Vector3(-7.2, 1.7, 0) },
     back: { eye: new Vector3(-3.4, 2.1, -3.6), target: new Vector3(-3.4, 1.4, 0) },
     spider: { eye: new Vector3(4.3, 2.2, 5.2), target: new Vector3(4.3, 0.7, 0) },
     duel: { eye: new Vector3(-0.4, 2.6, 3.4), target: new Vector3(-3.4, 1.6, 0) },

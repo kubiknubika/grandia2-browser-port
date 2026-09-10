@@ -604,6 +604,36 @@ export class BattleSystem {
     }
 
     /** Кого фактически заденет действие в момент исполнения. */
+    /**
+     * Куда «направлено» заклинание для анимации каста.
+     *
+     * Возвращает точку, к которой кастующий поворачивается, и признак
+     * `onSelf` — заклинание на себя (или на группу, куда он входит). В этом
+     * случае посох поднимается над головой, а не выносится вперёд.
+     *
+     * Для групповых заклинаний точка — центр масс целей (среднее их
+     * позиций). Это и есть «точка между всеми участниками»: сумма квадратов
+     * расстояний до неё минимальна.
+     */
+    castAim(unit, definition) {
+        const targets = this.resolveTargets(unit, definition);
+        if (targets.length === 0) return { position: null, onSelf: false };
+
+        // Если кастующий среди целей — заклинание «на себя».
+        if (targets.some((target) => target.id === unit.id)) {
+            return { position: null, onSelf: true };
+        }
+
+        if (targets.length === 1) {
+            return { position: targets[0].mesh.position.clone(), onSelf: false };
+        }
+
+        const center = new Vector3(0, 0, 0);
+        for (const target of targets) center.addInPlace(target.mesh.position);
+        center.scaleInPlace(1 / targets.length);
+        return { position: center, onSelf: false };
+    }
+
     resolveTargets(unit, definition) {
         switch (definition.targeting) {
             case 'all-enemies':
@@ -798,7 +828,13 @@ export class BattleSystem {
         if (!unit.castStarted) {
             unit.castStarted = true;
             if (definition.kind === 'magic') {
-                this.animator?.playCast(unit.id, definition.animationSeconds);
+                // Кастующий поворачивается к тому, на кого направлено
+                // заклинание. Для групповых — в общий центр целей.
+                const aim = this.castAim(unit, definition);
+                if (aim.position) this.faceTowards(unit, aim.position);
+                this.animator?.playCast(
+                    unit.id, definition.animationSeconds, { onSelf: aim.onSelf },
+                );
             } else {
                 this.animator?.playSwing(unit.id, definition.animationSeconds);
             }
