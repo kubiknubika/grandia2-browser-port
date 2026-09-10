@@ -1021,6 +1021,31 @@ check('посох держат ДВУМЯ руками: обе кисти на �
     );
 });
 
+check('в покое посох лежит ПО ДИАГОНАЛИ и левая рука не тянется', () => {
+    const rest = staffProbe('elenaDiag', { frames: 1 });
+
+    // «Как ремень безопасности»: низ древка у правого бедра, орб над левым
+    // плечом. Значит ось посоха заметно наклонена по X, а не вертикальна.
+    const bottom = rest.point(0);
+    assert.ok(
+        rest.axis.x < -0.3,
+        `посох стоит вертикально, а не по диагонали: ось.x=${rest.axis.x.toFixed(2)}`,
+    );
+    assert.ok(
+        rest.orb.x < -0.25 && bottom.x > 0.2,
+        `диагональ не читается: орб.x=${rest.orb.x.toFixed(2)} низ.x=${bottom.x.toFixed(2)}`,
+    );
+
+    // Левая рука не должна тянуться через грудь. Длина руки Елены —
+    // плечо 0.52 + предплечье 0.52 = 1.04; прежняя поза требовала 92 %.
+    const shoulderL = new Vector3(-0.52, 2.25, 0);
+    const reach = Vector3.Distance(shoulderL, rest.handL) / 1.04;
+    assert.ok(
+        reach < 0.75,
+        `левая рука вытянута на ${(reach * 100).toFixed(0)} % длины — неудобный хват`,
+    );
+});
+
 check('хват не рвётся ни на замахе, ни на касте', () => {
     for (const [name, opts] of [
         ['замах', { swing: true, frames: 14 }],
@@ -1082,6 +1107,123 @@ check('ни древко, ни кисти не проходят перед ли�
             assert.ok(gap > 0.24, `${name}: древко перед лицом, зазор ${gap.toFixed(2)}`);
         }
     }
+});
+
+// --- Силуэт Рюдо -----------------------------------------------------------
+
+/** Мировой bounding box меша по имени. */
+function boxOf(model, name) {
+    const mesh = model.meshes.find((m) => m.name === name);
+    assert.ok(mesh, `нет меша ${name}`);
+    mesh.computeWorldMatrix(true);
+    return mesh.getBoundingInfo().boundingBox;
+}
+
+check('рюкзак Рюдо не выглядывает из-за плеч спереди', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'ryudoPack', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const body = boxOf(model, 'ryudoPack_body');
+
+    for (const part of ['pack', 'packFlap', 'bedroll', 'packStrap-1', 'packStrap1']) {
+        const box = boxOf(model, `ryudoPack_${part}`);
+        // Всё снаряжение остаётся ЗА спиной...
+        assert.ok(
+            box.maximumWorld.z < body.minimumWorld.z + 0.12,
+            `${part} вылез вперёд: z_max=${box.maximumWorld.z.toFixed(2)} при спине ${body.minimumWorld.z.toFixed(2)}`,
+        );
+        // ...и не шире корпуса.
+        assert.ok(
+            box.minimumWorld.x > body.minimumWorld.x && box.maximumWorld.x < body.maximumWorld.x,
+            `${part} шире корпуса: x ${box.minimumWorld.x.toFixed(2)}..${box.maximumWorld.x.toFixed(2)}`,
+        );
+    }
+
+    // Конец шарфа тоже не должен лежать красной плахой на груди.
+    const tail = boxOf(model, 'ryudoPack_scarfTail');
+    assert.ok(
+        tail.maximumWorld.x < body.maximumWorld.x,
+        `хвост шарфа торчит за габарит корпуса: x_max=${tail.maximumWorld.x.toFixed(2)}`,
+    );
+});
+
+check('снаряжение за спиной не видно с боевых ракурсов', async () => {
+    const { Ray } = await import('@babylonjs/core/Culling/ray.js');
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'ryudoRay', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    // Камера боя смотрит на героя спереди. Пускаем лучи в корпус и
+    // проверяем, что первой не окажется деталь рюкзака: по габаритам он
+    // «за спиной», но раньше просвечивал сбоку от силуэта.
+    //
+    // Ракурсы шире ~30° сюда не входят намеренно: под таким углом видно
+    // уже бок героя, и заплечный мешок там обязан быть виден — иначе его
+    // незачем моделировать.
+    const own = new Set(model.meshes.map((m) => m.name));
+    for (const degrees of [0, -20, 20]) {
+        const angle = (degrees * Math.PI) / 180;
+        const eye = new Vector3(Math.sin(angle) * 2.6, 2.3, Math.cos(angle) * 2.6);
+        const seen = [];
+        for (let gx = -40; gx <= 40; gx += 4) {
+            for (let gy = -40; gy <= 40; gy += 4) {
+                const aim = new Vector3(gx * 0.012, 2.1 + gy * 0.012, 0);
+                const hit = scene.pickWithRay(
+                    new Ray(eye, aim.subtract(eye).normalize(), 12),
+                    (mesh) => own.has(mesh.name),
+                );
+                if (hit?.hit && /pack|bedroll/.test(hit.pickedMesh?.name ?? '')) {
+                    seen.push(hit.pickedMesh.name);
+                }
+            }
+        }
+        assert.equal(
+            seen.length, 0,
+            `с ракурса ${degrees}° видно снаряжение за спиной: ${[...new Set(seen)].join(', ')}`,
+        );
+    }
+});
+
+check('плечевой пояс закрывает срез корпуса, шарф и воротник видны', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'ryudoYoke', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const body = boxOf(model, 'ryudoYoke_body');
+    const yoke = boxOf(model, 'ryudoYoke_yoke');
+
+    // Скат начинается ровно от верхнего среза конуса: ниже — открытый диск
+    // у шеи, вровень — мерцание двух поверхностей.
+    assert.ok(
+        Math.abs(yoke.minimumWorld.y - body.maximumWorld.y) < 0.02,
+        `скат не садится на срез корпуса: скат ${yoke.minimumWorld.y.toFixed(3)}, срез ${body.maximumWorld.y.toFixed(3)}`,
+    );
+    assert.ok(
+        yoke.maximumWorld.y > body.maximumWorld.y,
+        'скат не поднимается над срезом — плоская «крышка» осталась',
+    );
+
+    // Шарф и воротник не должны утонуть под скатом.
+    const scarf = boxOf(model, 'ryudoYoke_scarf');
+    const collar = boxOf(model, 'ryudoYoke_collar');
+    assert.ok(
+        scarf.maximumWorld.y > yoke.maximumWorld.y,
+        `шарф скрылся под плечевым поясом: шарф ${scarf.maximumWorld.y.toFixed(2)}, скат ${yoke.maximumWorld.y.toFixed(2)}`,
+    );
+    assert.ok(
+        collar.maximumWorld.y > yoke.minimumWorld.y,
+        'воротник утонул под скатом',
+    );
 });
 
 // --- Зона поражения линейного приёма ---------------------------------------

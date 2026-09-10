@@ -93,6 +93,17 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     chest.scaling.z = 0.72; // тело не бочка, а слегка приплюснутое
     chest.material = cloth;
 
+    // Плечевой пояс. Без него верх корпуса-конуса оставался открытым диском:
+    // у шеи торчала плоская «крышка», и ключицы выглядели как срезанная труба.
+    // Полусфера закрывает срез и даёт покатый скат от шеи к плечам.
+    const yoke = track(MeshBuilder.CreateSphere(`${id}_yoke`, {
+        diameterX: 0.80, diameterY: 0.16, diameterZ: 0.58,
+        slice: 0.5, segments: 14,
+    }, scene));
+    yoke.parent = torso;
+    yoke.position.y = 1.07;
+    yoke.material = cloth;
+
     // Наплечники разбивают силуэт и делают героя «экипированным».
     for (const side of [-1, 1]) {
         const pad = track(MeshBuilder.CreateSphere(`${id}_pauldron${side}`, {
@@ -169,50 +180,57 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
             diameter: 0.4, thickness: 0.12, tessellation: 12,
         }, scene));
         scarf.parent = torso;
-        scarf.position.set(0, 0.9, 0.02);
+        scarf.position.set(0, 1.12, 0.02);
         scarf.rotation.x = Math.PI / 2;
         scarf.scaling.z = 0.8;
         scarf.material = scarfMat;
 
         // Свисающий конец шарфа.
+        // Конец шарфа свисает вдоль плеча и уходит НАЗАД, а не лежит красной
+        // плахой на груди: прежний торчал за габарит корпуса (x до 0.45 при
+        // ширине тела 0.39) и читался как посторонний предмет спереди.
         const scarfTail = track(MeshBuilder.CreateBox(`${id}_scarfTail`, {
-            width: 0.17, height: 0.46, depth: 0.07,
+            width: 0.13, height: 0.38, depth: 0.06,
         }, scene));
         scarfTail.parent = torso;
-        scarfTail.position.set(0.3, 0.74, 0.1);
-        scarfTail.rotation.set(0.1, 0, 0.3);
+        scarfTail.position.set(0.2, 0.92, -0.14);
+        scarfTail.rotation.set(-0.12, 0, 0.24);
         scarfTail.material = scarfMat;
 
         // Заплечный мешок странствующего Geohound.
+        // Мешок сидит НИЖЕ линии плеч и уже корпуса: раньше он вместе со
+        // скаткой и клапаном выглядывал из-за плеч на ракурсе 3/4, и это
+        // читалось как рюкзак, надетый задом наперёд.
         const pack = track(MeshBuilder.CreateBox(`${id}_pack`, {
-            width: 0.5, height: 0.56, depth: 0.3,
+            width: 0.34, height: 0.44, depth: 0.14,
         }, scene));
         pack.parent = torso;
-        pack.position.set(0, 0.6, -0.42);
+        pack.position.set(0, 0.56, -0.27);
         pack.material = packMat;
 
         const packFlap = track(MeshBuilder.CreateBox(`${id}_packFlap`, {
-            width: 0.52, height: 0.2, depth: 0.32,
+            width: 0.36, height: 0.14, depth: 0.16,
         }, scene));
         packFlap.parent = torso;
-        packFlap.position.set(0, 0.84, -0.43);
+        packFlap.position.set(0, 0.72, -0.27);
         packFlap.material = leather;
 
-        // Скатка сверху и ремни крепления.
+        // Скатка лежит на клапане, а не над плечами.
         const bedroll = track(MeshBuilder.CreateCylinder(`${id}_bedroll`, {
-            height: 0.54, diameter: 0.18, tessellation: 10,
+            height: 0.36, diameter: 0.12, tessellation: 10,
         }, scene));
         bedroll.parent = torso;
-        bedroll.position.set(0, 0.95, -0.44);
+        bedroll.position.set(0, 0.8, -0.27);
         bedroll.rotation.z = Math.PI / 2;
         bedroll.material = scarfMat;
 
+        // Лямки идут по спине вплотную к корпусу, а не по бокам.
         for (const side of [-1, 1]) {
             const packStrap = track(MeshBuilder.CreateBox(`${id}_packStrap${side}`, {
-                width: 0.09, height: 0.66, depth: 0.06,
+                width: 0.08, height: 0.6, depth: 0.05,
             }, scene));
             packStrap.parent = torso;
-            packStrap.position.set(0.22 * side, 0.66, -0.26);
+            packStrap.position.set(0.15 * side, 0.6, -0.22);
             packStrap.rotation.x = -0.12;
             packStrap.material = leather;
         }
@@ -291,7 +309,7 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         height: 0.09, diameterTop: 0.24, diameterBottom: 0.33, tessellation: 12,
     }, scene));
     collar.parent = neck;
-    collar.position.y = -0.075;
+    collar.position.y = 0.1;
     collar.scaling.z = 0.78;
     collar.material = clothDark;
 
@@ -675,18 +693,22 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         weaponPivot.rotation.y = 1.5;
         weaponPivot.rotation.z = 0.8;
     } else {
-        // Посох держат ДВУМЯ руками на согнутых локтях: правая у живота,
-        // левая выше на древке, посох идёт наискось через грудь, орб над
-        // плечом. Раньше он висел в одной опущенной руке как трость.
-        // Углы подобраны численно: сперва правая кисть и ориентация древка,
-        // затем левая кисть подводится к точке хвата (промах 0.02).
-        shoulderR.rotation.x = -0.29;
-        shoulderR.rotation.z = -0.28;
-        elbowR.rotation.x = -0.50;
-        weaponPivot.rotation.set(0.80, -0.60, -0.20);
+        // Посох держат ДВУМЯ руками ПО ДИАГОНАЛИ, как ремень безопасности:
+        // низ древка у правого бедра, орб над левым плечом. Прежняя поза
+        // ставила посох почти вертикально перед корпусом, и левой руке
+        // приходилось тянуться через грудь на 92 % полного растяжения —
+        // неестественно и неудобно. Теперь вылет левой руки 45 %.
+        //
+        // Углы подобраны численно в два прохода: сперва правая кисть и
+        // наклон древка, затем левая кисть подводится к древку с жёстким
+        // штрафом за вылет за пределы комфортной зоны (промах хвата 0.003).
+        shoulderR.rotation.x = 0.15;
+        shoulderR.rotation.z = -0.37;
+        elbowR.rotation.x = -1.24;
+        weaponPivot.rotation.set(1.15, -1.20, -0.20);
 
-        shoulderL.rotation.set(-0.75, 0.30, 0.80);
-        elbowL.rotation.x = -0.80;
+        shoulderL.rotation.set(-0.63, 0.90, -0.16);
+        elbowL.rotation.x = -2.20;
     }
 
     return {
