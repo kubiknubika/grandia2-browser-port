@@ -2283,11 +2283,11 @@ function chooseEvadePointHeuristic(battle, fighter) {
   return clonePoint(scored.sort((left, right) => right.score - left.score)[0].anchor);
 }
 
-function lineHitsFromPoint(origin, endPoint, width, targets) {
+export function lineHitsFromPoint(origin, endPoint, width, targets) {
   return listLiving(targets).filter((target) => distancePointToSegment(target.position, origin, endPoint) <= width / 2 + target.radius);
 }
 
-function chooseBestLineAttackForTargets(attackerPosition, targets, definition) {
+export function chooseBestLineAttackForTargets(attackerPosition, targets, definition) {
   if (targets.length === 0) {
     return null;
   }

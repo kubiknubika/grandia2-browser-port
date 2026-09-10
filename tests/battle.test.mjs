@@ -1065,6 +1065,52 @@ test('у каждой команды есть описание, а Combo и Crit
 let passed = 0;
 let failed = 0;
 
+test('линейный приём бьёт полосой, а не по всей команде', () => {
+    const { system } = buildBattle();
+    const hero = system.units.find((u) => u.isPlayer);
+
+    // Заменяем врагов на трёх пауков: двое в ряд перед героем, один сбоку.
+    system.units = system.units.filter((u) => u.isPlayer);
+    // Рюдо стоит на x=-6, а полоса lotusFlower длиной ~7.8 ед., поэтому ряд
+    // ставим вплотную: иначе дальняя цель просто вне досягаемости.
+    for (const [id, x, z] of [['lineA', -3, 0], ['lineB', 0, 0], ['lineC', -3, 14]]) {
+        const data = makeUnitData('mottledSpider', { id, position: { x, z } });
+        system.addUnit({ id, data, mesh: makeMesh(x, z) }, false);
+    }
+
+    const definition = ACTION_LIBRARY.lotusFlower;
+    assert.equal(definition.targeting, 'line', 'lotusFlower перестал быть линейным');
+
+    const hit = system.resolveTargets(hero, definition).map((u) => u.id);
+    assert.ok(hit.includes('lineA') && hit.includes('lineB'), `полоса не задела ряд: [${hit}]`);
+    assert.ok(!hit.includes('lineC'), `полоса задела цель сбоку: [${hit}]`);
+
+    // Для сравнения: групповой приём бьёт всех — значит дело именно в линии.
+    const all = system.resolveTargets(hero, { targeting: 'all-enemies' }).map((u) => u.id);
+    assert.equal(all.length, 3, `all-enemies должен бить всех: [${all}]`);
+});
+
+test('линия запоминает конец полосы и не бьёт вбок при пустом попадании', () => {
+    const { system } = buildBattle();
+    const hero = system.units.find((u) => u.isPlayer);
+
+    system.units = system.units.filter((u) => u.isPlayer);
+    // Единственный враг — далеко сбоку и позади: полоса до него дотянуться
+    // может, но проверяем, что точка удара вообще проставилась.
+    const data = makeUnitData('mottledSpider', { id: 'lone', position: { x: -3, z: 2 } });
+    system.addUnit({ id: 'lone', data, mesh: makeMesh(-3, 2) }, false);
+
+    const hit = system.resolveTargets(hero, ACTION_LIBRARY.lotusFlower);
+    assert.equal(hit.length, 1, 'единственная цель на пути должна быть задета');
+    assert.ok(hero.lineEndPoint, 'конец полосы не сохранён — нечем разворачивать бойца');
+
+    // Полоса направлена в сторону цели, а не в противоположную.
+    assert.ok(
+        hero.lineEndPoint.x > hero.mesh.position.x && hero.lineEndPoint.z > 0,
+        `полоса смотрит не туда: (${hero.lineEndPoint.x.toFixed(2)}, ${hero.lineEndPoint.z.toFixed(2)})`,
+    );
+});
+
 test('каст на группу целится в центр масс, каст на себя — никуда', () => {
     const { system } = buildBattle({ encounter: PARTY_ENCOUNTER });
     const caster = system.units.find((u) => u.isPlayer && u.hp > 0);

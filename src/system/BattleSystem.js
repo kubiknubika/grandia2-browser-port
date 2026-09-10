@@ -9,6 +9,7 @@ import {
     calcHealAmount,
     calcMagicDamage,
     calcPhysicalDamage,
+    chooseBestLineAttackForTargets,
     getBattleStat,
     processTimedModifiers,
     scaleActionDefinitionForLevel,
@@ -605,6 +606,50 @@ export class BattleSystem {
 
     /** Кого фактически заденет действие в момент исполнения. */
     /**
+     * Линейный приём бьёт узкой полосой от атакующего, а не по всей команде.
+     * Точку удара подбирает движок (`chooseBestLineAttackForTargets`): он
+     * перебирает направления на каждого врага и на середины пар и берёт то,
+     * что задевает больше всего целей.
+     *
+     * Движок живёт в координатах поля 960x360, где y — вторая горизонтальная
+     * ось, а сцена — в мировых, где это z. Поэтому переводим туда и обратно
+     * и приводим длину/ширину полосы к масштабу сцены.
+     */
+    resolveLineTargets(unit, definition) {
+        const opponents = this.livingOpponents(unit);
+        if (opponents.length === 0) return [];
+
+        // Без размеров полосы честную линию не построить — бьём как раньше.
+        if (!definition.lineLength || !definition.lineWidth) return opponents;
+
+        const flatten = (source) => ({ x: source.x, y: source.z });
+        const targets = opponents.map((opponent) => ({
+            unit: opponent,
+            position: flatten(opponent.mesh.position),
+            // Радиус хитбокса тоже в единицах поля.
+            radius: (opponent.radius ?? 18) * WORLD_SCALE,
+            hp: opponent.hp,
+            // lineHitsFromPoint фильтрует цели через listLiving по isAlive:
+            // без этого поля полоса не задевает никого.
+            isAlive: opponent.hp > 0,
+        }));
+
+        const best = chooseBestLineAttackForTargets(
+            flatten(unit.mesh.position),
+            targets,
+            {
+                lineLength: definition.lineLength * WORLD_SCALE,
+                lineWidth: definition.lineWidth * WORLD_SCALE,
+            },
+        );
+        if (!best || best.hits.length === 0) return [];
+
+        // Запоминаем конец полосы: по нему разворачиваем бойца и рисуем зону.
+        unit.lineEndPoint = new Vector3(best.endPoint.x, 0, best.endPoint.y);
+        return best.hits.map((hit) => hit.unit);
+    }
+
+    /**
      * Куда «направлено» заклинание для анимации каста.
      *
      * Возвращает точку, к которой кастующий поворачивается, и признак
@@ -638,7 +683,7 @@ export class BattleSystem {
         switch (definition.targeting) {
             case 'all-enemies':
             case 'line':
-                return this.livingOpponents(unit);
+                return this.resolveLineTargets(unit, definition);
             case 'all-allies':
                 return this.livingAllies(unit);
             case 'self':
