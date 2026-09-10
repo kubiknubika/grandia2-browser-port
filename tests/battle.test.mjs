@@ -14,7 +14,8 @@ import { Vector3 } from '@babylonjs/core/Maths/math.vector.js';
 
 import { BattleSystem } from '../src/system/BattleSystem.js';
 import { makeUnitData, DEFAULT_ENCOUNTER, PARTY_ENCOUNTER } from '../src/data/battle_data.js';
-import { COM_START, IP_MAX, PRESETS, getBattleStat } from '../src/entities/combat.js';
+import { COM_START, IP_MAX, PRESETS, ACTION_LIBRARY, getBattleStat } from '../src/entities/combat.js';
+import { describeAction, describeNumbers } from '../src/data/action_text.js';
 
 // --- Заглушки -------------------------------------------------------------
 
@@ -123,7 +124,7 @@ test('энкаунтер может переопределить статы, н�
     const { system } = buildBattle();
     const spider = system.units.find((u) => u.id === 'spider1');
 
-    assert.equal(spider.maxHp, 145, 'в бою используется настройка энкаунтера');
+    assert.equal(spider.maxHp, 58, 'в бою используется настройка энкаунтера');
     assert.equal(spider.hp, spider.maxHp, 'юнит стартует с полным HP');
     assert.equal(PRESETS.mottledSpider.maxHp, 230, 'канонический пресет не мутирован');
 });
@@ -282,16 +283,106 @@ test('Critical по юниту в фазе ACT срабатывает как CAN
     assert.ok(ui.events.some((e) => e.text === 'CANCEL!'), 'должна показаться надпись CANCEL!');
 });
 
-test('юнит в фазе EXECUTE не сбивается (удар уже нанесён)', () => {
+test('юнит на замахе сбивается: ход теряется вместе с уроном', () => {
+    // Ключевое правило Grandia: успеть ударить раньше — значит не получить
+    // удар вовсе. Пока hitsDone === 0, приём ещё можно отменить.
     const { system } = buildBattle();
     const spider = system.units.find((u) => u.id === 'spider1');
     spider.phase = 'EXECUTE';
     spider.ip = IP_MAX;
+    spider.hitsDone = 0;
+    spider.pendingAction = { definition: { id: 'bite', power: 1 } };
+    spider.actionState = 'ATTACK';
 
     system.applyIpDamage(spider, { cancel: true, cancelPushback: 260, ipDamage: 180 });
 
-    assert.equal(spider.phase, 'EXECUTE', 'EXECUTE прерывать нельзя');
+    assert.equal(spider.phase, 'WAIT', 'замах должен быть сбит');
+    assert.equal(spider.pendingAction, null, 'приём теряется целиком');
+    assert.ok(spider.ip < IP_MAX, 'шкалу должно откатить');
+});
+
+test('после первого попадания сбить приём уже нельзя', () => {
+    const { system } = buildBattle();
+    const spider = system.units.find((u) => u.id === 'spider1');
+    spider.phase = 'EXECUTE';
+    spider.ip = IP_MAX;
+    spider.hitsDone = 1; // урон уже прошёл — откатывать нечего
+    spider.pendingAction = { definition: { id: 'bite', power: 1 } };
+
+    system.applyIpDamage(spider, { cancel: true, cancelPushback: 260, ipDamage: 180 });
+
+    assert.equal(spider.phase, 'EXECUTE', 'нанесённый удар не отменяется задним числом');
     assert.equal(spider.ip, IP_MAX);
+});
+
+test('описания баффов не содержат NaN', () => {
+    // Поле в ACTION_LIBRARY называется amount, а текст читал shift.stages —
+    // из-за этого Runner описывался как "NaN скорость бега".
+    const runner = ACTION_LIBRARY.runner;
+    const text = `${describeAction(runner)} ${describeNumbers(runner)}`;
+
+    assert.ok(!text.includes('NaN'), `в описании Runner есть NaN: ${text}`);
+    assert.ok(/\+1 скорость бега/.test(text), `ожидался бафф скорости: ${text}`);
+
+    // И ни у одного из 138 приёмов тоже.
+    for (const definition of Object.values(ACTION_LIBRARY)) {
+        const full = `${describeAction(definition)} ${describeNumbers(definition)}`;
+        assert.ok(!full.includes('NaN'), `NaN в описании ${definition.id}: ${full}`);
+    }
+});
+
+test('пока идёт спецприём, чужие шкалы IP стоят', () => {
+    // Спецприём — отдельная сцена: остальные замирают, IP не капает.
+    const { system } = buildBattle();
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    const spider = system.units.find((u) => u.id === 'spider1');
+
+    ryudo.phase = 'EXECUTE';
+    ryudo.actionState = 'ATTACK';
+    ryudo.attackTimer = 5;
+    ryudo.hitsDone = 0;
+    ryudo.pendingAction = { definition: ACTION_LIBRARY.tenseiken };
+
+    spider.phase = 'WAIT';
+    spider.ip = 100;
+    const before = spider.ip;
+
+    for (let i = 0; i < 30; i += 1) system.update(1 / 60);
+
+    assert.equal(spider.ip, before, 'IP наблюдателя не должен расти во время приёма');
+});
+
+test('обычная атака сцену не останавливает', () => {
+    // Иначе бой превратился бы в пошаговую очередь.
+    const { system } = buildBattle();
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    const spider = system.units.find((u) => u.id === 'spider1');
+
+    ryudo.phase = 'EXECUTE';
+    ryudo.actionState = 'ATTACK';
+    ryudo.attackTimer = 5;
+    ryudo.hitsDone = 0;
+    ryudo.pendingAction = { definition: ACTION_LIBRARY.combo };
+
+    spider.phase = 'WAIT';
+    spider.ip = 100;
+
+    for (let i = 0; i < 30; i += 1) system.update(1 / 60);
+
+    assert.ok(spider.ip > 100, 'на обычной атаке шкалы продолжают идти');
+});
+
+test('попадание подсвечивает цель и её иконку на шкале IP', () => {
+    const { system, ui } = buildBattle();
+    const ryudo = system.units.find((u) => u.id === 'ryudo');
+    const spider = system.units.find((u) => u.id === 'spider1');
+
+    const flashed = [];
+    ui.flashGaugeIcon = (id) => flashed.push(id);
+
+    system.dealDamage(ryudo, spider, { power: 1 }, 10);
+
+    assert.ok(flashed.includes('spider1'), 'иконка цели на шкале должна вспыхнуть');
 });
 
 test('обычный откат по IP не опускает ниже нуля и не выше COM', () => {

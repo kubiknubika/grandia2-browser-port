@@ -93,7 +93,11 @@ export function describeAction(definition) {
     // Баффы и дебаффы.
     for (const shift of definition.statShifts ?? []) {
         const stat = STAT_LABELS[shift.stat] ?? shift.stat;
-        parts.push(`${shift.stages > 0 ? '+' : '−'}${Math.abs(shift.stages)} ${stat}`);
+        // Поле в ACTION_LIBRARY называется amount; обращение к shift.stages
+        // давало "NaN скорость бега" во всех описаниях баффов.
+        const amount = shift.amount ?? 0;
+        const turns = shift.turns ? ` на ${shift.turns} х.` : '';
+        parts.push(`${amount > 0 ? '+' : '−'}${Math.abs(amount)} ${stat}${turns}`);
     }
 
     if (definition.cancel) parts.push('сбивает занесённый ход');
@@ -126,6 +130,13 @@ export function describeNumbers(definition) {
     if (definition.healBase) bits.push(`лечение ${definition.healBase}`);
     if ((definition.hitCount ?? 1) > 1) bits.push(`${definition.hitCount} удара`);
     if (definition.ipDamage) bits.push(`откат IP ${definition.ipDamage}`);
+
+    // Баффы/дебаффы: без этой строки у поддержки числовая сводка была пустой.
+    for (const shift of definition.statShifts ?? []) {
+        const stat = STAT_LABELS[shift.stat] ?? shift.stat;
+        const amount = shift.amount ?? 0;
+        bits.push(`${amount > 0 ? '+' : '−'}${Math.abs(amount)} ${stat}`);
+    }
 
     return bits.join(' · ');
 }

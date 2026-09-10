@@ -53,6 +53,17 @@ function clamp(value, min, max) {
 }
 
 /**
+ * Спецприём — то, что стоит SP/MP: магия и особые удары. Обычные атаки
+ * сюда не входят, иначе бой встал бы после каждого взмаха.
+ */
+function isSpecialMove(definition) {
+    if (!definition) return false;
+    return (definition.costSp ?? 0) > 0
+        || (definition.costMp ?? 0) > 0
+        || definition.kind === 'magic';
+}
+
+/**
  * Боевая система: IP-шкала, перемещение по арене, урон, смерть и исход боя.
  *
  * Числа (урон, откат по IP, стоимость приёмов) не выдумываются здесь заново —
@@ -156,9 +167,15 @@ export class BattleSystem {
         const deltaTime = Math.min(rawDelta, MAX_DELTA);
         if (deltaTime <= 0) return;
 
+        // Пока кто-то отыгрывает спецприём, остальные замирают и их шкалы IP
+        // стоят: приём должен читаться как отдельная сцена, а не теряться
+        // в общей суете.
+        const performer = this.cinematicPerformer();
+
         if (!this.isPaused) {
             for (const unit of this.units) {
                 if (!this.isAlive(unit)) continue;
+                if (performer && unit !== performer) continue;
 
                 switch (unit.phase) {
                     case 'WAIT':
@@ -187,7 +204,32 @@ export class BattleSystem {
         this.checkBattleEnd();
     }
 
+    /**
+     * Юнит, чей спецприём сейчас «держит сцену». Обычные атаки сюда не
+     * попадают — иначе бой превратился бы в пошаговую очередь.
+     */
+    cinematicPerformer() {
+        for (const unit of this.units) {
+            if (unit.phase !== 'EXECUTE') continue;
+            if (!this.isAlive(unit)) continue;
+            if (isSpecialMove(unit.pendingAction?.definition)) return unit;
+        }
+        return null;
+    }
+
     tickWait(unit, deltaTime) {
+        // Сбитый на замахе юнит возвращается на своё место, а не застывает
+        // посреди арены рядом с противником.
+        if (unit.homePosition && unit.mesh) {
+            const distance = Vector3.Distance(unit.mesh.position, unit.homePosition);
+            if (distance > HOME_EPSILON) {
+                const step = this.moveSpeed(unit) * deltaTime;
+                const direction = unit.homePosition.subtract(unit.mesh.position).normalize();
+                unit.mesh.position.addInPlace(direction.scale(Math.min(step, distance)));
+                this.faceTowards(unit, Vector3.Zero());
+            }
+        }
+
         unit.ip += this.ipSpeed(unit) * deltaTime;
 
         if (unit.ip >= COM_START) {
@@ -935,6 +977,7 @@ export class BattleSystem {
         const kind = element ? `damage element-${element}` : 'damage';
         this.ui.showFloatingText(target.mesh, String(damage), isCounter ? 'counter' : kind);
         this.ui.flashMesh(target.mesh);
+        this.ui.flashGaugeIcon?.(target.id);
         this.animator?.playHit(target.id);
         if (isCounter) this.ui.showFloatingText(target.mesh, 'COUNTER!', 'counter');
 
@@ -977,7 +1020,13 @@ export class BattleSystem {
 
         // Endure смягчает не только урон, но и откат по шкале.
         const ipScale = enduring ? ENDURE_IP_MULTIPLIER : 1;
-        const canCancel = definition.cancel && (target.phase === 'COM' || target.phase === 'ACT');
+
+        // Сбить можно и уже начатый приём — пока замах не дошёл до удара
+        // (hitsDone === 0). Раньше юнит в EXECUTE был неуязвим для отмены и
+        // спокойно добивал свой ход, из-за чего контрудар «не отменял урон».
+        const windingUp = target.phase === 'EXECUTE' && (target.hitsDone ?? 0) === 0;
+        const canCancel = definition.cancel
+            && (target.phase === 'COM' || target.phase === 'ACT' || windingUp);
 
         if (canCancel) {
             const pushback = (definition.cancelPushback ?? definition.ipDamage ?? 0) * ipScale;
@@ -987,6 +1036,9 @@ export class BattleSystem {
             target.target = null;
             target.actionState = null;
             target.aiThinkTimer = 0;
+            target.attackTimer = 0;
+            target.castStarted = false;
+            target.hitsDone = 0;
 
             // Юнит, стоявший в очереди на приказ, больше в ней не нужен.
             this.commandQueue = this.commandQueue.filter((queued) => queued !== target);
@@ -995,7 +1047,7 @@ export class BattleSystem {
             return;
         }
 
-        // Юнит в EXECUTE уже «выстрелил» — сбивать его поздно.
+        // Удар уже нанесён — откатывать нечего.
         if (target.phase === 'EXECUTE') return;
 
         target.ip = clamp(target.ip - (definition.ipDamage ?? 0) * ipScale, 0, COM_START);

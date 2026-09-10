@@ -381,6 +381,35 @@ check('павшее тело не проваливается сквозь аре
     }
 });
 
+check('у Рюдо есть наушники, шарф и рюкзак, но нет плаща', () => {
+    // Атрибуты из оригинального дизайна. Плащ носит только Елена — вместе
+    // с рюкзаком за спиной они сливались в кашу.
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'gear_ryudo', position: { x: 0, z: 0 },
+    }));
+    const names = model.meshes.map((m) => m.name);
+
+    assert.ok(names.some((n) => n.includes('_phoneCup')), 'нет наушников');
+    assert.ok(names.some((n) => n.includes('_phoneBand')), 'нет дужки наушников');
+    assert.ok(names.some((n) => n.includes('_scarf')), 'нет шарфа');
+    assert.ok(names.some((n) => n.includes('_pack')), 'нет рюкзака');
+    assert.ok(!names.some((n) => n.endsWith('_cape')), 'у Рюдо не должно быть плаща');
+
+    // Узел плаща нужен аниматору, даже когда самого плаща нет.
+    assert.ok(model.rig.cape, 'узел cape должен существовать всегда');
+});
+
+check('у Елены остаётся плащ и нет снаряжения Рюдо', () => {
+    const model = createUnitModel(scene, makeUnitData('elena', {
+        id: 'gear_elena', position: { x: 0, z: 0 },
+    }));
+    const names = model.meshes.map((m) => m.name);
+
+    assert.ok(names.some((n) => n.endsWith('_cape')), 'плащ Елены пропал');
+    assert.ok(!names.some((n) => n.includes('_pack')), 'рюкзак только у Рюдо');
+    assert.ok(!names.some((n) => n.includes('_phoneCup')), 'наушники только у Рюдо');
+});
+
 // --- Итог -----------------------------------------------------------------
 
 console.log(results.join('\n'));

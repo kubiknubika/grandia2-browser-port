@@ -61,6 +61,8 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     const leather = makeMaterial(scene, `${id}_leather`, '#4a3728');
     const leatherLight = makeMaterial(scene, `${id}_leatherLight`, '#6b5233');
     const gold = makeMaterial(scene, `${id}_gold`, '#d4a537', { specular: 0.7 });
+    const scarfMat = makeMaterial(scene, `${id}_scarfMat`, '#c0392b');
+    const packMat = makeMaterial(scene, `${id}_packMat`, '#7a6247');
 
     const root = new TransformNode(`${id}_root`, scene);
 
@@ -160,6 +162,59 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         scabbardTip.rotation.set(0.42, 0, -0.5);
         scabbardTip.material = gold;
 
+        // Красный шарф — самая узнаваемая деталь силуэта Рюдо.
+        const scarf = track(MeshBuilder.CreateTorus(`${id}_scarf`, {
+            diameter: 0.42, thickness: 0.14, tessellation: 12,
+        }, scene));
+        scarf.parent = torso;
+        scarf.position.set(0, 1.0, 0.02);
+        scarf.rotation.x = Math.PI / 2;
+        scarf.scaling.z = 0.8;
+        scarf.material = scarfMat;
+
+        // Свисающий конец шарфа.
+        const scarfTail = track(MeshBuilder.CreateBox(`${id}_scarfTail`, {
+            width: 0.17, height: 0.46, depth: 0.07,
+        }, scene));
+        scarfTail.parent = torso;
+        scarfTail.position.set(0.3, 0.74, 0.1);
+        scarfTail.rotation.set(0.1, 0, 0.3);
+        scarfTail.material = scarfMat;
+
+        // Заплечный мешок странствующего Geohound.
+        const pack = track(MeshBuilder.CreateBox(`${id}_pack`, {
+            width: 0.5, height: 0.56, depth: 0.3,
+        }, scene));
+        pack.parent = torso;
+        pack.position.set(0, 0.6, -0.42);
+        pack.material = packMat;
+
+        const packFlap = track(MeshBuilder.CreateBox(`${id}_packFlap`, {
+            width: 0.52, height: 0.2, depth: 0.32,
+        }, scene));
+        packFlap.parent = torso;
+        packFlap.position.set(0, 0.84, -0.43);
+        packFlap.material = leather;
+
+        // Скатка сверху и ремни крепления.
+        const bedroll = track(MeshBuilder.CreateCylinder(`${id}_bedroll`, {
+            height: 0.54, diameter: 0.18, tessellation: 10,
+        }, scene));
+        bedroll.parent = torso;
+        bedroll.position.set(0, 0.95, -0.44);
+        bedroll.rotation.z = Math.PI / 2;
+        bedroll.material = scarfMat;
+
+        for (const side of [-1, 1]) {
+            const packStrap = track(MeshBuilder.CreateBox(`${id}_packStrap${side}`, {
+                width: 0.09, height: 0.66, depth: 0.06,
+            }, scene));
+            packStrap.parent = torso;
+            packStrap.position.set(0.22 * side, 0.66, -0.26);
+            packStrap.rotation.x = -0.12;
+            packStrap.material = leather;
+        }
+
         // Наручи.
         for (const [name, parent] of [[`${id}_bracerL`, elbowL], [`${id}_bracerR`, elbowR]]) {
             const bracer = track(MeshBuilder.CreateCylinder(name, {
@@ -182,17 +237,22 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         }
     }
 
-    // Плащ/накидка — силуэт, который отличает персонажа издалека.
-    // Расширяется книзу: плоская доска сзади читалась как кусок картона.
-    const cape = track(MeshBuilder.CreateCylinder(`${id}_cape`, {
+    // Плащ носит только Елена: у Рюдо за спиной рюкзак, и вместе они
+    // превращались в кашу. Узел cape существует всегда — на нём держится
+    // рюкзак, и аниматор ищет его по имени.
+    const cape = new TransformNode(`${id}_capePivot`, scene);
+    cape.parent = torso;
+    cape.position.set(0, 0.58, -0.34);
+
+    if (weapon === 'staff') {
+    const cloak = track(MeshBuilder.CreateCylinder(`${id}_cape`, {
         height: 1.05, diameterTop: 0.62, diameterBottom: 0.98,
         tessellation: 4, faceted: true,
     }, scene));
-    cape.parent = torso;
-    cape.position.set(0, 0.58, -0.34);
-    cape.rotation.set(-0.06, Math.PI / 4, 0);
-    cape.scaling.z = 0.12;
-    cape.material = weapon === 'staff' ? trim : clothDark;
+    cloak.parent = cape;
+    cloak.rotation.set(-0.06, Math.PI / 4, 0);
+    cloak.scaling.z = 0.12;
+    cloak.material = trim;
 
     // Складки: две вертикальные грани ломают плоскость плаща.
     for (const side of [-1, 1]) {
@@ -200,12 +260,12 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
             height: 1.0, diameterTop: 0.16, diameterBottom: 0.3,
             tessellation: 4, faceted: true,
         }, scene));
-        fold.parent = cape;
+        fold.parent = cloak;
         // Родитель уже сплющен по z, поэтому компенсируем масштаб.
         fold.position.set(0.26 * side, 0.0, -0.6);
         fold.rotation.y = Math.PI / 4;
         fold.scaling.set(1, 0.98, 1);
-        fold.material = weapon === 'staff' ? trim : shadeMat(scene, `${id}_capeFoldMat`, color, weapon);
+        fold.material = trim;
     }
 
     // Застёжка плаща у горла.
@@ -215,6 +275,7 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     clasp.parent = torso;
     clasp.position.set(0, 1.02, -0.18);
     clasp.material = gold;
+    }
 
     // Шея и воротник: без них голова просто висела над торсом.
     const neckMesh = track(MeshBuilder.CreateCylinder(`${id}_neckMesh`, {
@@ -282,6 +343,54 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         tail.position.set(0, 0.02, -0.28);
         tail.rotation.x = 0.9;
         tail.material = hair;
+
+        // Торчащие пряди — в оригинале причёска колючая, а не гладкий шлем.
+        const spikes = [
+            [0.0, 0.26, 0.14, -0.5, 0.0],
+            [-0.17, 0.24, 0.06, -0.35, -0.4],
+            [0.17, 0.24, 0.06, -0.35, 0.4],
+            [-0.1, 0.2, -0.2, 0.5, -0.2],
+            [0.12, 0.2, -0.2, 0.5, 0.25],
+        ];
+        spikes.forEach(([x, y, z, rx, rz], i) => {
+            const spike = track(MeshBuilder.CreateCylinder(`${id}_spike${i}`, {
+                height: 0.3, diameterTop: 0.01, diameterBottom: 0.13,
+                tessellation: 4, faceted: true,
+            }, scene));
+            spike.parent = head;
+            spike.position.set(x, y, z);
+            spike.rotation.set(rx, 0, rz);
+            spike.material = hair;
+        });
+
+        // Наушники — фирменная деталь Рюдо.
+        for (const side of [-1, 1]) {
+            const cup = track(MeshBuilder.CreateCylinder(`${id}_phoneCup${side}`, {
+                height: 0.09, diameter: 0.26, tessellation: 8, faceted: true,
+            }, scene));
+            cup.parent = head;
+            cup.position.set(0.27 * side, -0.01, 0);
+            cup.rotation.z = Math.PI / 2;
+            cup.material = gold;
+
+            const pad = track(MeshBuilder.CreateCylinder(`${id}_phonePad${side}`, {
+                height: 0.04, diameter: 0.19, tessellation: 8,
+            }, scene));
+            pad.parent = head;
+            pad.position.set(0.23 * side, -0.01, 0);
+            pad.rotation.z = Math.PI / 2;
+            pad.material = leather;
+        }
+
+        // Дужка через макушку.
+        const band = track(MeshBuilder.CreateTorus(`${id}_phoneBand`, {
+            diameter: 0.54, thickness: 0.055, tessellation: 16,
+        }, scene));
+        band.parent = head;
+        band.position.y = 0.03;
+        band.rotation.x = Math.PI / 2;
+        band.scaling.z = 0.85;
+        band.material = gold;
     }
 
     for (const side of [-1, 1]) {

@@ -61,7 +61,7 @@ export function makeUnitData(presetKey, overrides = {}) {
 // числами внимательная игра выигрывает всегда (~42% HP в конце), а небрежная
 // (только Combo, без лечения и без Critical по заряженной цели) — лишь в 62%.
 // Канонические PRESETS не трогаем: правка живёт только в этом энкаунтере.
-const SPIDER_TUNING = { maxHp: 145, str: 38, agi: 30 };
+const SPIDER_TUNING = { maxHp: 58 };
 
 export const DEFAULT_ENCOUNTER = {
     players: [

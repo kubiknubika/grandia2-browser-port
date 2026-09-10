@@ -31,6 +31,17 @@ const STYLES = `
 .ip-icon.enemy { border-color: #e74c3c; }
 .ip-icon.player { border-color: #3498db; }
 .ip-icon.dead { opacity: 0.25; filter: grayscale(1); }
+/* Попадание видно и на шкале: иконка вспыхивает и дёргается. */
+.ip-icon.hit {
+    animation: ip-hit 0.65s ease-out;
+    border-color: #fff !important;
+}
+@keyframes ip-hit {
+    0%   { box-shadow: 0 0 0 0 rgba(231,76,60,0.9); transform: translate(-50%,-50%) scale(1); }
+    25%  { box-shadow: 0 0 14px 6px rgba(231,76,60,0.95); transform: translate(-50%,-50%) scale(1.35); }
+    60%  { box-shadow: 0 0 10px 3px rgba(231,76,60,0.6); transform: translate(-50%,-50%) scale(1.1); }
+    100% { box-shadow: 2px 2px 5px rgba(0,0,0,0.5); transform: translate(-50%,-50%) scale(1); }
+}
 
 .cmd-btn {
     background: #34495e; color: white; border: 1px solid #7f8c8d;
@@ -151,6 +162,7 @@ export class UIController {
         this.uiLayer = document.getElementById('ui-layer');
 
         this.gaugeIcons = {};
+        this.gaugeFlashTimers = {};
         this.cards = {};
         this.commandRing = null;
 
@@ -537,23 +549,55 @@ export class UIController {
         setTimeout(() => div.remove(), 1100);
     }
 
-    flashMesh(mesh, hexColor = '#ff0000', duration = 200) {
+    /**
+     * Подсветка попадания. Красим ВСЮ модель, а не только меш тела: раньше
+     * вспыхивал один кусок, и было непонятно, кого ударили. Длительность
+     * увеличена — 200 мс глаз почти не замечал.
+     */
+    flashMesh(mesh, hexColor = '#ff0000', duration = 650) {
         if (!mesh) return;
 
-        // Модели собраны из вложенных суставов, поэтому тело ищем рекурсивно:
-        // getChildren() без флага смотрит только на прямых потомков.
         const descendants = typeof mesh.getChildMeshes === 'function'
             ? mesh.getChildMeshes(false)
-            : mesh.getChildren();
-        const body = descendants.find((child) => child.name.includes('_body'))
-            ?? descendants.find((child) => child.material)
-            ?? mesh;
-        if (!body.material) return;
+            : (mesh.getChildren?.() ?? []);
+        const parts = [mesh, ...descendants].filter((part) => part?.material);
+        if (!parts.length) return;
 
-        const previous = body.material.emissiveColor;
-        body.material.emissiveColor = Color3.FromHexString(hexColor);
-        setTimeout(() => {
-            body.material.emissiveColor = previous ?? new Color3(0, 0, 0);
+        const color = Color3.FromHexString(hexColor);
+
+        // Один материал может висеть на нескольких мешах — идём по уникальным,
+        // иначе восстановление затрёт исходный цвет соседа.
+        const seen = new Set();
+        const restore = [];
+        for (const part of parts) {
+            const material = part.material;
+            if (seen.has(material)) continue;
+            seen.add(material);
+            restore.push([material, material.emissiveColor?.clone?.() ?? null]);
+            material.emissiveColor = color;
+        }
+
+        // Повторный удар по той же цели не должен обрывать подсветку раньше срока.
+        mesh._flashTimer ??= null;
+        if (mesh._flashTimer) clearTimeout(mesh._flashTimer);
+        mesh._flashTimer = setTimeout(() => {
+            for (const [material, previous] of restore) {
+                material.emissiveColor = previous ?? new Color3(0, 0, 0);
+            }
+            mesh._flashTimer = null;
+        }, duration);
+    }
+
+    /** Та же подсветка, но на иконке юнита в шкале IP. */
+    flashGaugeIcon(unitId, duration = 650) {
+        const icon = this.gaugeIcons[unitId];
+        if (!icon) return;
+
+        icon.classList.add('hit');
+        if (this.gaugeFlashTimers[unitId]) clearTimeout(this.gaugeFlashTimers[unitId]);
+        this.gaugeFlashTimers[unitId] = setTimeout(() => {
+            icon.classList.remove('hit');
+            this.gaugeFlashTimers[unitId] = null;
         }, duration);
     }
 

@@ -182,7 +182,7 @@ check('выбор цели: клик по Critical открывает списо
   const targets = [...$('#command-ring .target-btn')];
   assert.equal(targets.length, 2, 'должно быть 2 живых паука');
   assert.ok(/Mottled Spider A/.test(targets[0].textContent));
-  assert.ok(/145 \/ 145/.test(targets[0].textContent), 'должно показываться HP цели');
+  assert.ok(/58 \/ 58/.test(targets[0].textContent), 'должно показываться HP цели');
 
   targets[1].click();
   assert.deepEqual(chosen, { id: 'critical', target: 'spider2' }, 'должна выбраться вторая цель');
