@@ -144,28 +144,102 @@ check('бег включает мах ногами', () => {
     assert.ok(maxSwing > 0.2, `ноги должны заметно шагать, получили ${maxSwing.toFixed(3)}`);
 });
 
-check('замах поднимает руку с оружием и возвращает её обратно', () => {
+check('удар: клинок заносится над головой и рубит вниз', () => {
+    // Проверяем ТРАЕКТОРИЮ ОСТРИЯ, а не знак поворота плеча: знак зависит от
+    // сборки рига, а видимая дуга — то, ради чего анимация существует.
     const animator = new Animator();
-    const model = createHumanoid(scene, { id: 'swing' });
-    animator.register('swing', model);
-    const unit = fakeUnit('swing', model);
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'swingArc', position: { x: 0, z: 0 },
+    }));
+    animator.register('swingArc', model);
+    const unit = fakeUnit('swingArc', model);
 
-    for (let i = 0; i < 10; i += 1) animator.update([unit], 1 / 60);
-    const rest = model.rig.shoulderR.rotation.x;
+    const tip = model.meshes.find((m) => m.name.includes('_bladeTip'));
+    assert.ok(tip, 'у меча должно быть остриё');
 
-    animator.playSwing('swing');
-    let peak = rest;
-    for (let i = 0; i < 6; i += 1) {
+    const tipAt = () => {
+        model.root.computeWorldMatrix(true);
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+        return tip.getBoundingInfo().boundingBox.centerWorld.clone();
+    };
+
+    for (let i = 0; i < 40; i += 1) animator.update([unit], 1 / 60);
+    const rest = tipAt();
+
+    animator.playSwing('swingArc', 0.42);
+    let highest = -Infinity;
+    let lowest = Infinity;
+    let backMost = Infinity;
+    let frontMost = -Infinity;
+    let peakStep = 0;
+    let previous = tipAt();
+
+    for (let i = 0; i < 30; i += 1) {
         animator.update([unit], 1 / 60);
-        peak = Math.min(peak, model.rig.shoulderR.rotation.x);
+        const now = tipAt();
+        highest = Math.max(highest, now.y);
+        lowest = Math.min(lowest, now.y);
+        backMost = Math.min(backMost, now.z);
+        frontMost = Math.max(frontMost, now.z);
+        peakStep = Math.max(peakStep, now.subtract(previous).length());
+        previous = now;
     }
-    assert.ok(peak < rest - 0.2, `рука должна уйти на замах (${peak.toFixed(2)} vs ${rest.toFixed(2)})`);
 
-    // После завершения анимации поза возвращается.
-    for (let i = 0; i < 90; i += 1) animator.update([unit], 1 / 60);
+    assert.ok(highest > rest.y + 0.6, `замах должен поднять остриё (пик ${highest.toFixed(2)}, покой ${rest.y.toFixed(2)})`);
+    assert.ok(lowest < rest.y - 0.5, `удар должен опустить остриё (низ ${lowest.toFixed(2)})`);
+    assert.ok(highest - lowest > 1.5, `дуга слишком мелкая: ${(highest - lowest).toFixed(2)}`);
+
+    // Занос уходит назад, проводка выносит клинок вперёд.
+    assert.ok(frontMost - backMost > 1.2, `дуга должна идти назад-вперёд: ${(frontMost - backMost).toFixed(2)}`);
+
+    // Удар должен быть резким, а не равномерным сползанием.
+    assert.ok(peakStep * 60 > 25, `удар слишком вялый: пик ${(peakStep * 60).toFixed(1)} ед/с`);
+
+    // После завершения поза возвращается.
+    for (let i = 0; i < 120; i += 1) animator.update([unit], 1 / 60);
+    const settled = tipAt();
     assert.ok(
-        Math.abs(model.rig.shoulderR.rotation.x - rest) < 0.35,
-        'после удара рука должна вернуться в исходное положение',
+        Math.abs(settled.y - rest.y) < 0.35,
+        `после удара клинок должен вернуться в стойку: ${settled.y.toFixed(2)} vs ${rest.y.toFixed(2)}`,
+    );
+});
+
+check('каст: руки собирают энергию вверху, затем выброс вперёд', () => {
+    const animator = new Animator();
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'castArc', position: { x: 0, z: 0 },
+    }));
+    animator.register('castArc', model);
+    const unit = fakeUnit('castArc', model);
+
+    const grip = model.meshes.find((m) => m.name.includes('_grip'));
+    const handAt = () => {
+        model.root.computeWorldMatrix(true);
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+        return grip.getBoundingInfo().boundingBox.centerWorld.clone();
+    };
+
+    for (let i = 0; i < 40; i += 1) animator.update([unit], 1 / 60);
+    const rest = handAt();
+
+    animator.playCast('castArc', 0.8);
+    let highest = -Infinity;
+    let peakAtFrame = 0;
+    for (let i = 0; i < 52; i += 1) {
+        animator.update([unit], 1 / 60);
+        const now = handAt();
+        if (now.y > highest) { highest = now.y; peakAtFrame = i; }
+    }
+
+    assert.ok(highest > rest.y + 1.0, `руки должны подняться (${highest.toFixed(2)} vs ${rest.toFixed?.(2) ?? rest.y.toFixed(2)})`);
+
+    // Пик приходится на середину, а не на самый конец: после сбора идёт выброс.
+    assert.ok(peakAtFrame > 8 && peakAtFrame < 42, `пик сбора не на месте: кадр ${peakAtFrame}`);
+
+    for (let i = 0; i < 120; i += 1) animator.update([unit], 1 / 60);
+    assert.ok(
+        Math.abs(handAt().y - rest.y) < 0.35,
+        'после каста руки должны вернуться в стойку',
     );
 });
 

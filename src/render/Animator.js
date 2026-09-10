@@ -29,6 +29,18 @@ function damp(current, target, lambda, dt) {
     return lerp(current, target, 1 - Math.exp(-lambda * dt));
 }
 
+function clamp01(value) {
+    return Math.max(0, Math.min(1, value));
+}
+
+/**
+ * Профиль удара: занос поднимает оружие до 1, удар сбрасывает до −1
+ * (проводка ниже стойки), возврат приводит обратно к 0.
+ */
+function attackBlend(windup, strike, recover) {
+    return (windup - strike * 2) * (1 - recover);
+}
+
 export class Animator {
     constructor() {
         this.states = new Map();
@@ -116,33 +128,80 @@ export class Animator {
         const stride = t * (6 + state.speed * 0.9);
         const breathe = Math.sin(t * 1.7) * 0.035;
 
-        // swing идёт 1 -> 0. Первая треть — замах назад, дальше рубящий удар.
+        // Удар делится на три фазы, как в рисованной анимации: медленный
+        // замах (anticipation) -> резкий рубящий удар -> возврат. Раньше
+        // «удар» линейно растягивался на 65% времени и выглядел вялым.
         const swingP = 1 - state.swing;                       // 0 -> 1
-        const windup = Math.min(1, swingP / 0.35);            // 0 -> 1 (занос)
-        const strike = Math.max(0, (swingP - 0.35) / 0.65);   // 0 -> 1 (удар)
+        const WINDUP_END = 0.42;   // занос: долгий, чтобы читался
+        const STRIKE_END = 0.62;   // сам удар: короткий и быстрый
+
+        // Занос замедляется к концу — оружие «зависает» перед ударом.
+        const windupRaw = Math.min(1, swingP / WINDUP_END);
+        const windup = windupRaw * windupRaw * (3 - 2 * windupRaw);
+
+        // Удар: резкий старт с торможением в конце (ease-out cubic).
+        const strikeRaw = clamp01((swingP - WINDUP_END) / (STRIKE_END - WINDUP_END));
+        const strike = 1 - Math.pow(1 - strikeRaw, 3);
+
+        // Возврат в стойку после удара.
+        const recoverRaw = clamp01((swingP - STRIKE_END) / (1 - STRIKE_END));
+        const recover = recoverRaw * recoverRaw * (3 - 2 * recoverRaw);
+
+        // Итоговая доля «занесённости»: 0 в стойке, 1 на пике заноса.
+        const swingPose = attackBlend(windup, strike, recover);
         const swingEase = Math.sin(state.swing * Math.PI);
         const attacking = state.swing > 0;
 
-        const castP = state.cast > 0 ? Math.sin(state.cast * Math.PI) : 0;
+        // Каст тоже делим на фазы: сбор энергии (руки вверх) -> короткая
+        // задержка -> выброс вперёд. Раньше это был один синус туда-обратно,
+        // из-за чего заклинание выглядело как пожимание плечами.
+        const castProgress = state.cast > 0 ? 1 - state.cast : 0;
+        const GATHER_END = 0.45;
+        const HOLD_END = 0.62;
+
+        const gatherRaw = clamp01(castProgress / GATHER_END);
+        const gather = gatherRaw * gatherRaw * (3 - 2 * gatherRaw);
+        const releaseRaw = clamp01((castProgress - HOLD_END) / (1 - HOLD_END));
+        const release = 1 - Math.pow(1 - releaseRaw, 3);
+
+        // castP — «сколько сейчас накоплено»: растёт на сборе, падает на выбросе.
+        const castP = state.cast > 0 ? gather * (1 - release) : 0;
+        // castPush — рывок вперёд в момент выброса.
+        const castPush = state.cast > 0 ? release * (1 - release * 0.35) : 0;
+        const casting = state.cast > 0;
 
         // Корпус: дыхание, наклон на бегу, доворот плечом при ударе.
         rig.torso.rotation.x = damp(
             rig.torso.rotation.x,
-            runBlend * 0.22 + (attacking ? (windup * -0.18 + strike * 0.4) : 0) - castP * 0.12,
-            14, dt,
+            runBlend * 0.22
+            + (attacking ? (-windup * 0.24 + strike * 0.62) * (1 - recover) : 0)
+            - castP * 0.18 + castPush * 0.3,
+            attacking ? 22 : 14, dt,
         );
+        // Скручивание корпуса: замах уводит плечо назад, удар проносит вперёд.
         rig.torso.rotation.y = damp(
             rig.torso.rotation.y,
-            attacking ? (windup * 0.45 - strike * 0.75) : 0,
-            16, dt,
+            attacking ? (windup * 0.62 - strike * 1.15) * (1 - recover) : 0,
+            attacking ? 24 : 16, dt,
         );
+        // Приседание перед ударом и подъём на проводке — вес тела.
         rig.hips.position.y = rest.hipsY + breathe * (1 - runBlend)
             + Math.abs(Math.sin(stride)) * 0.09 * runBlend
-            + castP * 0.05;
+            + castP * 0.12 - castPush * 0.06
+            + (attacking ? (-windup * 0.09 + strike * 0.05) * (1 - recover) : 0);
+
+        // Бёдра доворачиваются вслед за корпусом — удар идёт от земли.
+        if (rig.hips.rotation) {
+            rig.hips.rotation.y = damp(
+                rig.hips.rotation.y,
+                attacking ? (windup * 0.3 - strike * 0.5) * (1 - recover) : 0,
+                attacking ? 20 : 12, dt,
+            );
+        }
 
         // Ноги: противофазный шаг; при ударе — выпад вперёд.
         const legSwing = Math.sin(stride) * 0.85 * runBlend;
-        const lunge = attacking ? strike * 0.35 : 0;
+        const lunge = attacking ? (strike * 0.5 - windup * 0.12) * (1 - recover) : 0;
         rig.hipL.rotation.x = damp(rig.hipL.rotation.x, legSwing - lunge, 18, dt);
         rig.hipR.rotation.x = damp(rig.hipR.rotation.x, -legSwing + lunge, 18, dt);
         rig.kneeL.rotation.x = damp(rig.kneeL.rotation.x, Math.max(0, -legSwing) * 1.1, 18, dt);
@@ -151,40 +210,53 @@ export class Animator {
         // Левая рука: маятник на бегу, поднимается при касте.
         rig.shoulderL.rotation.x = damp(
             rig.shoulderL.rotation.x,
-            -legSwing * 0.75 - castP * 1.5,
-            16, dt,
+            -legSwing * 0.75 - castP * 1.9 + castPush * 1.1
+            + (attacking ? (windup * 0.5 - strike * 0.7) * (1 - recover) : 0),
+            attacking ? 20 : 16, dt,
         );
         rig.shoulderL.rotation.z = damp(rig.shoulderL.rotation.z, rest.shoulderLZ, 10, dt);
-        rig.elbowL.rotation.x = damp(rig.elbowL.rotation.x, rest.elbowLX - castP * 0.5, 12, dt);
+        rig.elbowL.rotation.x = damp(
+            rig.elbowL.rotation.x,
+            rest.elbowLX - castP * 0.95 + castPush * 0.8,
+            casting ? 18 : 12, dt,
+        );
 
         // Правая рука с оружием: занос за плечо, затем рубящий удар вниз.
         const armTarget = attacking
-            ? rest.shoulderRX - windup * 1.9 + strike * 2.6
-            : rest.shoulderRX - legSwing * -0.4 - castP * 2.4;
+            ? rest.shoulderRX + (windup * 2.3 - strike * 3.6) * (1 - recover)
+            : rest.shoulderRX - legSwing * -0.4 - castP * 2.6 + castPush * 1.4;
 
-        rig.shoulderR.rotation.x = damp(rig.shoulderR.rotation.x, armTarget, attacking ? 20 : 12, dt);
+        // На ударе руку ведём жёстче, чем на возврате: резкость важнее плавности.
+        rig.shoulderR.rotation.x = damp(
+            rig.shoulderR.rotation.x, armTarget,
+            attacking ? (strikeRaw > 0 && recoverRaw === 0 ? 34 : 20) : 12, dt,
+        );
         rig.shoulderR.rotation.z = damp(
             rig.shoulderR.rotation.z,
-            rest.shoulderRZ - (attacking ? windup * 0.45 : 0) - castP * 0.25,
-            14, dt,
+            rest.shoulderRZ - (attacking ? (windup * 0.75 - strike * 1.25) * (1 - recover) : 0)
+            - castP * 0.25,
+            attacking ? 20 : 14, dt,
         );
+        // Локоть сгибается на заносе и распрямляется в момент удара.
         rig.elbowR.rotation.x = damp(
             rig.elbowR.rotation.x,
-            rest.elbowRX - (attacking ? windup * 0.85 - strike * 0.7 : 0),
-            14, dt,
+            rest.elbowRX - (attacking ? (windup * 1.5 - strike * 1.7) * (1 - recover) : 0),
+            attacking ? 26 : 14, dt,
         );
 
         // Кисть довoрачивает оружие: клинок идёт плашмя -> на ребро.
         if (rig.weaponPivot) {
             rig.weaponPivot.rotation.x = damp(
                 rig.weaponPivot.rotation.x,
-                rest.weaponX - (attacking ? windup * 0.6 - strike * 0.5 : 0),
-                16, dt,
+                rest.weaponX + (attacking ? (windup * 0.75 - strike * 1.5) * (1 - recover) : 0)
+                - castP * 0.5 + castPush * 0.7,
+                attacking ? 26 : 16, dt,
             );
             rig.weaponPivot.rotation.z = damp(
                 rig.weaponPivot.rotation.z,
-                rest.weaponZ + castP * 0.4,
-                12, dt,
+                rest.weaponZ + castP * 0.4
+                + (attacking ? (windup * 0.5 - strike * 0.95) * (1 - recover) : 0),
+                attacking ? 22 : 12, dt,
             );
         }
 

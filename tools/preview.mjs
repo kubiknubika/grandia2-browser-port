@@ -59,9 +59,18 @@ if (POSE === 'dead') {
 for (let i = 0; i < 240; i += 1) animator.update(actors.map((a) => a.unit), 1 / 60);
 
 if (POSE === 'action') {
+    // --frame=N — сколько кадров (1/60 с) отыграть после начала удара.
+    // Позволяет разглядеть занос, момент удара и проводку по отдельности.
+    const frames = Number(args.frame ?? 7);
     animator.playSwing('ryudo');
     animator.playHit('spiderA');
-    for (let i = 0; i < 7; i += 1) animator.update(actors.map((a) => a.unit), 1 / 60);
+    for (let i = 0; i < frames; i += 1) animator.update(actors.map((a) => a.unit), 1 / 60);
+}
+
+if (POSE === 'cast') {
+    const frames = Number(args.frame ?? 20);
+    animator.playCast('ryudo');
+    for (let i = 0; i < frames; i += 1) animator.update(actors.map((a) => a.unit), 1 / 60);
 }
 
 // --- Камера ---------------------------------------------------------------
@@ -75,6 +84,7 @@ const VIEWS = {
     headside: { eye: new Vector3(-2.05, 2.8, 0.05), target: new Vector3(-3.4, 2.72, 0) },
     back: { eye: new Vector3(-3.4, 2.1, -3.6), target: new Vector3(-3.4, 1.4, 0) },
     spider: { eye: new Vector3(4.3, 2.2, 5.2), target: new Vector3(4.3, 0.7, 0) },
+    duel: { eye: new Vector3(-0.4, 2.6, 3.4), target: new Vector3(-3.4, 1.6, 0) },
     side: { eye: new Vector3(13, 3.0, 0.5), target: new Vector3(0, 1.1, 0) },
     top: { eye: new Vector3(0.01, 12, 0.01), target: new Vector3(0, 0, 0) },
 };
