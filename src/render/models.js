@@ -183,12 +183,14 @@ export function createHumanoid(scene, {
         plate.material = steelDark;
 
         // Ремень через грудь — за спиной ножны.
+        // Портупея идёт ОТ ПЛЕЧА К БЕДРУ. Прежний ремень был вдвое короче
+        // (0.8) и висел серединой на животе: получалось коричневое пятно,
+        // не связанное ни с плечом, ни с поясом.
         const strap = track(MeshBuilder.CreateBox(`${id}_strap`, {
-            width: 0.12, height: 0.8, depth: 0.05,
+            width: 0.11, height: 1.24, depth: 0.05,
         }, scene));
         strap.parent = torso;
-        // z=0.13 держит ремень НА груди: при 0.2 он висел в воздухе перед ней.
-        strap.position.set(0.03, 0.68, 0.13);
+        strap.position.set(0.02, 0.42, 0.14);
         strap.rotation.z = 0.42;
         strap.material = leatherLight;
 
@@ -235,8 +237,10 @@ export function createHumanoid(scene, {
             width: 0.13, height: 0.38, depth: 0.06,
         }, scene));
         scarfTail.parent = torso;
-        scarfTail.position.set(0.2, 0.92, -0.14);
-        scarfTail.rotation.set(-0.12, 0, 0.24);
+        // Хвост прижат к спине под лопаткой: при x=0.2 / z=-0.14 он
+        // выглядывал справа из-за корпуса красным пятном.
+        scarfTail.position.set(0.13, 0.9, -0.05);
+        scarfTail.rotation.set(-0.05, 0, 0.16);
         scarfTail.material = scarfMat;
 
         // Заплечный мешок странствующего Geohound.
@@ -249,25 +253,25 @@ export function createHumanoid(scene, {
         // читалось как «рюкзак просвечивает через живот». На высоте лопаток
         // корпус шире, и тот же выступ остаётся закрыт силуэтом.
         const pack = track(MeshBuilder.CreateBox(`${id}_pack`, {
-            width: 0.26, height: 0.26, depth: 0.11,
+            width: 0.40, height: 0.44, depth: 0.18,
         }, scene));
         pack.parent = torso;
-        pack.position.set(0, 0.83, -0.29);
+        pack.position.set(0, 0.94, -0.27);
         pack.material = packMat;
 
         const packFlap = track(MeshBuilder.CreateBox(`${id}_packFlap`, {
-            width: 0.28, height: 0.12, depth: 0.14,
+            width: 0.38, height: 0.13, depth: 0.17,
         }, scene));
         packFlap.parent = torso;
-        packFlap.position.set(0, 0.95, -0.29);
+        packFlap.position.set(0, 1.14, -0.27);
         packFlap.material = leather;
 
         // Скатка лежит на клапане, а не над плечами.
         const bedroll = track(MeshBuilder.CreateCylinder(`${id}_bedroll`, {
-            height: 0.24, diameter: 0.1, tessellation: 10,
+            height: 0.36, diameter: 0.12, tessellation: 10,
         }, scene));
         bedroll.parent = torso;
-        bedroll.position.set(0, 1.0, -0.28);
+        bedroll.position.set(0, 1.2, -0.27);
         bedroll.rotation.z = Math.PI / 2;
         bedroll.material = scarfMat;
 
@@ -277,7 +281,7 @@ export function createHumanoid(scene, {
                 width: 0.08, height: 0.42, depth: 0.05,
             }, scene));
             packStrap.parent = torso;
-            packStrap.position.set(0.11 * side, 0.83, -0.25);
+            packStrap.position.set(0.13 * side, 0.9, -0.24);
             packStrap.rotation.x = -0.12;
             packStrap.material = leather;
         }
@@ -315,42 +319,38 @@ export function createHumanoid(scene, {
     cape.position.set(0, 0.58, -0.34);
 
     if (weapon === 'staff') {
-    // Плащ огибает спину. Прежний был сплющен до 0.12 по глубине —
-    // с любого ракурса, кроме строго фронтального, он читался как плоский
-    // лист, висящий отдельно от фигуры.
-    const cloak = track(MeshBuilder.CreateCylinder(`${id}_cape`, {
-        height: 1.05, diameterTop: 0.58, diameterBottom: 0.92,
-        tessellation: 8, faceted: true,
-    }, scene));
-    cloak.parent = cape;
-    cloak.rotation.set(-0.06, Math.PI / 8, 0);
-    cloak.scaling.z = 0.42;
-    cloak.position.z = -0.06;
-    cloak.material = trim;
-
-    // Складки: две вертикальные грани ломают плоскость плаща.
-    for (const side of [-1, 1]) {
-        const fold = track(MeshBuilder.CreateCylinder(`${id}_capeFold${side}`, {
-            height: 1.0, diameterTop: 0.16, diameterBottom: 0.3,
-            tessellation: 4, faceted: true,
+        // У Елены НЕ плащ за спиной, а поясная накидка («pelvic curtain»):
+        // короткая юбка-фартук на бёдрах поверх платья. Прежний вариант —
+        // полотнище от плеч — не соответствовал костюму и с любого ракурса,
+        // кроме фронтального, читался как доска, приставленная к спине.
+        const skirt = track(MeshBuilder.CreateCylinder(`${id}_cape`, {
+            height: 0.46, diameterTop: 0.6, diameterBottom: 0.84,
+            tessellation: 10, faceted: true,
         }, scene));
-        fold.parent = cloak;
-        // Складки прижаты к телу плаща. Смещение -0.6 по z считалось от
-        // сплющенного родителя (0.12); после того как плащу вернули объём
-        // (0.42), они уехали наружу и торчали отдельными плитами.
-        fold.position.set(0.3 * side, 0.0, -0.12);
-        fold.rotation.y = Math.PI / 4;
-        fold.scaling.set(1, 0.98, 1);
-        fold.material = trim;
-    }
+        skirt.parent = torso;
+        skirt.position.set(0, 0.12, 0);
+        skirt.material = trim;
 
-    // Застёжка плаща у горла.
-    const clasp = track(MeshBuilder.CreateSphere(`${id}_capeClasp`, {
-        diameterX: 0.14, diameterY: 0.1, diameterZ: 0.1,
-    }, scene));
-    clasp.parent = torso;
-    clasp.position.set(0, 1.02, -0.18);
-    clasp.material = gold;
+        // Разрез спереди: накидка не смыкается, из-под неё видны ноги.
+        for (const side of [-1, 1]) {
+            const panel = track(MeshBuilder.CreateBox(`${id}_capeFold${side}`, {
+                width: 0.22, height: 0.5, depth: 0.05,
+            }, scene));
+            panel.parent = torso;
+            panel.position.set(0.2 * side, 0.06, 0.2);
+            panel.rotation.set(0.12, 0, side * -0.14);
+            panel.material = trim;
+        }
+
+        // Пояс-кушак, на котором держится накидка.
+        const sash = track(MeshBuilder.CreateCylinder(`${id}_capeClasp`, {
+            height: 0.12, diameterTop: 0.58, diameterBottom: 0.62,
+            tessellation: 12,
+        }, scene));
+        sash.parent = torso;
+        sash.position.set(0, 0.34, 0);
+        sash.scaling.z = 0.8;
+        sash.material = gold;
     }
 
     // Шея и воротник: без них голова просто висела над торсом.

@@ -1678,6 +1678,109 @@ check('наконечник ножен состыкован с коробом', 
     );
 });
 
+check('рюкзак крупный, а не сумочка', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'packSize', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const pack = boxOf(model, 'packSize_pack');
+    const body = boxOf(model, 'packSize_body');
+    const packWidth = pack.maximumWorld.x - pack.minimumWorld.x;
+    const backWidth = body.maximumWorld.x - body.minimumWorld.x;
+
+    // Заплечный мешок должен занимать заметную часть спины: при 33 % он
+    // читался как поясная сумочка, случайно надетая на спину.
+    assert.ok(
+        packWidth / backWidth > 0.45,
+        `рюкзак мелкий: ${(packWidth / backWidth * 100).toFixed(0)} % ширины спины`,
+    );
+    // И клапан не шире самого мешка, иначе торчит углами из-за силуэта.
+    const flap = boxOf(model, 'packSize_packFlap');
+    assert.ok(
+        (flap.maximumWorld.x - flap.minimumWorld.x) <= packWidth,
+        'клапан шире мешка',
+    );
+});
+
+check('красный хвост шарфа не выглядывает сбоку из-за корпуса', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'tailTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const tail = boxOf(model, 'tailTest_scarfTail');
+    const body = boxOf(model, 'tailTest_body');
+
+    // Хвост прижат к спине и не выходит за габарит корпуса вбок: иначе
+    // он проступает справа красным пятном «сквозь тело».
+    assert.ok(
+        tail.maximumWorld.x < body.maximumWorld.x - 0.13,
+        `хвост шарфа торчит вбок: ${tail.maximumWorld.x.toFixed(2)} при корпусе ${body.maximumWorld.x.toFixed(2)}`,
+    );
+});
+
+check('портупея соединяет плечо с поясом, а не висит на животе', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'strapTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const strap = boxOf(model, 'strapTest_strap');
+    const belt = boxOf(model, 'strapTest_belt');
+    const body = boxOf(model, 'strapTest_body');
+
+    // Низ портупеи доходит до пояса...
+    assert.ok(
+        strap.minimumWorld.y < belt.maximumWorld.y + 0.05,
+        `портупея не достаёт до пояса: низ ${strap.minimumWorld.y.toFixed(2)}, пояс ${belt.maximumWorld.y.toFixed(2)}`,
+    );
+    // ...а сам ремень перекрывает большую часть высоты корпуса: короткий
+    // огрызок висел серединой на животе, не касаясь ни плеча, ни пояса.
+    const strapSpan = strap.maximumWorld.y - strap.minimumWorld.y;
+    const bodySpan = body.maximumWorld.y - body.minimumWorld.y;
+    assert.ok(
+        strapSpan / bodySpan > 1.2,
+        `портупея короткая: ${strapSpan.toFixed(2)} при корпусе ${bodySpan.toFixed(2)}`,
+    );
+});
+
+check('у Елены поясная накидка, а не плащ за спиной', () => {
+    const model = createUnitModel(scene, makeUnitData('elena', {
+        id: 'capeTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const skirt = boxOf(model, 'capeTest_cape');
+    const body = boxOf(model, 'capeTest_body');
+    const waist = boxOf(model, 'capeTest_waist');
+
+    // Накидка сидит НА БЁДРАХ: её верх ниже груди, а низ — ниже пояса.
+    assert.ok(
+        skirt.maximumWorld.y < body.maximumWorld.y - 0.4,
+        `накидка задрана к плечам: верх ${skirt.maximumWorld.y.toFixed(2)}`,
+    );
+    assert.ok(
+        skirt.minimumWorld.y < waist.minimumWorld.y,
+        'накидка не закрывает бёдра',
+    );
+    // И она объёмная, а не плоский лист: глубина сопоставима с шириной.
+    const depth = skirt.maximumWorld.z - skirt.minimumWorld.z;
+    const width = skirt.maximumWorld.x - skirt.minimumWorld.x;
+    assert.ok(
+        depth / width > 0.6,
+        `накидка плоская: глубина ${depth.toFixed(2)} при ширине ${width.toFixed(2)}`,
+    );
+});
+
 // --- Зона поражения линейного приёма ---------------------------------------
 
 check('полоса удара ложится между концами и смотрит вдоль них', async () => {
