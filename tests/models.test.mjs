@@ -1444,6 +1444,85 @@ check('шарф лежит на плечах, а не парит красным 
     );
 });
 
+check('ножны висят снаружи бедра, а не врезаются в поясницу', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'scabTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const scabbard = model.meshes.find((m) => m.name === 'scabTest_scabbard');
+    const SCABBARD_RADIUS = 0.06;
+
+    // Радиус корпуса на высоте y: конус тела 1.70..2.52 и талия 1.44..1.74.
+    // Проверяем не bounding box (у наклонённого цилиндра он врёт), а точки
+    // самой оси ножен против поверхности корпуса.
+    const bodyRadius = (y) => {
+        if (y >= 1.70) {
+            const t = (y - 1.70) / 0.82;
+            const rx = 0.25 + 0.14 * t;
+            return { rx, rz: rx * 0.72 };
+        }
+        if (y >= 1.44) {
+            const t = (y - 1.44) / 0.30;
+            const rx = 0.28 - 0.03 * t;
+            return { rx, rz: rx * 0.72 };
+        }
+        return null;
+    };
+
+    let worst = Infinity;
+    for (let k = 0; k <= 20; k += 1) {
+        const point = Vector3.TransformCoordinates(
+            new Vector3(0, -0.43 + k * 0.043, 0), scabbard.getWorldMatrix(),
+        );
+        const radius = bodyRadius(point.y);
+        if (!radius) continue;
+        const normalized = Math.sqrt(
+            (point.x / radius.rx) ** 2 + (point.z / radius.rz) ** 2,
+        );
+        const gap = (normalized - 1) * Math.min(radius.rx, radius.rz) - SCABBARD_RADIUS;
+        worst = Math.min(worst, gap);
+    }
+
+    assert.ok(
+        worst > 0,
+        `ножны утоплены в корпус на ${(-worst).toFixed(3)}`,
+    );
+});
+
+check('голенище закрывает голень, штанина не просвечивает сзади', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'bootTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    for (const side of ['L', 'R']) {
+        const boot = boxOf(model, `bootTest_foot${side}_boot`);
+        const shin = boxOf(model, `bootTest_shin${side}`);
+
+        // Голенище должно быть ШИРЕ голени с запасом: при зазоре в пару
+        // сотых синяя штанина просвечивала сквозь кромку сзади.
+        const bootWidth = boot.maximumWorld.x - boot.minimumWorld.x;
+        const shinWidth = shin.maximumWorld.x - shin.minimumWorld.x;
+        assert.ok(
+            bootWidth - shinWidth > 0.05,
+            `голенище ${side} почти впритык к голени: ${bootWidth.toFixed(3)} против ${shinWidth.toFixed(3)}`,
+        );
+
+        // И глубже по Z — сзади зазор был самым узким.
+        const bootDepth = boot.maximumWorld.z - boot.minimumWorld.z;
+        const shinDepth = shin.maximumWorld.z - shin.minimumWorld.z;
+        assert.ok(
+            bootDepth - shinDepth > 0.05,
+            `голенище ${side} узкое по глубине: ${bootDepth.toFixed(3)} против ${shinDepth.toFixed(3)}`,
+        );
+    }
+});
+
 // --- Зона поражения линейного приёма ---------------------------------------
 
 check('полоса удара ложится между концами и смотрит вдоль них', async () => {

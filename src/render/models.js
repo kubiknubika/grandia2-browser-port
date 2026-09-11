@@ -165,20 +165,23 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         strap.material = leatherLight;
 
         // Ножны на поясе, а не на лопатке: раньше верх упирался в наплечник.
+        // Ножны висят СНАРУЖИ бедра и уходят назад. Прежняя посадка
+        // (x -0.28, z -0.16) втыкала их в поясницу: короб пересекал корпус
+        // на 0.40 x 0.26 x 0.36 — ножны буквально проходили сквозь тело.
         const scabbard = track(MeshBuilder.CreateCylinder(`${id}_scabbard`, {
-            height: 1.0, diameterTop: 0.09, diameterBottom: 0.12, tessellation: 8,
+            height: 0.86, diameterTop: 0.09, diameterBottom: 0.12, tessellation: 8,
         }, scene));
         scabbard.parent = torso;
-        scabbard.position.set(-0.28, 0.06, -0.16);
-        scabbard.rotation.set(0.42, 0, -0.5);
+        scabbard.position.set(-0.46, -0.06, -0.32);
+        scabbard.rotation.set(0.5, 0, -0.34);
         scabbard.material = leather;
 
         const scabbardTip = track(MeshBuilder.CreateCylinder(`${id}_scabbardTip`, {
             height: 0.14, diameterTop: 0.13, diameterBottom: 0.06, tessellation: 8,
         }, scene));
         scabbardTip.parent = torso;
-        scabbardTip.position.set(-0.5, -0.35, -0.36);
-        scabbardTip.rotation.set(0.42, 0, -0.5);
+        scabbardTip.position.set(-0.59, -0.45, -0.52);
+        scabbardTip.rotation.set(0.5, 0, -0.34);
         scabbardTip.material = gold;
 
         // Красный шарф — самая узнаваемая деталь силуэта Рюдо.
@@ -559,11 +562,14 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         foot.material = leather;
 
         // Голенище — сапог, а не дощечка под ногой.
+        // Голенище шире голени (0.26) с запасом: при 0.29 зазор был всего
+        // 0.015 на сторону, и синяя штанина просвечивала сквозь кромку
+        // сзади. Заодно поднимаем — раньше выше -0.33 голень была голой.
         const shaftBoot = track(MeshBuilder.CreateCylinder(`${name}_boot`, {
-            height: 0.26, diameterTop: 0.29, diameterBottom: 0.25, tessellation: 10,
+            height: 0.34, diameterTop: 0.34, diameterBottom: 0.28, tessellation: 10,
         }, scene));
         shaftBoot.parent = parent;
-        shaftBoot.position.set(0, -0.46, 0.01);
+        shaftBoot.position.set(0, -0.42, 0.01);
         shaftBoot.material = leather;
     }
 

@@ -71,8 +71,31 @@ if (POSE === 'action') {
 if (POSE === 'run') {
     // Гоним героя вперёд с боевой скоростью, чтобы устоялась поза бега:
     // клинок выводится параллельно полу, локоть сгибается.
+    //
+    // Останавливаемся на кадре МАКСИМАЛЬНОГО разведения ног, иначе превью
+    // ловит случайную фазу: на кадре 180 ноги почти сведены, и вынос ноги
+    // выглядит слабым, хотя в движении он полный.
     const hero = actors.find((a) => a.unit.id === 'ryudo');
-    for (let i = 0; i < 180; i += 1) {
+    const frames = Number(args.frame ?? 0);
+    let bestFrame = frames;
+
+    if (!frames && hero) {
+        let bestSpread = -Infinity;
+        for (let i = 0; i < 180; i += 1) {
+            hero.model.root.position.z += 11.13 / 60;
+            animator.update(actors.map((a) => a.unit), 1 / 60);
+            if (i < 90) continue;   // ждём, пока поза устоится
+            const spread = Math.abs(
+                hero.model.rig.hipL.rotation.x - hero.model.rig.hipR.rotation.x,
+            );
+            if (spread > bestSpread) { bestSpread = spread; bestFrame = i; }
+        }
+        // Прогон заново до найденного кадра: аниматор не отматывается назад.
+        for (const actor of actors) animator.register(actor.unit.id, actor.model);
+        hero.model.root.position.z = 0;
+    }
+
+    for (let i = 0; i <= bestFrame; i += 1) {
         if (hero) hero.model.root.position.z += 11.13 / 60;
         animator.update(actors.map((a) => a.unit), 1 / 60);
     }
@@ -112,6 +135,8 @@ const VIEWS = {
     battlecam: { eye: new Vector3(0, 11, 19.05), target: new Vector3(0, 0, 0) },
     battleryudo: { eye: new Vector3(-3.4, 6.0, 9.5), target: new Vector3(-3.4, 1.6, 0) },
     battleelena: { eye: new Vector3(-7.2, 6.0, 9.5), target: new Vector3(-7.2, 1.6, 0) },
+    // Кадр замаха: клинок уходит на высоту ~4.2, обычные виды его срезают.
+    ryudoswing: { eye: new Vector3(-1.2, 3.2, 6.4), target: new Vector3(-3.4, 2.6, 0) },
     ryudofull: { eye: new Vector3(-3.4, 1.9, 4.2), target: new Vector3(-3.4, 1.7, 0) },
     ryudochest: { eye: new Vector3(-3.4, 2.3, 2.4), target: new Vector3(-3.4, 2.1, 0) },
     ryudoclav: { eye: new Vector3(-2.6, 2.7, 1.9), target: new Vector3(-3.4, 2.35, 0) },
