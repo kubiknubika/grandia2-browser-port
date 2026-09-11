@@ -207,18 +207,23 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         // Мешок сидит НИЖЕ линии плеч и уже корпуса: раньше он вместе со
         // скаткой и клапаном выглядывал из-за плеч на ракурсе 3/4, и это
         // читалось как рюкзак, надетый задом наперёд.
+        // Мешок сидит МЕЖДУ ЛОПАТОК, а не на пояснице. Рюкзак обязан
+        // выступать за спину (иначе его не видно со спины), но на уровне
+        // живота этот выступ выглядывал сбоку от корпуса под углом ~40° —
+        // читалось как «рюкзак просвечивает через живот». На высоте лопаток
+        // корпус шире, и тот же выступ остаётся закрыт силуэтом.
         const pack = track(MeshBuilder.CreateBox(`${id}_pack`, {
-            width: 0.34, height: 0.44, depth: 0.14,
+            width: 0.34, height: 0.34, depth: 0.14,
         }, scene));
         pack.parent = torso;
-        pack.position.set(0, 0.56, -0.27);
+        pack.position.set(0, 0.86, -0.26);
         pack.material = packMat;
 
         const packFlap = track(MeshBuilder.CreateBox(`${id}_packFlap`, {
-            width: 0.36, height: 0.14, depth: 0.16,
+            width: 0.36, height: 0.12, depth: 0.16,
         }, scene));
         packFlap.parent = torso;
-        packFlap.position.set(0, 0.72, -0.27);
+        packFlap.position.set(0, 1.0, -0.26);
         packFlap.material = leather;
 
         // Скатка лежит на клапане, а не над плечами.
@@ -226,17 +231,17 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
             height: 0.36, diameter: 0.12, tessellation: 10,
         }, scene));
         bedroll.parent = torso;
-        bedroll.position.set(0, 0.8, -0.27);
+        bedroll.position.set(0, 1.07, -0.26);
         bedroll.rotation.z = Math.PI / 2;
         bedroll.material = scarfMat;
 
         // Лямки идут по спине вплотную к корпусу, а не по бокам.
         for (const side of [-1, 1]) {
             const packStrap = track(MeshBuilder.CreateBox(`${id}_packStrap${side}`, {
-                width: 0.08, height: 0.6, depth: 0.05,
+                width: 0.08, height: 0.42, depth: 0.05,
             }, scene));
             packStrap.parent = torso;
-            packStrap.position.set(0.15 * side, 0.6, -0.22);
+            packStrap.position.set(0.15 * side, 0.86, -0.21);
             packStrap.rotation.x = -0.12;
             packStrap.material = leather;
         }
