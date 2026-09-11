@@ -26,7 +26,11 @@ const SWING_SECONDS = 0.42;
  *
  * Значения — ДОБАВКА к позе покоя, поэтому при смене стойки их приходится
  * пересчитывать: диагональная стойка «ремень безопасности» сделала прежние
- * дельты негодными, хват рвался на 0.6-0.9. Значения — добавка к
+ * дельты негодными, хват рвался на 0.6-0.9.
+ *
+ * Подбирались ЧЕРЕЗ АНИМАТОР, а не статикой: статический перебор не видит
+ * наклона корпуса и затухания damp, и его решения разваливались в бою —
+ * хват рвался, а древко проходило перед лицом. Значения — добавка к
  * позе покоя. Разносить их по формулам вручную нельзя: суставы связаны, и
  * правка одного угла заваливает посох набок.
  *
@@ -41,16 +45,16 @@ const SWING_SECONDS = 0.42;
  */
 const STAFF_POSES = {
     castTarget: {
-        shoulderRX: 0.40, shoulderRZ: -0.30, elbowR: 0.25, wrist: 0.40,
-        shoulderLX: 0.65, shoulderLZ: 0.00, elbowL: 0.56,
+        shoulderRX: 0.60, shoulderRZ: -0.30, elbowR: 0.00, wrist: 0.10,
+        shoulderLX: 0.50, shoulderLZ: 0.00, elbowL: 0.07,
     },
     castSelf: {
-        shoulderRX: -1.34, shoulderRZ: -0.25, elbowR: 0.00, wrist: 1.45,
-        shoulderLX: -1.12, shoulderLZ: 0.00, elbowL: 1.60,
+        shoulderRX: 0.60, shoulderRZ: -1.10, elbowR: -1.00, wrist: 0.30,
+        shoulderLX: -1.00, shoulderLZ: 0.00, elbowL: 1.07,
     },
     windup: {
-        shoulderRX: -0.40, shoulderRZ: -0.50, elbowR: -0.30, wrist: 0.66,
-        shoulderLX: -0.60, shoulderLZ: 0.00, elbowL: 0.93,
+        shoulderRX: 0.80, shoulderRZ: -0.50, elbowR: -0.60, wrist: 0.30,
+        shoulderLX: 0.30, shoulderLZ: 0.00, elbowL: 1.60,
     },
 };
 
@@ -363,7 +367,10 @@ export class Animator {
             + (twoHanded
                 ? staffAdd('elbowR')
                 : (attacking ? (-windup * 0.66 + strike * 0.66) * (1 - recover) : 0))
-            - carry * 0.80,
+            // Сгиб локтя на бегу выводит клинок параллельно полу. После того
+            // как стойка меча стала круче, прежние 0.80 давали наклон -0.24;
+            // замер по 90 кадрам бега: 1.10 => 0.045.
+            - carry * 1.10,
             attacking ? 26 : 14, dt,
         ), LIMITS.elbow[0], LIMITS.elbow[1]);
 

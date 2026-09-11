@@ -73,8 +73,11 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     const torso = joint(scene, `${id}_torso`, hips, Vector3.Zero());
     const neck = joint(scene, `${id}_neck`, torso, new Vector3(0, 1.02, 0));
     // Плечи выносим за радиус груди (0.34), иначе руки тонут в торсе.
-    const shoulderL = joint(scene, `${id}_shoulderL`, torso, new Vector3(-0.52, 0.8, 0));
-    const shoulderR = joint(scene, `${id}_shoulderR`, torso, new Vector3(0.52, 0.8, 0));
+    // Плечевые суставы держим у верхнего среза корпуса (он на 1.07): раньше
+    // они сидели на 0.8, и руки росли из середины груди — плечи оказывались
+    // заметно ниже линии ключиц.
+    const shoulderL = joint(scene, `${id}_shoulderL`, torso, new Vector3(-0.5, 0.98, 0));
+    const shoulderR = joint(scene, `${id}_shoulderR`, torso, new Vector3(0.5, 0.98, 0));
     const elbowL = joint(scene, `${id}_elbowL`, shoulderL, new Vector3(0, -0.52, 0));
     const elbowR = joint(scene, `${id}_elbowR`, shoulderR, new Vector3(0, -0.52, 0));
     const hipL = joint(scene, `${id}_hipL`, hips, new Vector3(-0.21, -0.08, 0));
@@ -109,8 +112,11 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         const pad = track(MeshBuilder.CreateSphere(`${id}_pauldron${side}`, {
             diameterX: 0.34, diameterY: 0.26, diameterZ: 0.32, slice: 0.55,
         }, scene));
-        pad.parent = torso;
-        pad.position.set(0.42 * side, 0.9, 0);
+        // Наплечник крепим к САМОМУ плечевому суставу: он должен ехать
+        // вместе с рукой. На торсе он оставался на месте, и после разворота
+        // рук наружу между ним и рукавом открывалась щель.
+        pad.parent = side < 0 ? shoulderL : shoulderR;
+        pad.position.set(0.02 * side, 0.04, 0);
         pad.rotation.z = side * 0.35;
         pad.material = weapon === 'staff' ? trim : steel;
     }
@@ -247,12 +253,15 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
 
         // Набедренные щитки поверх бёдер.
         for (const [name, parent, side] of [[`${id}_tassetL`, hipL, -1], [`${id}_tassetR`, hipR, 1]]) {
+            // Поясная сумка висит на ВНЕШНЕЙ стороне бедра. Прежний щиток
+            // был вдвое крупнее и сидел спереди — читался как коричневая
+            // коробка на животе, а не как карман.
             const tasset = track(MeshBuilder.CreateBox(name, {
-                width: 0.26, height: 0.3, depth: 0.2,
+                width: 0.12, height: 0.18, depth: 0.14,
             }, scene));
             tasset.parent = parent;
-            tasset.position.set(0.04 * side, -0.16, 0.06);
-            tasset.rotation.z = side * 0.12;
+            tasset.position.set(0.15 * side, -0.12, 0.0);
+            tasset.rotation.z = side * 0.1;
             tasset.material = leatherLight;
         }
     }
@@ -513,10 +522,21 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         return mesh;
     };
 
-    limb(`${id}_upperArmL`, shoulderL, 0.54, 0.12, cloth);
-    limb(`${id}_upperArmR`, shoulderR, 0.54, 0.12, cloth);
+    // Плечо чуть длиннее расстояния до локтя (0.52), чтобы капсулы
+    // ПЕРЕКРЫВАЛИСЬ: иначе на сгибе видна ступенька между рукавом и
+    // предплечьем — сустав ничем не закрыт.
+    limb(`${id}_upperArmL`, shoulderL, 0.6, 0.12, cloth);
+    limb(`${id}_upperArmR`, shoulderR, 0.6, 0.12, cloth);
     const foreArmL = limb(`${id}_foreArmL`, elbowL, 0.5, 0.105, skin);
     const foreArmR = limb(`${id}_foreArmR`, elbowR, 0.5, 0.105, skin);
+
+    // Шарнир локтя: небольшая сфера в самом суставе окончательно скрывает
+    // стык двух капсул при любом угле сгиба.
+    for (const [name, parent] of [[`${id}_elbowCapL`, elbowL], [`${id}_elbowCapR`, elbowR]]) {
+        const cap = track(MeshBuilder.CreateSphere(name, { diameter: 0.23, segments: 8 }, scene));
+        cap.parent = parent;
+        cap.material = cloth;
+    }
     limb(`${id}_thighL`, hipL, 0.64, 0.15, clothDark);
     limb(`${id}_thighR`, hipR, 0.64, 0.15, clothDark);
     limb(`${id}_shinL`, kneeL, 0.62, 0.13, clothDark);
@@ -674,8 +694,11 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     }
 
     // Поза покоя: руки разведены, оружие видно и не пересекает тело.
-    shoulderL.rotation.z = 0.2;
-    shoulderR.rotation.z = -0.2;
+    // Знак Z разводит руки НАРУЖУ: прежние 0.2/-0.2 работали наоборот и
+    // вжимали предплечья в бёдра (перекрытие по X до 0.23). Замер: при
+    // -0.10/+0.10 зазор между предплечьем и бедром 0.08.
+    shoulderL.rotation.z = -0.1;
+    shoulderR.rotation.z = 0.1;
     elbowL.rotation.x = -0.22;
 
     if (weapon === 'sword') {
@@ -686,12 +709,15 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         //      вперёд, а не плашмя (нормаль плоскости почти строго по X).
         // Кисть довёрнута под весом клинка, поэтому меч не параллелен полу,
         // а наклонён остриём вниз (составляющая y≈-0.61).
-        shoulderR.rotation.x = 0.0;
-        shoulderR.rotation.z = -0.3;
-        elbowR.rotation.x = -0.1;
-        weaponPivot.rotation.x = 2.8;
-        weaponPivot.rotation.y = 1.5;
-        weaponPivot.rotation.z = 0.8;
+        // Рука отведена от бедра (зазор 0.18), клинок при этом остаётся
+        // остриём вперёд-вниз и режет кромкой: одним разворотом плеча этого
+        // не добиться — угол уводил меч вбок, стойка пересчитана целиком.
+        shoulderR.rotation.x = 0.40;
+        shoulderR.rotation.z = 0.15;
+        elbowR.rotation.x = -0.39;
+        weaponPivot.rotation.x = 3.4;
+        weaponPivot.rotation.y = 1.8;
+        weaponPivot.rotation.z = 0.6;
     } else {
         // Посох держат ДВУМЯ руками ПО ДИАГОНАЛИ, как ремень безопасности:
         // низ древка у правого бедра, орб над левым плечом. Прежняя поза
@@ -702,13 +728,17 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         // Углы подобраны численно в два прохода: сперва правая кисть и
         // наклон древка, затем левая кисть подводится к древку с жёстким
         // штрафом за вылет за пределы комфортной зоны (промах хвата 0.003).
-        shoulderR.rotation.x = 0.15;
-        shoulderR.rotation.z = -0.37;
-        elbowR.rotation.x = -1.24;
-        weaponPivot.rotation.set(1.15, -1.20, -0.20);
+        // Правый локоть ОТВЕДЁН наружу (отступ от корпуса 0.14): прежде он
+        // был прижат к рёбрам и «врастал» в бок. Одним углом плеча это не
+        // правится — разворот рвал двуручный хват, поэтому стойка
+        // пересчитана целиком.
+        shoulderR.rotation.x = 0.23;
+        shoulderR.rotation.z = 0.05;
+        elbowR.rotation.x = -1.14;
+        weaponPivot.rotation.set(1.10, -0.80, -0.10);
 
-        shoulderL.rotation.set(-0.63, 0.90, -0.16);
-        elbowL.rotation.x = -2.20;
+        shoulderL.rotation.set(-0.35, 0.50, 0.80);
+        elbowL.rotation.x = -1.98;
     }
 
     return {
