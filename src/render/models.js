@@ -49,8 +49,28 @@ function shadeMat(scene, name, color, weapon) {
     return makeMaterial(scene, name, shade(color, weapon === 'staff' ? 1.3 : 0.52));
 }
 
-export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword', accent = null } = {}) {
+export function createHumanoid(scene, {
+    id, color = '#3498db', weapon = 'sword', accent = null, build = 'male',
+} = {}) {
     const meshes = [];
+
+    // Телосложение. Раньше Рюдо и Елена были геометрически одинаковы —
+    // отличались только цветом и оружием. Женский силуэт задаётся узкими
+    // плечами, широким тазом и более тонкими конечностями.
+    const female = build === 'female';
+    const B = {
+        shoulderX: female ? 0.44 : 0.5,      // разнос плеч
+        chestTop: female ? 0.70 : 0.78,      // ширина груди сверху
+        chestBottom: female ? 0.46 : 0.5,
+        waistTop: female ? 0.46 : 0.5,
+        waistBottom: female ? 0.60 : 0.56,   // таз: у женщины шире талии
+        hipX: female ? 0.23 : 0.21,          // разнос тазобедренных суставов
+        thighR: female ? 0.155 : 0.15,
+        shinR: female ? 0.125 : 0.13,
+        armR: female ? 0.105 : 0.12,
+        foreR: female ? 0.092 : 0.105,
+        pauldron: female ? 0.26 : 0.3,
+    };
     const track = (mesh) => { meshes.push(mesh); return mesh; };
 
     const cloth = makeMaterial(scene, `${id}_cloth`, color);
@@ -76,12 +96,12 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     // Плечевые суставы держим у верхнего среза корпуса (он на 1.07): раньше
     // они сидели на 0.8, и руки росли из середины груди — плечи оказывались
     // заметно ниже линии ключиц.
-    const shoulderL = joint(scene, `${id}_shoulderL`, torso, new Vector3(-0.5, 0.98, 0));
-    const shoulderR = joint(scene, `${id}_shoulderR`, torso, new Vector3(0.5, 0.98, 0));
+    const shoulderL = joint(scene, `${id}_shoulderL`, torso, new Vector3(-B.shoulderX, 0.98, 0));
+    const shoulderR = joint(scene, `${id}_shoulderR`, torso, new Vector3(B.shoulderX, 0.98, 0));
     const elbowL = joint(scene, `${id}_elbowL`, shoulderL, new Vector3(0, -0.52, 0));
     const elbowR = joint(scene, `${id}_elbowR`, shoulderR, new Vector3(0, -0.52, 0));
-    const hipL = joint(scene, `${id}_hipL`, hips, new Vector3(-0.21, -0.08, 0));
-    const hipR = joint(scene, `${id}_hipR`, hips, new Vector3(0.21, -0.08, 0));
+    const hipL = joint(scene, `${id}_hipL`, hips, new Vector3(-B.hipX, -0.08, 0));
+    const hipR = joint(scene, `${id}_hipR`, hips, new Vector3(B.hipX, -0.08, 0));
     const kneeL = joint(scene, `${id}_kneeL`, hipL, new Vector3(0, -0.62, 0));
     const kneeR = joint(scene, `${id}_kneeR`, hipR, new Vector3(0, -0.62, 0));
 
@@ -89,18 +109,21 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     // Имя *_body важно: UIController подсвечивает его при попадании.
     // Конус даёт треугольный силуэт: широкие плечи, узкая талия.
     const chest = track(MeshBuilder.CreateCylinder(`${id}_body`, {
-        height: 0.82, diameterTop: 0.78, diameterBottom: 0.5, tessellation: 14,
+        height: 0.82, diameterTop: B.chestTop, diameterBottom: B.chestBottom, tessellation: 14,
     }, scene));
     chest.parent = torso;
     chest.position.y = 0.66;
     chest.scaling.z = 0.72; // тело не бочка, а слегка приплюснутое
     chest.material = cloth;
 
-    // Плечевой пояс. Без него верх корпуса-конуса оставался открытым диском:
-    // у шеи торчала плоская «крышка», и ключицы выглядели как срезанная труба.
-    // Полусфера закрывает срез и даёт покатый скат от шеи к плечам.
+    // Плечевой пояс закрывает открытый верх корпуса-конуса: без него у шеи
+    // торчала плоская «крышка», и ключицы выглядели срезанной трубой.
+    //
+    // Отдельную ключицу НЕ моделируем: в low-poly её роль играет наклон
+    // плеча, а лишняя деталь читается как полка на груди. Поэтому здесь
+    // просто покатый купол, чуть уже груди, — он сливается с корпусом.
     const yoke = track(MeshBuilder.CreateSphere(`${id}_yoke`, {
-        diameterX: 0.80, diameterY: 0.16, diameterZ: 0.58,
+        diameterX: B.chestTop * 0.94, diameterY: 0.3, diameterZ: B.chestTop * 0.68,
         slice: 0.5, segments: 14,
     }, scene));
     yoke.parent = torso;
@@ -109,8 +132,12 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
 
     // Наплечники разбивают силуэт и делают героя «экипированным».
     for (const side of [-1, 1]) {
+        // Наплечник ненамного шире руки: при 0.34 против плеча 0.33 он
+        // выглядел приклеенным блином. Форма вытянута вдоль руки, а не
+        // круглая — так читается наплечник, а не шар.
         const pad = track(MeshBuilder.CreateSphere(`${id}_pauldron${side}`, {
-            diameterX: 0.34, diameterY: 0.26, diameterZ: 0.32, slice: 0.55,
+            diameterX: B.pauldron, diameterY: 0.22, diameterZ: B.pauldron * 1.05,
+            slice: 0.55,
         }, scene));
         // Наплечник крепим к САМОМУ плечевому суставу: он должен ехать
         // вместе с рукой. На торсе он оставался на месте, и после разворота
@@ -121,8 +148,9 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         pad.material = weapon === 'staff' ? trim : steel;
     }
 
+    // Таз: у женского силуэта он ШИРЕ талии — это и даёт разницу фигур.
     const waist = track(MeshBuilder.CreateCylinder(`${id}_waist`, {
-        height: 0.3, diameterTop: 0.5, diameterBottom: 0.56, tessellation: 14,
+        height: 0.3, diameterTop: B.waistTop, diameterBottom: B.waistBottom, tessellation: 14,
     }, scene));
     waist.parent = torso;
     waist.position.y = 0.14;
@@ -176,12 +204,14 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         scabbard.rotation.set(0.5, 0, -0.34);
         scabbard.material = leather;
 
+        // Наконечник — ДОЧЕРНИЙ элемент короба, а не отдельная деталь на
+        // торсе: раньше их позиции задавались независимо, и после переноса
+        // ножен наконечник отошёл от короба на 0.05.
         const scabbardTip = track(MeshBuilder.CreateCylinder(`${id}_scabbardTip`, {
             height: 0.14, diameterTop: 0.13, diameterBottom: 0.06, tessellation: 8,
         }, scene));
-        scabbardTip.parent = torso;
-        scabbardTip.position.set(-0.59, -0.45, -0.52);
-        scabbardTip.rotation.set(0.5, 0, -0.34);
+        scabbardTip.parent = scabbard;
+        scabbardTip.position.y = -0.48;   // -0.43 (низ короба) - 0.07 (полувысота), с нахлёстом
         scabbardTip.material = gold;
 
         // Красный шарф — самая узнаваемая деталь силуэта Рюдо.
@@ -285,13 +315,17 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     cape.position.set(0, 0.58, -0.34);
 
     if (weapon === 'staff') {
+    // Плащ огибает спину. Прежний был сплющен до 0.12 по глубине —
+    // с любого ракурса, кроме строго фронтального, он читался как плоский
+    // лист, висящий отдельно от фигуры.
     const cloak = track(MeshBuilder.CreateCylinder(`${id}_cape`, {
-        height: 1.05, diameterTop: 0.62, diameterBottom: 0.98,
-        tessellation: 4, faceted: true,
+        height: 1.05, diameterTop: 0.58, diameterBottom: 0.92,
+        tessellation: 8, faceted: true,
     }, scene));
     cloak.parent = cape;
-    cloak.rotation.set(-0.06, Math.PI / 4, 0);
-    cloak.scaling.z = 0.12;
+    cloak.rotation.set(-0.06, Math.PI / 8, 0);
+    cloak.scaling.z = 0.42;
+    cloak.position.z = -0.06;
     cloak.material = trim;
 
     // Складки: две вертикальные грани ломают плоскость плаща.
@@ -301,8 +335,10 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
             tessellation: 4, faceted: true,
         }, scene));
         fold.parent = cloak;
-        // Родитель уже сплющен по z, поэтому компенсируем масштаб.
-        fold.position.set(0.26 * side, 0.0, -0.6);
+        // Складки прижаты к телу плаща. Смещение -0.6 по z считалось от
+        // сплющенного родителя (0.12); после того как плащу вернули объём
+        // (0.42), они уехали наружу и торчали отдельными плитами.
+        fold.position.set(0.3 * side, 0.0, -0.12);
         fold.rotation.y = Math.PI / 4;
         fold.scaling.set(1, 0.98, 1);
         fold.material = trim;
@@ -479,6 +515,8 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     const irisMat = makeMaterial(scene, `${id}_irisMat`, weapon === 'staff' ? '#2f6f4f' : '#2e6b8f');
     const pupilMat = makeMaterial(scene, `${id}_pupilMat`, '#15171c');
     const lidMat = makeMaterial(scene, `${id}_lidMat`, shade('#f2c9a0', 0.82));
+    // Веки складываем отдельно: аниматор моргает ими, растягивая по Y.
+    const eyelids = [];
 
     for (const side of [-1, 1]) {
         const tag = side > 0 ? 'R' : 'L';
@@ -520,6 +558,7 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         lid.position.set(0.082 * side, 0.377, 0.146);
         lid.rotation.z = side * (weapon === 'staff' ? -0.06 : 0.16);
         lid.material = lidMat;
+        eyelids.push({ mesh: lid, restY: lid.position.y });
     }
 
     // --- Руки и ноги ------------------------------------------------------
@@ -536,10 +575,10 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     // Плечо чуть длиннее расстояния до локтя (0.52), чтобы капсулы
     // ПЕРЕКРЫВАЛИСЬ: иначе на сгибе видна ступенька между рукавом и
     // предплечьем — сустав ничем не закрыт.
-    limb(`${id}_upperArmL`, shoulderL, 0.6, 0.12, cloth);
-    limb(`${id}_upperArmR`, shoulderR, 0.6, 0.12, cloth);
-    const foreArmL = limb(`${id}_foreArmL`, elbowL, 0.5, 0.105, skin);
-    const foreArmR = limb(`${id}_foreArmR`, elbowR, 0.5, 0.105, skin);
+    limb(`${id}_upperArmL`, shoulderL, 0.6, B.armR, cloth);
+    limb(`${id}_upperArmR`, shoulderR, 0.6, B.armR, cloth);
+    const foreArmL = limb(`${id}_foreArmL`, elbowL, 0.5, B.foreR, skin);
+    const foreArmR = limb(`${id}_foreArmR`, elbowR, 0.5, B.foreR, skin);
 
     // Шарнир локтя скрывает стык двух капсул при любом угле сгиба. Сфера
     // сдвинута ВВЕРХ от сустава и уменьшена: по центру она свисала на
@@ -550,10 +589,21 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         cap.position.y = 0.05;
         cap.material = cloth;
     }
-    limb(`${id}_thighL`, hipL, 0.64, 0.15, clothDark);
-    limb(`${id}_thighR`, hipR, 0.64, 0.15, clothDark);
-    limb(`${id}_shinL`, kneeL, 0.62, 0.13, clothDark);
-    limb(`${id}_shinR`, kneeR, 0.62, 0.13, clothDark);
+    limb(`${id}_thighL`, hipL, 0.7, B.thighR, clothDark);
+    limb(`${id}_thighR`, hipR, 0.7, B.thighR, clothDark);
+    limb(`${id}_shinL`, kneeL, 0.66, B.shinR, clothDark);
+    limb(`${id}_shinR`, kneeR, 0.66, B.shinR, clothDark);
+
+    // Коленный шарнир. Бедро и голень сходились встык (перекрытие 0.01) —
+    // на сгибе сустав выглядел разрезом шириной в ноль пикселей.
+    for (const [name, parent] of [[`${id}_kneeCapL`, kneeL], [`${id}_kneeCapR`, kneeR]]) {
+        const cap = track(MeshBuilder.CreateSphere(name, {
+            diameter: B.shinR * 2.1, segments: 8,
+        }, scene));
+        cap.parent = parent;
+        cap.position.y = 0.03;
+        cap.material = clothDark;
+    }
 
     for (const [name, parent] of [[`${id}_footL`, kneeL], [`${id}_footR`, kneeR]]) {
         const foot = track(MeshBuilder.CreateBox(name, { width: 0.21, height: 0.11, depth: 0.36 }, scene));
@@ -766,7 +816,7 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
             hips, torso, neck, head,
             shoulderL, shoulderR, elbowL, elbowR,
             hipL, hipR, kneeL, kneeR,
-            hand, handL, weaponPivot, cape,
+            hand, handL, weaponPivot, cape, eyelids,
             foreArmL, foreArmR,
             // Поза покоя: аниматор возвращается к ней, а не к константам.
             rest: {
@@ -928,5 +978,6 @@ export function createUnitModel(scene, data) {
         color: data.color,
         weapon: data.weapon ?? (data.presetKey === 'elena' ? 'staff' : 'sword'),
         accent: data.accent ?? null,
+        build: data.build ?? (data.presetKey === 'elena' ? 'female' : 'male'),
     });
 }

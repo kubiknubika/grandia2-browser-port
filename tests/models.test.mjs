@@ -219,11 +219,14 @@ check('каст: руки собирают энергию вверху, зате
     animator.register('castArc', model);
     const unit = fakeUnit('castArc', model);
 
-    const grip = model.meshes.find((m) => m.name.includes('_grip'));
+    // Следим за СВОБОДНОЙ (левой) рукой: именно она колдует. Раньше тест
+    // смотрел на рукоять меча — и требовал, чтобы вверх шла рука с оружием.
+    const fist = model.meshes.find((m) => m.name.endsWith('_fistL'));
     const handAt = () => {
         model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
         model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
-        return grip.getBoundingInfo().boundingBox.centerWorld.clone();
+        return fist.getBoundingInfo().boundingBox.centerWorld.clone();
     };
 
     for (let i = 0; i < 40; i += 1) animator.update([unit], 1 / 60);
@@ -247,6 +250,27 @@ check('каст: руки собирают энергию вверху, зате
     assert.ok(
         Math.abs(handAt().y - rest.y) < 0.35,
         'после каста руки должны вернуться в стойку',
+    );
+
+    // И рука С МЕЧОМ на касте остаётся у бедра: колдуют свободной рукой,
+    // а не размахивают клинком.
+    const gripMesh = model.meshes.find((m) => m.name.endsWith('_grip'));
+    const gripY = () => {
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+        return gripMesh.getBoundingInfo().boundingBox.centerWorld.y;
+    };
+    const swordRest = gripY();
+    animator.playCast('castArc', 0.8);
+    let swordPeak = -Infinity;
+    for (let i = 0; i < 52; i += 1) {
+        animator.update([unit], 1 / 60);
+        swordPeak = Math.max(swordPeak, gripY());
+    }
+    assert.ok(
+        swordPeak - swordRest < 0.5,
+        `меч вскинулся на касте: ${(swordPeak - swordRest).toFixed(2)}`,
     );
 });
 
@@ -1521,6 +1545,137 @@ check('голенище закрывает голень, штанина не п�
             `голенище ${side} узкое по глубине: ${bootDepth.toFixed(3)} против ${shinDepth.toFixed(3)}`,
         );
     }
+});
+
+check('у Елены женский силуэт, а не копия Рюдо', () => {
+    const ryudo = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'propR', position: { x: 0, z: 0 },
+    }));
+    const elena = createUnitModel(scene, makeUnitData('elena', {
+        id: 'propE', position: { x: 0, z: 0 },
+    }));
+    for (const model of [ryudo, elena]) {
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+    }
+    const width = (model, name) => {
+        const box = boxOf(model, name);
+        return box.maximumWorld.x - box.minimumWorld.x;
+    };
+
+    // Плечи у Елены уже, таз шире — иначе это просто перекрашенный Рюдо.
+    assert.ok(
+        width(elena, 'propE_body') < width(ryudo, 'propR_body') - 0.03,
+        `плечи Елены не уже: ${width(elena, 'propE_body').toFixed(2)} vs ${width(ryudo, 'propR_body').toFixed(2)}`,
+    );
+    assert.ok(
+        width(elena, 'propE_waist') > width(ryudo, 'propR_waist') + 0.02,
+        `таз Елены не шире: ${width(elena, 'propE_waist').toFixed(2)} vs ${width(ryudo, 'propR_waist').toFixed(2)}`,
+    );
+    // И таз шире плеч — характерная женская пропорция.
+    assert.ok(
+        width(elena, 'propE_waist') / width(elena, 'propE_body') > 0.8,
+        'таз Елены слишком узок относительно плеч',
+    );
+});
+
+check('колено — читаемый сустав, а не стык в ноль пикселей', () => {
+    for (const [preset, id] of [['ryudo', 'kneeR'], ['elena', 'kneeE']]) {
+        const model = createUnitModel(scene, makeUnitData(preset, {
+            id, position: { x: 0, z: 0 },
+        }));
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+        const thigh = boxOf(model, `${id}_thighL`);
+        const shin = boxOf(model, `${id}_shinL`);
+        const cap = boxOf(model, `${id}_kneeCapL`);
+
+        // Бедро и голень должны ПЕРЕКРЫВАТЬСЯ, а не сходиться встык.
+        const overlap = shin.maximumWorld.y - thigh.minimumWorld.y;
+        assert.ok(
+            overlap > 0.04,
+            `${preset}: бедро и голень сходятся встык, перекрытие ${overlap.toFixed(3)}`,
+        );
+
+        // Шарнир колена перекрывает обе кости.
+        assert.ok(
+            cap.maximumWorld.y > thigh.minimumWorld.y && cap.minimumWorld.y < shin.maximumWorld.y,
+            `${preset}: шарнир колена не сшивает бедро с голенью`,
+        );
+    }
+});
+
+check('глаза моргают, и партия не моргает синхронно', () => {
+    const animator = new Animator();
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'blinkTest', position: { x: 0, z: 0 },
+    }));
+    animator.register('blinkTest', model);
+    const unit = fakeUnit('blinkTest', model);
+
+    assert.ok(model.rig.eyelids?.length === 2, 'веки не попали в риг');
+    const lid = model.rig.eyelids[0].mesh;
+
+    let blinks = 0;
+    let open = true;
+    for (let i = 0; i < 900; i += 1) {
+        animator.update([unit], 1 / 60);
+        const closed = lid.scaling.y > 2;
+        if (closed && open) { blinks += 1; open = false; }
+        if (!closed) open = true;
+    }
+    assert.ok(blinks >= 2, `за 15 секунд моргнул ${blinks} раз`);
+
+    // Второй юнит должен моргать в своём ритме, иначе партия «кукольная».
+    const other = createUnitModel(scene, makeUnitData('elena', {
+        id: 'blinkTest2', position: { x: 0, z: 0 },
+    }));
+    animator.register('blinkTest2', other);
+    const a = animator.states.get('blinkTest').blinkIn;
+    const b = animator.states.get('blinkTest2').blinkIn;
+    assert.ok(Math.abs(a - b) > 0.05, 'юниты моргают синхронно');
+});
+
+check('наплечник не крупнее плеча в разы', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'padTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const pad = boxOf(model, 'padTest_pauldron1');
+    const arm = boxOf(model, 'padTest_upperArmR');
+    const padWidth = pad.maximumWorld.x - pad.minimumWorld.x;
+    const armWidth = arm.maximumWorld.x - arm.minimumWorld.x;
+    assert.ok(
+        padWidth < armWidth * 1.35,
+        `наплечник шире плеча в ${(padWidth / armWidth).toFixed(2)} раза`,
+    );
+});
+
+check('наконечник ножен состыкован с коробом', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'tipTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const scabbard = model.meshes.find((m) => m.name === 'tipTest_scabbard');
+    const tip = model.meshes.find((m) => m.name === 'tipTest_scabbardTip');
+
+    // Низ короба (локально -0.43) и верх наконечника (локально +0.07)
+    // должны совпасть: раньше их позиции задавались независимо и разошлись.
+    const bottom = Vector3.TransformCoordinates(new Vector3(0, -0.43, 0), scabbard.getWorldMatrix());
+    const top = Vector3.TransformCoordinates(new Vector3(0, 0.07, 0), tip.getWorldMatrix());
+    assert.ok(
+        Vector3.Distance(bottom, top) < 0.04,
+        `наконечник оторван от короба на ${Vector3.Distance(bottom, top).toFixed(3)}`,
+    );
 });
 
 // --- Зона поражения линейного приёма ---------------------------------------

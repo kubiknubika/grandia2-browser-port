@@ -45,8 +45,8 @@ const SWING_SECONDS = 0.42;
  */
 const STAFF_POSES = {
     castTarget: {
-        shoulderRX: 0.60, shoulderRZ: -0.30, elbowR: 0.30, wrist: 0.10,
-        shoulderLX: 0.50, shoulderLZ: 0.00, elbowL: 0.07,
+        shoulderRX: 0.70, shoulderRZ: -0.30, elbowR: 0.00, wrist: 0.23,
+        shoulderLX: 0.90, shoulderLZ: 0.00, elbowL: 0.33,
     },
     castSelf: {
         shoulderRX: 0.60, shoulderRZ: -1.10, elbowR: -1.00, wrist: 0.30,
@@ -61,6 +61,11 @@ const STAFF_POSES = {
 // Длина шага, ЗАМЕРЕННАЯ по размаху стопы в мире. По ней частота шага
 // привязывается к скорости, чтобы стопа стояла на земле, а не скользила.
 // Держать в паре с LEG_SWING: они задают шаг совместно.
+// Моргание: длительность и насколько веко закрывает глаз.
+const BLINK_SECONDS = 0.13;
+const BLINK_STRETCH = 5.5;
+const BLINK_DROP = 0.035;
+
 const STEP_LENGTH = 1.8;
 
 // Размах бедра и подъём колена на бегу. Подобраны замером: шаг 1.74 при
@@ -148,6 +153,9 @@ export class Animator {
         this.states.set(unitId, {
             model,
             time: Math.random() * TWO_PI, // рассинхрон, чтобы юниты не дышали в такт
+            // Моргание: пауза до следующего моргания и его фаза.
+            blinkIn: 1.5 + Math.random() * 3,
+            blink: 0,
             swing: 0,      // 1 -> 0 прогресс взмаха оружием
             swingSpan: SWING_SECONDS,
             hitFlash: 0,   // затухающее вздрагивание от урона
@@ -229,11 +237,41 @@ export class Animator {
                 ? Math.min(1, state.death + dt / 0.55)
                 : Math.max(0, state.death - dt / 0.3);
 
+            this.animateBlink(state, dt);
+
             if (state.model.rig.kind === 'spider') {
                 this.animateSpider(state, unit, dt);
             } else {
                 this.animateHumanoid(state, unit, dt);
             }
+        }
+    }
+
+    /**
+     * Моргание. Веки — плоские коробочки над глазом; чтобы «закрыть» глаз,
+     * веко опускается на зрачок и растягивается по высоте. Интервал у
+     * каждого юнита свой, иначе партия моргает синхронно, как куклы.
+     */
+    animateBlink(state, dt) {
+        const lids = state.model.rig.eyelids;
+        if (!lids || lids.length === 0) return;
+
+        if (state.blink > 0) {
+            state.blink = Math.max(0, state.blink - dt / BLINK_SECONDS);
+        } else {
+            state.blinkIn -= dt;
+            if (state.blinkIn <= 0) {
+                state.blink = 1;
+                state.blinkIn = 2.5 + Math.random() * 4;
+            }
+        }
+
+        // Треугольный профиль: веко быстро опускается и так же поднимается.
+        const closed = state.blink > 0 ? 1 - Math.abs(state.blink * 2 - 1) : 0;
+
+        for (const lid of lids) {
+            lid.mesh.scaling.y = 1 + closed * BLINK_STRETCH;
+            lid.mesh.position.y = lid.restY - closed * BLINK_DROP;
         }
     }
 
@@ -389,7 +427,8 @@ export class Animator {
             // Левая рука: маятник на бегу, поднимается при касте.
             rig.shoulderL.rotation.x = damp(
                 rig.shoulderL.rotation.x,
-                -legSwing * 0.75 - castP * 1.9 + castPush * 1.1
+                // Каст ведёт именно эта рука — она свободна от оружия.
+                -legSwing * 0.75 - castP * 2.6 + castPush * 1.5
                 + (attacking ? (windup * 0.5 - strike * 0.7) * (1 - recover) : 0),
                 attacking ? 20 : 16, dt,
             );
@@ -408,11 +447,14 @@ export class Animator {
         const carry = carrying ? runBlend : 0;
 
         // Правая рука с оружием: занос за плечо, затем рубящий удар вниз.
+        // Одноручное оружие: колдует СВОБОДНАЯ (левая) рука, а правая держит
+        // меч у бедра. Раньше правая вскидывалась на castP * 2.6 — герой
+        // проводил каст рукой с мечом, будто размахивая клинком.
         const armTarget = twoHanded
             ? rest.shoulderRX + staffAdd('shoulderRX')
             : (attacking
                 ? rest.shoulderRX + (-windup * 2.6 + strike * 2.2) * (1 - recover)
-                : rest.shoulderRX - legSwing * -0.4 - castP * 2.6 + castPush * 1.4);
+                : rest.shoulderRX - legSwing * -0.4 - castP * 0.35);
 
         // На ударе руку ведём жёстче, чем на возврате: резкость важнее плавности.
         rig.shoulderR.rotation.x = clamp(damp(
