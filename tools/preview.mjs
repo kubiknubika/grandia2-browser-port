@@ -108,6 +108,10 @@ const VIEWS = {
     ryudobelly: { eye: new Vector3(-3.4, 1.75, 1.9), target: new Vector3(-3.4, 1.45, 0) },
     ryudoelbow: { eye: new Vector3(-2.1, 1.85, 1.7), target: new Vector3(-3.15, 1.72, 0) },
     ryudoleg: { eye: new Vector3(-3.4, 1.35, 2.2), target: new Vector3(-3.4, 1.15, 0) },
+    // ТОЧНАЯ камера боя из main.js: ArcRotate alpha=PI/2, beta=PI/3, r=22.
+    battlecam: { eye: new Vector3(0, 11, 19.05), target: new Vector3(0, 0, 0) },
+    battleryudo: { eye: new Vector3(-3.4, 6.0, 9.5), target: new Vector3(-3.4, 1.6, 0) },
+    battleelena: { eye: new Vector3(-7.2, 6.0, 9.5), target: new Vector3(-7.2, 1.6, 0) },
     ryudofull: { eye: new Vector3(-3.4, 1.9, 4.2), target: new Vector3(-3.4, 1.7, 0) },
     ryudochest: { eye: new Vector3(-3.4, 2.3, 2.4), target: new Vector3(-3.4, 2.1, 0) },
     ryudoclav: { eye: new Vector3(-2.6, 2.7, 1.9), target: new Vector3(-3.4, 2.35, 0) },
