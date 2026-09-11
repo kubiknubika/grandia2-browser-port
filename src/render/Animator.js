@@ -58,14 +58,32 @@ const STAFF_POSES = {
     },
 };
 
-// Длина шага, ЗАМЕРЕННАЯ по размаху стопы в мире (не теоретические
-// 2*L*sin(a) = 1.89: нога идёт по дуге, и часть хода съедает сгиб колена).
-// По ней частота шага привязывается к скорости, чтобы стопа стояла на
-// земле, а не скользила.
-const STEP_LENGTH = 1.2;
+// Длина шага, ЗАМЕРЕННАЯ по размаху стопы в мире. По ней частота шага
+// привязывается к скорости, чтобы стопа стояла на земле, а не скользила.
+// Держать в паре с LEG_SWING: они задают шаг совместно.
+const STEP_LENGTH = 1.8;
+
+// Размах бедра и подъём колена на бегу. Подобраны замером: шаг 1.74 при
+// росте 3.09 (56 %), проскальзывание стопы 0.94. Прежние 0.85/0.9 давали
+// семенящий шаг в 38 % роста — «ножками дрыгает, а не отталкивается».
+// Выше 1.2 рад мах превращается в прыжок в шпагате: обе ноги отрываются
+// от земли одновременно.
+const LEG_SWING = 1.0;
+const KNEE_LIFT = 0.8;
 
 // Предел прироста пути за секунду: чуть выше боевой скорости (11.13 ед/с).
 const MAX_STEP_ADVANCE = 14;
+
+// Предел скачка ФАЗЫ шага за один кадр. Телепорт после спящей вкладки —
+// это не бег: прыжок позиции не должен прокручивать шаг, иначе нога
+// выбрасывается в предельный мах на первом же кадре. Порог берём чуть
+// выше пути за кадр на боевой скорости (11.13 / 60 = 0.186), чтобы
+// обычный бег в него не упирался.
+const MAX_PHASE_STEP = 0.25;
+
+// Скачок позиции, который не может быть бегом (телепорт, респаун, правка
+// расстановки). Такой кадр не двигает фазу шага вообще.
+const TELEPORT_DISTANCE = 1.0;
 
 const CARRY_WRIST_X = 0.30;
 const CARRY_WRIST_Z = 0.10;
@@ -187,12 +205,20 @@ export class Animator {
             // Насколько быстро юнит реально движется по арене.
             const moved = unit.mesh.position.subtract(state.lastPosition).length();
             state.lastPosition.copyFrom(unit.mesh.position);
-            const instantSpeed = dt > 0 ? moved / dt : 0;
+            // Скорость тоже ограничиваем: телепорт после спящей вкладки даёт
+            // мгновенные 135 ед/с, runBlend улетает в единицу, и на первом же
+            // кадре нога выбрасывается в предельный мах. Потолок берём с
+            // запасом над боевой скоростью (11.13 ед/с).
+            const instantSpeed = dt > 0 ? Math.min(moved / dt, MAX_STEP_ADVANCE) : 0;
             state.speed = damp(state.speed, instantSpeed, 12, dt);
             // Копим путь только за правдоподобный кадр. Если вкладка спала,
             // юнит «телепортируется» на десяток единиц — без ограничения
             // такой скачок прокручивал бы фазу шага на несколько циклов.
-            state.distance += Math.min(moved, MAX_STEP_ADVANCE * dt);
+            // Телепорт не крутит шаг: иначе после спящей вкладки нога
+            // выбрасывается в предельный мах на первом же кадре.
+            if (moved < TELEPORT_DISTANCE) {
+                state.distance += Math.min(moved, MAX_STEP_ADVANCE * dt, MAX_PHASE_STEP);
+            }
 
             state.swing = Math.max(0, state.swing - dt / state.swingSpan);
             state.hitFlash = Math.max(0, state.hitFlash - dt / 0.3);
@@ -223,7 +249,12 @@ export class Animator {
         // ноги махали с фиксированной частотой (2.55 цикла/с), пока тело
         // летело со скоростью 11 ед/с, и стопа проскальзывала в 3.2 раза.
         // За цикл 2*PI тело проезжает ровно STEP_LENGTH.
-        const stride = t * 1.5 + (state.distance / STEP_LENGTH) * Math.PI * 2;
+        // ВАЖНО: фазу шага ведёт только пройденный путь. Раньше в неё
+        // подмешивался t, который стартует со случайного значения (чтобы
+        // юниты не дышали в такт), и нога на первом кадре оказывалась в
+        // произвольной точке цикла — после спящей вкладки это выглядело
+        // как рывок.
+        const stride = (state.distance / STEP_LENGTH) * Math.PI * 2;
         const breathe = Math.sin(t * 1.7) * 0.035;
 
         // Удар делится на три фазы, как в рисованной анимации: медленный
@@ -298,16 +329,31 @@ export class Animator {
         }
 
         // Ноги: противофазный шаг; при ударе — выпад вперёд.
-        const legSwing = Math.sin(stride) * 0.85 * runBlend;
+        const legSwing = Math.sin(stride) * LEG_SWING * runBlend;
         const lunge = attacking ? (strike * 0.5 - windup * 0.12) * (1 - recover) : 0;
         // На бегу ноги должны идти ТОЧНО по фазе шага: сглаживание (18)
         // не успевало за частотой и срезало амплитуду втрое — стопа
         // проскальзывала. Чем быстрее бег, тем жёстче следование.
-        const legRate = 18 + runBlend * 40;
+        const legRate = 18 + runBlend * 90;
+
+        // Колено сгибается только у ЗАНОСИМОЙ ноги и только в первой
+        // половине её проноса: раньше сгиб 1.1*legSwing держался всю фазу
+        // и складывал ногу ровно тогда, когда она должна тянуться назад —
+        // шаг получался семенящим (38 % роста вместо ~90 %).
+        const lift = Math.max(0, Math.sin(stride * 2)) * runBlend;
+
         rig.hipL.rotation.x = damp(rig.hipL.rotation.x, legSwing - lunge, legRate, dt);
         rig.hipR.rotation.x = damp(rig.hipR.rotation.x, -legSwing + lunge, legRate, dt);
-        rig.kneeL.rotation.x = damp(rig.kneeL.rotation.x, Math.max(0, -legSwing) * 1.1, legRate, dt);
-        rig.kneeR.rotation.x = damp(rig.kneeR.rotation.x, Math.max(0, legSwing) * 1.1, legRate, dt);
+        rig.kneeL.rotation.x = damp(
+            rig.kneeL.rotation.x,
+            Math.max(0, -legSwing) * 0.35 + (legSwing < 0 ? lift * KNEE_LIFT : 0),
+            legRate, dt,
+        );
+        rig.kneeR.rotation.x = damp(
+            rig.kneeR.rotation.x,
+            Math.max(0, legSwing) * 0.35 + (legSwing > 0 ? lift * KNEE_LIFT : 0),
+            legRate, dt,
+        );
 
         // Посох Елена держит ДВУМЯ руками, поэтому левая не машет маятником,
         // а остаётся на древке: её поза строится от rest, а не от нуля.

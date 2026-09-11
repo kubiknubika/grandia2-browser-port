@@ -1397,6 +1397,26 @@ check('на бегу стопа стоит на земле, а не проска
         slip < 1.6,
         `стопа проскальзывает в ${slip.toFixed(1)} раза: шаг ${stepLength.toFixed(2)}, ход ноги ${footTravel.toFixed(2)}`,
     );
+
+    // Шаг должен быть соразмерен росту: 38 % — это семенящая походка.
+    const height = 3.09;
+    assert.ok(
+        stepLength / height > 0.45,
+        `шаг мелкий: ${(stepLength / height * 100).toFixed(0)} % роста`,
+    );
+
+    // И колено заносимой ноги обязано подбираться, иначе она волочится
+    // по земле прямой палкой.
+    let maxKnee = 0;
+    for (let i = 0; i < 120; i += 1) {
+        model.root.position.z += SPEED / 60;
+        animator.update([unit], 1 / 60);
+        maxKnee = Math.max(maxKnee, Math.abs(model.rig.kneeL.rotation.x));
+    }
+    assert.ok(
+        maxKnee > 0.45,
+        `колено почти не сгибается на бегу: ${maxKnee.toFixed(2)} рад`,
+    );
 });
 
 check('шарф лежит на плечах, а не парит красным кольцом вокруг шеи', () => {
