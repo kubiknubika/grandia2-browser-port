@@ -1226,6 +1226,124 @@ check('плечевой пояс закрывает срез корпуса, ш�
     );
 });
 
+check('плечи на линии ключиц, а руки не вжаты в бёдра', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'ryudoArms', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const body = boxOf(model, 'ryudoArms_body');
+
+    for (const side of ['L', 'R']) {
+        const arm = boxOf(model, `ryudoArms_upperArm${side}`);
+        // Плечо начинается у верхнего среза корпуса, а не из середины груди.
+        assert.ok(
+            body.maximumWorld.y - arm.maximumWorld.y < 0.08,
+            `плечо ${side} ниже линии ключиц на ${(body.maximumWorld.y - arm.maximumWorld.y).toFixed(3)}`,
+        );
+
+        // Предплечье не пересекается с бедром по горизонтали.
+        const fore = boxOf(model, `ryudoArms_foreArm${side}`);
+        const thigh = boxOf(model, `ryudoArms_thigh${side}`);
+        const overlap = Math.min(fore.maximumWorld.x, thigh.maximumWorld.x)
+            - Math.max(fore.minimumWorld.x, thigh.minimumWorld.x);
+        assert.ok(
+            overlap < 0,
+            `предплечье ${side} вжато в бедро: пересечение по X ${overlap.toFixed(3)}`,
+        );
+
+        // Наплечник едет вместе с рукой, а не висит отдельно на торсе.
+        const pad = boxOf(model, `ryudoArms_pauldron${side === 'L' ? '-1' : '1'}`);
+        const padOverArm = Math.min(pad.maximumWorld.x, arm.maximumWorld.x)
+            - Math.max(pad.minimumWorld.x, arm.minimumWorld.x);
+        assert.ok(
+            padOverArm > 0.1,
+            `наплечник ${side} оторвался от руки: перекрытие ${padOverArm.toFixed(3)}`,
+        );
+    }
+});
+
+check('рукав и предплечье соединены, локоть не разорван', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'ryudoElbow', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    // Стык закрывает не перекрытие капсул (они пересекаются и так), а шарнир
+    // elbowCap: без него на сгибе видна ступенька между рукавом и кожей.
+    for (const side of ['L', 'R']) {
+        const upper = boxOf(model, `ryudoElbow_upperArm${side}`);
+        const fore = boxOf(model, `ryudoElbow_foreArm${side}`);
+        const cap = boxOf(model, `ryudoElbow_elbowCap${side}`);
+
+        // Шарнир перекрывает ОБЕ капсулы — иначе стык остаётся открытым.
+        const overUpper = Math.min(cap.maximumWorld.y, upper.maximumWorld.y)
+            - Math.max(cap.minimumWorld.y, upper.minimumWorld.y);
+        const overFore = Math.min(cap.maximumWorld.y, fore.maximumWorld.y)
+            - Math.max(cap.minimumWorld.y, fore.minimumWorld.y);
+        assert.ok(
+            overUpper > 0.05 && overFore > 0.05,
+            `шарнир локтя ${side} не сшивает рукав и предплечье: `
+            + `перекрытие ${overUpper.toFixed(3)} / ${overFore.toFixed(3)}`,
+        );
+
+        // И он не сползает целиком на голое предплечье ниже сустава.
+        const joint = model.rig[`elbow${side}`].getAbsolutePosition();
+        assert.ok(
+            cap.maximumWorld.y > joint.y,
+            `шарнир локтя ${side} сполз ниже сустава`,
+        );
+    }
+});
+
+check('поясные сумки — на внешней стороне бёдер и небольшие', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'ryudoPouch', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    for (const side of ['L', 'R']) {
+        const pouch = boxOf(model, `ryudoPouch_tasset${side}`);
+        const thigh = boxOf(model, `ryudoPouch_thigh${side}`);
+
+        // Сумка висит СНАРУЖИ бедра, а не спереди на животе.
+        const outward = side === 'L'
+            ? pouch.minimumWorld.x < thigh.minimumWorld.x
+            : pouch.maximumWorld.x > thigh.maximumWorld.x;
+        assert.ok(outward, `сумка ${side} не на внешней стороне бедра`);
+
+        // И она заметно меньше самого бедра — это карман, а не коробка.
+        const width = pouch.maximumWorld.x - pouch.minimumWorld.x;
+        const thighWidth = thigh.maximumWorld.x - thigh.minimumWorld.x;
+        assert.ok(
+            width < thighWidth * 0.75,
+            `сумка ${side} слишком крупная: ${width.toFixed(2)} при бедре ${thighWidth.toFixed(2)}`,
+        );
+    }
+});
+
+check('правый локоть Елены отведён от корпуса', () => {
+    const model = createUnitModel(scene, makeUnitData('elena', {
+        id: 'elenaElbow', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const body = boxOf(model, 'elenaElbow_body');
+    const elbow = model.rig.elbowR.getAbsolutePosition();
+    assert.ok(
+        elbow.x - body.maximumWorld.x > 0.06,
+        `локоть прижат к корпусу: отступ ${(elbow.x - body.maximumWorld.x).toFixed(3)}`,
+    );
+});
+
 // --- Зона поражения линейного приёма ---------------------------------------
 
 check('полоса удара ложится между концами и смотрит вдоль них', async () => {

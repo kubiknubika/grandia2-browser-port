@@ -530,11 +530,13 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
     const foreArmL = limb(`${id}_foreArmL`, elbowL, 0.5, 0.105, skin);
     const foreArmR = limb(`${id}_foreArmR`, elbowR, 0.5, 0.105, skin);
 
-    // Шарнир локтя: небольшая сфера в самом суставе окончательно скрывает
-    // стык двух капсул при любом угле сгиба.
+    // Шарнир локтя скрывает стык двух капсул при любом угле сгиба. Сфера
+    // сдвинута ВВЕРХ от сустава и уменьшена: по центру она свисала на
+    // голое предплечье, и рукав казался обрезанным посреди локтя.
     for (const [name, parent] of [[`${id}_elbowCapL`, elbowL], [`${id}_elbowCapR`, elbowR]]) {
-        const cap = track(MeshBuilder.CreateSphere(name, { diameter: 0.23, segments: 8 }, scene));
+        const cap = track(MeshBuilder.CreateSphere(name, { diameter: 0.2, segments: 8 }, scene));
         cap.parent = parent;
+        cap.position.y = 0.05;
         cap.material = cloth;
     }
     limb(`${id}_thighL`, hipL, 0.64, 0.15, clothDark);

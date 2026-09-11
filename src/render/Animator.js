@@ -45,7 +45,7 @@ const SWING_SECONDS = 0.42;
  */
 const STAFF_POSES = {
     castTarget: {
-        shoulderRX: 0.60, shoulderRZ: -0.30, elbowR: 0.00, wrist: 0.10,
+        shoulderRX: 0.60, shoulderRZ: -0.30, elbowR: 0.30, wrist: 0.10,
         shoulderLX: 0.50, shoulderLZ: 0.00, elbowL: 0.07,
     },
     castSelf: {
