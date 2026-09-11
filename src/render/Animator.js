@@ -58,6 +58,15 @@ const STAFF_POSES = {
     },
 };
 
+// Длина шага, ЗАМЕРЕННАЯ по размаху стопы в мире (не теоретические
+// 2*L*sin(a) = 1.89: нога идёт по дуге, и часть хода съедает сгиб колена).
+// По ней частота шага привязывается к скорости, чтобы стопа стояла на
+// земле, а не скользила.
+const STEP_LENGTH = 1.2;
+
+// Предел прироста пути за секунду: чуть выше боевой скорости (11.13 ед/с).
+const MAX_STEP_ADVANCE = 14;
+
 const CARRY_WRIST_X = 0.30;
 const CARRY_WRIST_Z = 0.10;
 const CAST_SECONDS = 0.8;
@@ -130,6 +139,9 @@ export class Animator {
             death: 0,      // 0..1 прогресс падения
             speed: 0,      // сглаженная скорость бега для микса поз
             lastPosition: model.root.position.clone(),
+            // Пройденный путь: по нему считается фаза шага, иначе стопа
+            // скользит по земле («ноги дрыгаются, а не отталкиваются»).
+            distance: 0,
         });
     }
 
@@ -177,6 +189,10 @@ export class Animator {
             state.lastPosition.copyFrom(unit.mesh.position);
             const instantSpeed = dt > 0 ? moved / dt : 0;
             state.speed = damp(state.speed, instantSpeed, 12, dt);
+            // Копим путь только за правдоподобный кадр. Если вкладка спала,
+            // юнит «телепортируется» на десяток единиц — без ограничения
+            // такой скачок прокручивал бы фазу шага на несколько циклов.
+            state.distance += Math.min(moved, MAX_STEP_ADVANCE * dt);
 
             state.swing = Math.max(0, state.swing - dt / state.swingSpan);
             state.hitFlash = Math.max(0, state.hitFlash - dt / 0.3);
@@ -203,7 +219,11 @@ export class Animator {
 
         // Бег: чем быстрее, тем шире шаг. runBlend гасит покой на месте.
         const runBlend = Math.min(1, state.speed / 6);
-        const stride = t * (6 + state.speed * 0.9);
+        // Фаза шага привязана к ПРОЙДЕННОМУ ПУТИ, а не ко времени: раньше
+        // ноги махали с фиксированной частотой (2.55 цикла/с), пока тело
+        // летело со скоростью 11 ед/с, и стопа проскальзывала в 3.2 раза.
+        // За цикл 2*PI тело проезжает ровно STEP_LENGTH.
+        const stride = t * 1.5 + (state.distance / STEP_LENGTH) * Math.PI * 2;
         const breathe = Math.sin(t * 1.7) * 0.035;
 
         // Удар делится на три фазы, как в рисованной анимации: медленный
@@ -280,10 +300,14 @@ export class Animator {
         // Ноги: противофазный шаг; при ударе — выпад вперёд.
         const legSwing = Math.sin(stride) * 0.85 * runBlend;
         const lunge = attacking ? (strike * 0.5 - windup * 0.12) * (1 - recover) : 0;
-        rig.hipL.rotation.x = damp(rig.hipL.rotation.x, legSwing - lunge, 18, dt);
-        rig.hipR.rotation.x = damp(rig.hipR.rotation.x, -legSwing + lunge, 18, dt);
-        rig.kneeL.rotation.x = damp(rig.kneeL.rotation.x, Math.max(0, -legSwing) * 1.1, 18, dt);
-        rig.kneeR.rotation.x = damp(rig.kneeR.rotation.x, Math.max(0, legSwing) * 1.1, 18, dt);
+        // На бегу ноги должны идти ТОЧНО по фазе шага: сглаживание (18)
+        // не успевало за частотой и срезало амплитуду втрое — стопа
+        // проскальзывала. Чем быстрее бег, тем жёстче следование.
+        const legRate = 18 + runBlend * 40;
+        rig.hipL.rotation.x = damp(rig.hipL.rotation.x, legSwing - lunge, legRate, dt);
+        rig.hipR.rotation.x = damp(rig.hipR.rotation.x, -legSwing + lunge, legRate, dt);
+        rig.kneeL.rotation.x = damp(rig.kneeL.rotation.x, Math.max(0, -legSwing) * 1.1, legRate, dt);
+        rig.kneeR.rotation.x = damp(rig.kneeR.rotation.x, Math.max(0, legSwing) * 1.1, legRate, dt);
 
         // Посох Елена держит ДВУМЯ руками, поэтому левая не машет маятником,
         // а остаётся на древке: её поза строится от rest, а не от нуля.

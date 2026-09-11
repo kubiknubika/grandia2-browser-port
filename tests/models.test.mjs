@@ -1344,6 +1344,86 @@ check('правый локоть Елены отведён от корпуса',
     );
 });
 
+check('на бегу стопа стоит на земле, а не проскальзывает', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'gaitTest', position: { x: 0, z: 0 },
+    }));
+    const animator = new Animator();
+    animator.register('gaitTest', model);
+    const unit = fakeUnit('gaitTest', model);
+
+    const SPEED = 11.13;   // боевая скорость Рюдо (MOV 356 * WORLD_SCALE)
+    for (let i = 0; i < 60; i += 1) animator.update([unit], 1 / 60);
+
+    // Длина шага: путь, пройденный телом за один цикл маха ноги.
+    let previous = 0;
+    let steps = 0;
+    let firstZ = null;
+    let lastZ = 0;
+    for (let i = 0; i < 240; i += 1) {
+        model.root.position.z += SPEED / 60;
+        animator.update([unit], 1 / 60);
+        const swing = model.rig.hipL.rotation.x;
+        if (previous < 0 && swing >= 0) {
+            steps += 1;
+            if (firstZ === null) firstZ = model.root.position.z;
+            lastZ = model.root.position.z;
+        }
+        previous = swing;
+    }
+    assert.ok(steps > 2, `шаги не считаются: ${steps}`);
+    const stepLength = (lastZ - firstZ) / (steps - 1);
+
+    // Размах стопы относительно тела — сколько нога реально отрабатывает.
+    let minLocal = Infinity;
+    let maxLocal = -Infinity;
+    for (let i = 0; i < 120; i += 1) {
+        model.root.position.z += SPEED / 60;
+        animator.update([unit], 1 / 60);
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+        const foot = model.meshes.find((m) => m.name === 'gaitTest_footL');
+        foot.computeWorldMatrix(true);
+        const local = foot.getBoundingInfo().boundingBox.centerWorld.z - model.root.position.z;
+        minLocal = Math.min(minLocal, local);
+        maxLocal = Math.max(maxLocal, local);
+    }
+    const footTravel = maxLocal - minLocal;
+
+    // Если тело проезжает за шаг сильно больше, чем отрабатывает нога,
+    // персонаж «дрыгает ножками», а не отталкивается от земли.
+    const slip = stepLength / footTravel;
+    assert.ok(
+        slip < 1.6,
+        `стопа проскальзывает в ${slip.toFixed(1)} раза: шаг ${stepLength.toFixed(2)}, ход ноги ${footTravel.toFixed(2)}`,
+    );
+});
+
+check('шарф лежит на плечах, а не парит красным кольцом вокруг шеи', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'scarfTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const scarf = boxOf(model, 'scarfTest_scarf');
+    const yoke = boxOf(model, 'scarfTest_yoke');
+    const head = boxOf(model, 'scarfTest_head');
+
+    // Шарф опирается на плечевой пояс...
+    assert.ok(
+        scarf.minimumWorld.y < yoke.maximumWorld.y,
+        `шарф оторвался от плеч: низ ${scarf.minimumWorld.y.toFixed(2)}, скат ${yoke.maximumWorld.y.toFixed(2)}`,
+    );
+    // ...и не задирается к подбородку, где торчал двумя красными пятнами.
+    const chin = head.minimumWorld.y + (head.maximumWorld.y - head.minimumWorld.y) * 0.25;
+    assert.ok(
+        scarf.maximumWorld.y < chin,
+        `шарф задран к лицу: верх ${scarf.maximumWorld.y.toFixed(2)}, подбородок ${chin.toFixed(2)}`,
+    );
+});
+
 // --- Зона поражения линейного приёма ---------------------------------------
 
 check('полоса удара ложится между концами и смотрит вдоль них', async () => {

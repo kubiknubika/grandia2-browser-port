@@ -182,13 +182,16 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         scabbardTip.material = gold;
 
         // Красный шарф — самая узнаваемая деталь силуэта Рюдо.
+        // Кольцо лежит НА плечевом поясе (его верх 2.60), а не парит вокруг
+        // голой шеи: на y=1.12 оно поднималось до 2.78 и торчало над плечами
+        // двумя красными пятнами по бокам головы.
         const scarf = track(MeshBuilder.CreateTorus(`${id}_scarf`, {
-            diameter: 0.4, thickness: 0.12, tessellation: 12,
+            diameter: 0.46, thickness: 0.1, tessellation: 12,
         }, scene));
         scarf.parent = torso;
-        scarf.position.set(0, 1.12, 0.02);
+        scarf.position.set(0, 1.03, 0.01);
         scarf.rotation.x = Math.PI / 2;
-        scarf.scaling.z = 0.8;
+        scarf.scaling.z = 0.78;
         scarf.material = scarfMat;
 
         // Свисающий конец шарфа.
@@ -213,25 +216,25 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
         // читалось как «рюкзак просвечивает через живот». На высоте лопаток
         // корпус шире, и тот же выступ остаётся закрыт силуэтом.
         const pack = track(MeshBuilder.CreateBox(`${id}_pack`, {
-            width: 0.34, height: 0.34, depth: 0.14,
+            width: 0.26, height: 0.26, depth: 0.11,
         }, scene));
         pack.parent = torso;
-        pack.position.set(0, 0.86, -0.26);
+        pack.position.set(0, 0.83, -0.29);
         pack.material = packMat;
 
         const packFlap = track(MeshBuilder.CreateBox(`${id}_packFlap`, {
-            width: 0.36, height: 0.12, depth: 0.16,
+            width: 0.28, height: 0.12, depth: 0.14,
         }, scene));
         packFlap.parent = torso;
-        packFlap.position.set(0, 1.0, -0.26);
+        packFlap.position.set(0, 0.95, -0.29);
         packFlap.material = leather;
 
         // Скатка лежит на клапане, а не над плечами.
         const bedroll = track(MeshBuilder.CreateCylinder(`${id}_bedroll`, {
-            height: 0.36, diameter: 0.12, tessellation: 10,
+            height: 0.24, diameter: 0.1, tessellation: 10,
         }, scene));
         bedroll.parent = torso;
-        bedroll.position.set(0, 1.07, -0.26);
+        bedroll.position.set(0, 1.0, -0.28);
         bedroll.rotation.z = Math.PI / 2;
         bedroll.material = scarfMat;
 
@@ -241,7 +244,7 @@ export function createHumanoid(scene, { id, color = '#3498db', weapon = 'sword',
                 width: 0.08, height: 0.42, depth: 0.05,
             }, scene));
             packStrap.parent = torso;
-            packStrap.position.set(0.15 * side, 0.86, -0.21);
+            packStrap.position.set(0.11 * side, 0.83, -0.25);
             packStrap.rotation.x = -0.12;
             packStrap.material = leather;
         }
