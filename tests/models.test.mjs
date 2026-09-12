@@ -1630,13 +1630,27 @@ check('глаза моргают, и партия не моргает синхр
     assert.ok(blinks >= 2, `за 15 секунд моргнул ${blinks} раз`);
 
     // Второй юнит должен моргать в своём ритме, иначе партия «кукольная».
-    const other = createUnitModel(scene, makeUnitData('elena', {
-        id: 'blinkTest2', position: { x: 0, z: 0 },
-    }));
-    animator.register('blinkTest2', other);
-    const a = animator.states.get('blinkTest').blinkIn;
-    const b = animator.states.get('blinkTest2').blinkIn;
-    assert.ok(Math.abs(a - b) > 0.05, 'юниты моргают синхронно');
+    // Сравнивать две случайные величины напрямую нельзя: они совпадают
+    // ближе 0.05 примерно в 3 % случаев, и тест падал раз на 30 прогонов.
+    // Проверяем сам механизм — что интервал вообще случайный и лежит
+    // в разумных пределах, — собирая выборку.
+    const intervals = new Set();
+    for (let i = 0; i < 12; i += 1) {
+        const extra = createUnitModel(scene, makeUnitData('elena', {
+            id: `blinkSpread${i}`, position: { x: 0, z: 0 },
+        }));
+        animator.register(`blinkSpread${i}`, extra);
+        const value = animator.states.get(`blinkSpread${i}`).blinkIn;
+        assert.ok(
+            value > 0.5 && value < 8,
+            `интервал моргания вне разумных пределов: ${value.toFixed(2)}`,
+        );
+        intervals.add(value.toFixed(3));
+    }
+    assert.ok(
+        intervals.size >= 10,
+        `интервалы почти не различаются: ${intervals.size} уникальных из 12`,
+    );
 });
 
 check('наплечник не крупнее плеча в разы', () => {
@@ -1778,6 +1792,57 @@ check('у Елены поясная накидка, а не плащ за спи
     assert.ok(
         depth / width > 0.6,
         `накидка плоская: глубина ${depth.toFixed(2)} при ширине ${width.toFixed(2)}`,
+    );
+});
+
+check('шея видна: её не съедают скат, воротник и шарф', () => {
+    for (const [preset, id] of [['ryudo', 'neckR'], ['elena', 'neckE']]) {
+        const model = createUnitModel(scene, makeUnitData(preset, {
+            id, position: { x: 0, z: 0 },
+        }));
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+        const head = boxOf(model, `${id}_head`);
+        const yoke = boxOf(model, `${id}_yoke`);
+
+        // Всё, что обнимает шею, должно кончаться НИЖЕ подбородка, иначе
+        // голова садится прямо на плечи и шеи не видно вовсе.
+        let highest = yoke.maximumWorld.y;
+        for (const part of ['collar', 'scarf']) {
+            const mesh = model.meshes.find((m) => m.name === `${id}_${part}`);
+            if (mesh) highest = Math.max(highest, mesh.getBoundingInfo().boundingBox.maximumWorld.y);
+        }
+        const visible = head.minimumWorld.y - highest;
+        assert.ok(
+            visible > 0.02,
+            `${preset}: шея скрыта, просвет ${visible.toFixed(3)}`,
+        );
+    }
+});
+
+check('сзади есть объём ниже пояса, а не плоский срез', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'seatTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const seat = boxOf(model, 'seatTest_seat');
+    const waist = boxOf(model, 'seatTest_waist');
+
+    // Таз должен выступать назад дальше талии: иначе фигура сзади
+    // обрывается плоско — «попы нет».
+    assert.ok(
+        seat.minimumWorld.z < waist.minimumWorld.z - 0.02,
+        `нет объёма сзади: таз ${seat.minimumWorld.z.toFixed(3)}, талия ${waist.minimumWorld.z.toFixed(3)}`,
+    );
+    // И он ниже пояса, а не на уровне груди.
+    assert.ok(
+        seat.maximumWorld.y < waist.maximumWorld.y + 0.05,
+        'объём таза задран к груди',
     );
 });
 

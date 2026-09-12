@@ -102,6 +102,13 @@ if (POSE === 'run') {
     if (hero) hero.model.root.position.z = 0;
 }
 
+// Каст Рюдо: колдует СВОБОДНАЯ рука, меч остаётся у бедра.
+if (POSE === 'rcast') {
+    const frames = Number(args.frame ?? 26);
+    animator.playCast('ryudo', 0.8);
+    for (let i = 0; i < frames; i += 1) animator.update(actors.map((a) => a.unit), 1 / 60);
+}
+
 if (POSE === 'cast') {
     const frames = Number(args.frame ?? 20);
     animator.playCast('ryudo');

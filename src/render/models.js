@@ -70,6 +70,7 @@ export function createHumanoid(scene, {
         armR: female ? 0.105 : 0.12,
         foreR: female ? 0.092 : 0.105,
         pauldron: female ? 0.26 : 0.3,
+        seatDepth: female ? 0.42 : 0.38,   // глубина ягодиц
     };
     const track = (mesh) => { meshes.push(mesh); return mesh; };
 
@@ -123,10 +124,16 @@ export function createHumanoid(scene, {
     // плеча, а лишняя деталь читается как полка на груди. Поэтому здесь
     // просто покатый купол, чуть уже груди, — он сливается с корпусом.
     const yoke = track(MeshBuilder.CreateSphere(`${id}_yoke`, {
-        diameterX: B.chestTop * 0.94, diameterY: 0.3, diameterZ: B.chestTop * 0.68,
+        // У Елены скат ниже: ей не нужно прятать под ним шарф, а высокий
+        // купол упирался в подбородок и съедал шею.
+        diameterX: B.chestTop * 0.94,
+        diameterY: female ? 0.07 : 0.16,
+        diameterZ: B.chestTop * 0.68,
         slice: 0.5, segments: 14,
     }, scene));
     yoke.parent = torso;
+    // Верх ската держим НИЖЕ подбородка (голова начинается на 2.566):
+    // при 0.3 высоты он доходил до 2.67 и полностью съедал шею.
     yoke.position.y = 1.07;
     yoke.material = cloth;
 
@@ -156,6 +163,17 @@ export function createHumanoid(scene, {
     waist.position.y = 0.14;
     waist.scaling.z = 0.72;
     waist.material = cloth;
+
+    // Ягодицы. Таз был площе груди по глубине (0.20 против 0.27), и сзади
+    // фигура обрывалась плоско — «попы вообще нет». Полусфера сдвинута
+    // назад, чтобы дать объём ниже пояса.
+    const seat = track(MeshBuilder.CreateSphere(`${id}_seat`, {
+        diameterX: B.waistBottom * 0.98, diameterY: 0.34,
+        diameterZ: B.seatDepth, segments: 12,
+    }, scene));
+    seat.parent = torso;
+    seat.position.set(0, 0.02, -0.06);
+    seat.material = clothDark;
 
     const belt = track(MeshBuilder.CreateCylinder(`${id}_belt`, {
         height: 0.13, diameter: 0.6, tessellation: 16,
@@ -221,10 +239,12 @@ export function createHumanoid(scene, {
         // голой шеи: на y=1.12 оно поднималось до 2.78 и торчало над плечами
         // двумя красными пятнами по бокам головы.
         const scarf = track(MeshBuilder.CreateTorus(`${id}_scarf`, {
-            diameter: 0.46, thickness: 0.1, tessellation: 12,
+            diameter: 0.44, thickness: 0.075, tessellation: 12,
         }, scene));
         scarf.parent = torso;
-        scarf.position.set(0, 1.03, 0.01);
+        // Шарф лежит на скате, но не задирается к подбородку: при 1.03 его
+        // верх упирался в 2.70 при низе головы 2.566 — шея исчезала.
+        scarf.position.set(0, 0.96, 0.01);
         scarf.rotation.x = Math.PI / 2;
         scarf.scaling.z = 0.78;
         scarf.material = scarfMat;
@@ -365,7 +385,8 @@ export function createHumanoid(scene, {
         height: 0.09, diameterTop: 0.24, diameterBottom: 0.33, tessellation: 12,
     }, scene));
     collar.parent = neck;
-    collar.position.y = 0.1;
+    // Воротник держим у основания шеи, под подбородком.
+    collar.position.y = 0.02;
     collar.scaling.z = 0.78;
     collar.material = clothDark;
 
@@ -375,7 +396,13 @@ export function createHumanoid(scene, {
     // отсюда «всё из кружочков» и отсутствие настоящей формы лица.
     const head = track(createHeadMesh(scene, `${id}_head`));
     head.parent = neck;
-    head.position.y = 0.1;
+    // Голову поднимаем над шейным суставом: при 0.1 подбородок садился
+    // ровно туда, куда приходит плечевой скат, и шея пропадала.
+    //
+    // Подъём нужен там, где шею закрывает ШАРФ (у Рюдо). У Елены шарфа нет,
+    // и лишняя высота только задирала макушку, ломая каст «посох над
+    // головой»: орб переставал дотягиваться до макушки + 0.5.
+    head.position.y = weapon === 'staff' ? 0.12 : 0.19;
     head.scaling.setAll(0.86);
     head.material = skin;
 

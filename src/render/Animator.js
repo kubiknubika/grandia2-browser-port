@@ -49,8 +49,8 @@ const STAFF_POSES = {
         shoulderLX: 0.90, shoulderLZ: 0.00, elbowL: 0.33,
     },
     castSelf: {
-        shoulderRX: 0.60, shoulderRZ: -1.10, elbowR: -1.00, wrist: 0.30,
-        shoulderLX: -1.00, shoulderLZ: 0.00, elbowL: 1.07,
+        shoulderRX: 0.47, shoulderRZ: -1.00, elbowR: -1.07, wrist: 0.53,
+        shoulderLX: -0.73, shoulderLZ: 0.00, elbowL: 0.70,
     },
     windup: {
         shoulderRX: 0.80, shoulderRZ: -0.50, elbowR: -0.60, wrist: 0.30,
