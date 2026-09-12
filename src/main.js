@@ -1,6 +1,9 @@
 import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, DirectionalLight, MeshBuilder, StandardMaterial, Color3, ShadowGenerator, SceneLoader } from '@babylonjs/core';
 import '@babylonjs/loaders';
-import { PartyData, BestiaryData } from './data/battle_data.js';
+import { DEFAULT_ENCOUNTER, DEFAULT_INVENTORY, makeUnitData } from './data/battle_data.js';
+import { createUnitModel } from './render/models.js';
+import { Animator } from './render/Animator.js';
+import { BattleCamera } from './render/BattleCamera.js';
 import { BattleSystem } from './system/BattleSystem.js';
 import { UIController } from './system/UIController.js';
 
@@ -19,23 +22,12 @@ toggle.addEventListener('change', (e) => {
 
 // Managers
 const ui = new UIController();
-const battleSystem = new BattleSystem(ui);
+const animator = new Animator();
+let battleCamera = null;
+const battleSystem = new BattleSystem(ui, { inventory: DEFAULT_INVENTORY, animator });
 
-function renderPartyCards(party) {
-    const container = document.getElementById('party-container');
-    container.innerHTML = ''; 
-    party.forEach(char => {
-        const card = document.createElement('div');
-        card.className = 'character-card';
-        card.innerHTML = `
-            <div class="char-name">${char.name} <span style="font-size:12px; color:#aaa;">Lv.${char.level}</span></div>
-            <div class="stat-row"><span class="stat-label">HP</span><span class="stat-value hp">${char.hp} / ${char.maxHp}</span></div>
-            <div class="stat-row"><span class="stat-label">SP</span><span class="stat-value sp">${char.sp} / ${char.maxSp}</span></div>
-            <div class="stat-row"><span class="stat-label">MP</span><span class="stat-value mp">${char.mp} / ${char.maxMp}</span></div>
-        `;
-        container.appendChild(card);
-    });
-}
+// Карточки партии рисует и обновляет UIController (HP-бары живут по ходу боя),
+// поэтому статического рендерера здесь больше нет.
 
 function createScene() {
     const scene = new Scene(engine);
@@ -48,17 +40,52 @@ function createScene() {
     camera.lowerRadiusLimit = 10;
     camera.upperRadiusLimit = 50;
 
+    // Камера следит за тем, кто бьёт: раньше она стояла неподвижно и
+    // приёмы происходили где-то вдалеке без всякого акцента.
+    battleCamera = new BattleCamera(camera);
+    battleSystem.camera = battleCamera;
+
+    // Трёхточечная схема. Раньше были только «полусфера + один направленный источник»,
+    // из-за чего модели выглядели плоско: не было ни полутонов, ни
+    // контрового света, отделяющего фигуру от фона.
     const ambientLight = new HemisphericLight("ambientLight", new Vector3(0, 1, 0), scene);
-    ambientLight.intensity = 0.4;
-    ambientLight.groundColor = new Color3(0.1, 0.1, 0.1);
+    ambientLight.intensity = 0.45;
+    ambientLight.diffuse = new Color3(0.78, 0.84, 1.0);      // небо холодное
+    ambientLight.groundColor = new Color3(0.22, 0.19, 0.16); // отражение от земли тёплое
 
-    const dirLight = new DirectionalLight("dirLight", new Vector3(-1, -2, -1), scene);
-    dirLight.position = new Vector3(20, 40, 20);
-    dirLight.intensity = 0.8;
+    const dirLight = new DirectionalLight("dirLight", new Vector3(-0.55, -1.15, 0.85), scene);
+    dirLight.position = new Vector3(14, 26, -18);
+    dirLight.intensity = 1.15;
+    dirLight.diffuse = new Color3(1.0, 0.96, 0.88);          // рисующий — тёплый
 
-    const shadowGenerator = new ShadowGenerator(1024, dirLight);
-    shadowGenerator.useBlurExponentialShadowMap = true;
-    shadowGenerator.blurKernel = 32;
+    // Заполняющий: подсвечивает теневую сторону, чтобы она не проваливалась
+    // в чёрное, и даёт мягкий переход между планами лица.
+    const fillLight = new DirectionalLight("fillLight", new Vector3(0.8, -0.25, 0.6), scene);
+    fillLight.intensity = 0.32;
+    fillLight.diffuse = new Color3(0.62, 0.72, 0.95);
+    fillLight.specular = new Color3(0, 0, 0);
+
+    // Контровой сзади — тонкая светлая кромка по силуэту.
+    const rimLight = new DirectionalLight("rimLight", new Vector3(0.1, -0.4, -1), scene);
+    rimLight.intensity = 0.5;
+    rimLight.diffuse = new Color3(0.75, 0.85, 1.0);
+
+    const shadowGenerator = new ShadowGenerator(2048, dirLight);
+    shadowGenerator.usePercentageCloserFiltering = true;
+    shadowGenerator.filteringQuality = ShadowGenerator.QUALITY_HIGH;
+    shadowGenerator.bias = 0.0018;
+    shadowGenerator.normalBias = 0.012;
+    shadowGenerator.darkness = 0.32;
+    // Тени от мелких деталей (брови, нос, пряди) нужны вблизи.
+    dirLight.shadowMinZ = 8;
+    dirLight.shadowMaxZ = 70;
+
+    // Тональная компрессия: без неё света уходили в чистый белый, а
+    // цвета выглядели вымытыми.
+    scene.imageProcessingConfiguration.toneMappingEnabled = true;
+    scene.imageProcessingConfiguration.toneMappingType = 1; // ACES
+    scene.imageProcessingConfiguration.contrast = 1.35;
+    scene.imageProcessingConfiguration.exposure = 1.05;
 
     const arenaMat = new StandardMaterial("arenaMat", scene);
     arenaMat.diffuseColor = new Color3(0.24, 0.29, 0.36);
@@ -74,136 +101,79 @@ function createScene() {
     ring.position.y = 0.05;
     ring.material = ringMat;
 
-    // --- PROCEDURAL GENERATORS ---
+    // --- МОДЕЛИ ---------------------------------------------------------
+    // Процедурные модели с суставами живут в src/render/models.js,
+    // а их анимацию считает Animator. Здесь только регистрация в сцене.
 
-    function createRyudoFallback(id, color) {
-        const root = MeshBuilder.CreateBox(id + "_root", { size: 0.1 }, scene);
-        root.isVisible = false;
-
-        const mat = new StandardMaterial(id + "_mat", scene);
-        mat.diffuseColor = Color3.FromHexString(color);
-
-        const skin = new StandardMaterial(id + "_skin", scene);
-        skin.diffuseColor = new Color3(1, 0.8, 0.6);
-
-        // Body
-        const body = MeshBuilder.CreateCylinder(id + "_body", { height: 2.5, diameter: 1.0 }, scene);
-        body.parent = root;
-        body.position.y = 1.25;
-        body.material = mat;
-
-        // Head
-        const head = MeshBuilder.CreateSphere(id + "_head", { diameter: 1.1 }, scene);
-        head.parent = root;
-        head.position.y = 2.5 + 0.2;
-        head.material = skin;
-
-        // Nose (facing direction)
-        const nose = MeshBuilder.CreateBox(id + "_nose", { size: 0.3 }, scene);
-        nose.parent = head;
-        nose.position = new Vector3(0, 0, 0.55);
-        nose.material = skin;
-
-        // Sword!
-        const swordMat = new StandardMaterial(id + "_sword", scene);
-        swordMat.diffuseColor = new Color3(0.7, 0.7, 0.75); // Silver
-        const sword = MeshBuilder.CreateBox(id + "_sword", { width: 0.15, height: 2.2, depth: 0.4 }, scene);
-        sword.parent = root;
-        sword.position = new Vector3(0.7, 1.5, 0.5); // Hold in right hand, pointing slightly forward
-        sword.rotation.x = Math.PI / 4; 
-        sword.material = swordMat;
-
-        shadowGenerator.addShadowCaster(body, true);
-        shadowGenerator.addShadowCaster(head, true);
-        shadowGenerator.addShadowCaster(sword, true);
-
-        return root;
+    function buildModel(data) {
+        const model = createUnitModel(scene, data);
+        for (const mesh of model.meshes) {
+            shadowGenerator.addShadowCaster(mesh, true);
+            mesh.receiveShadows = true;
+        }
+        return model;
     }
 
-    function createSpiderFallback(id, color) {
-        const root = MeshBuilder.CreateBox(id + "_root", { size: 0.1 }, scene);
-        root.isVisible = false;
-
-        // Важно: в Babylon.js меш без позиции имеет 0,0,0, но оригинальная позиция клонируется при добавлении в систему.
-        // Заставим UIController находить body корректно
-
-
-        const mat = new StandardMaterial(id + "_mat", scene);
-        mat.diffuseColor = Color3.FromHexString(color);
-
-        // Body (Flattened sphere)
-        const body = MeshBuilder.CreateSphere(id + "_body", { diameterX: 2.2, diameterY: 1.0, diameterZ: 2.5 }, scene);
-        body.parent = root;
-        body.position.y = 0.6; // Low to the ground
-        body.material = mat;
-
-        // Eyes (Multiple little red spheres in front)
-        const eyeMat = new StandardMaterial(id + "_eye", scene);
-        eyeMat.diffuseColor = new Color3(1, 0, 0); // Red
-        eyeMat.emissiveColor = new Color3(0.5, 0, 0);
-
-        for(let i=0; i<4; i++) {
-            const eye = MeshBuilder.CreateSphere(id + "_eye"+i, { diameter: 0.25 }, scene);
-            eye.parent = body;
-            const xOffset = -0.45 + (i * 0.3);
-            eye.position = new Vector3(xOffset, 0.2, 1.15); // Front of the body
-            eye.material = eyeMat;
+    // Vite serves index.html for unknown paths, so a missing .glb returns
+    // "200 OK" with an HTML body instead of a network error. Check the glTF
+    // magic bytes before handing the file to the loader.
+    async function glbExists(url) {
+        try {
+            const response = await fetch(url, { headers: { Range: 'bytes=0-3' } });
+            if (!response.ok) return false;
+            const magic = new Uint8Array(await response.arrayBuffer()).subarray(0, 4);
+            return String.fromCharCode(...magic) === 'glTF';
+        } catch (error) {
+            return false;
         }
-
-        // Legs
-        const legMat = new StandardMaterial(id + "_leg", scene);
-        legMat.diffuseColor = new Color3(0.1, 0.1, 0.1); // Dark legs
-
-        for(let i=0; i<4; i++) {
-            // Create a long thin cylinder that goes through the body to stick out both sides
-            const leg = MeshBuilder.CreateCylinder(id + "_leg"+i, { height: 3.5, diameter: 0.15 }, scene);
-            leg.parent = body;
-            // Rotate them out like spider legs
-            leg.rotation.y = (Math.PI / 6) * (i - 1.5);
-            leg.rotation.x = Math.PI / 2; // Flat on the ground
-            leg.position.y = -0.2; // Legs slightly below center of body
-            leg.material = legMat;
-            shadowGenerator.addShadowCaster(leg, true);
-        }
-
-        shadowGenerator.addShadowCaster(body, true);
-        
-        return root;
     }
 
-    async function createUnit(data, x, z) {
-        let rootMesh;
-        const fileName = data.id === "ryudo" ? "ryudo.glb" : "spider.glb";
+    async function createUnit(data, isPlayer) {
+        const { x, z } = data.position;
+        const fileName = data.meshKind === "spider" ? "spider.glb" : "ryudo.glb";
 
+        let model = null;
+
+        // Готовые GLB опциональны: если файла нет, играем на процедурных
+        // моделях, которые тоже анимируются.
         if (useModels) {
-            try {
-                const result = await SceneLoader.ImportMeshAsync("", "/assets/models/", fileName, scene);
-                rootMesh = result.meshes[0];
-                result.meshes.forEach(m => {
-                    shadowGenerator.addShadowCaster(m, true);
-                    m.receiveShadows = true;
-                });
-                console.log(`Loaded real model for ${data.id}`);
-            } catch (error) {
-                console.warn(`Failed to load ${fileName}. Try disabling 3D models in settings.`);
-                rootMesh = data.id === "ryudo" 
-                    ? createRyudoFallback(data.id, data.color) 
-                    : createSpiderFallback(data.id, data.color);
+            const modelUrl = `/assets/models/${fileName}`;
+            if (await glbExists(modelUrl)) {
+                try {
+                    const result = await SceneLoader.ImportMeshAsync("", "/assets/models/", fileName, scene);
+                    const imported = result.meshes[0];
+                    result.meshes.forEach((m) => {
+                        shadowGenerator.addShadowCaster(m, true);
+                        m.receiveShadows = true;
+                    });
+                    model = { root: imported, meshes: result.meshes, rig: { kind: 'imported' } };
+                    console.log(`Loaded real model for ${data.id}`);
+                } catch (error) {
+                    console.warn(`Failed to parse ${fileName}, using procedural model.`, error);
+                }
+            } else {
+                console.warn(
+                    `${fileName} not found in public/assets/models/. `
+                    + `Run "python3 download_model.py" to fetch it. Using procedural model.`
+                );
+                ui.showModelWarning();
             }
-        } else {
-            // Direct Fallback mode
-            rootMesh = data.id === "ryudo" 
-                ? createRyudoFallback(data.id, data.color) 
-                : createSpiderFallback(data.id, data.color);
         }
 
-        rootMesh.position = new Vector3(x, 0, z);
-        rootMesh.lookAt(Vector3.Zero());
+        if (!model) {
+            model = buildModel(data);
+        }
 
-        const unitData = { id: data.id, data: data, mesh: rootMesh };
-        
-        // Регистрируем юнит в системе боя
-        battleSystem.addUnit(unitData, data.id === "ryudo");
+        model.root.position = new Vector3(x, 0, z);
+        model.root.lookAt(Vector3.Zero());
+
+        const unitData = { id: data.id, data, mesh: model.root };
+
+        // Регистрируем юнит в системе боя и в аниматоре.
+        battleSystem.addUnit(unitData, isPlayer);
+        if (model.rig.kind !== 'imported') {
+            animator.register(data.id, model);
+        }
 
         return unitData;
     }
@@ -211,15 +181,13 @@ function createScene() {
     async function setupBattle() {
         ui.setBabylonContext(scene, camera, engine); // Передаем ссылки на 3D сцену в UI
 
-        const ryudo = PartyData.ryudo;
-        const spider = BestiaryData.mottledSpider;
-
-        renderPartyCards([ryudo]);
+        // Юниты собираются из канонических PRESETS (combat.js) через makeUnitData,
+        // поэтому статы боя и статы симулятора баланса всегда совпадают.
+        const build = ({ presetKey, ...overrides }) => makeUnitData(presetKey, overrides);
 
         await Promise.all([
-            createUnit(ryudo, -6, 0),
-            createUnit({ ...spider, id: "spider1" }, 4, 3), 
-            createUnit({ ...spider, id: "spider2" }, 5, -2) 
+            ...DEFAULT_ENCOUNTER.players.map((entry) => createUnit(build(entry), true)),
+            ...DEFAULT_ENCOUNTER.enemies.map((entry) => createUnit(build(entry), false)),
         ]);
     }
 
@@ -230,9 +198,11 @@ function createScene() {
 const scene = createScene();
 engine.runRenderLoop(() => {
     scene.render();
-    
+
     // Обновляем логику боя с учетом дельты времени (в секундах)
     const deltaTime = engine.getDeltaTime() / 1000;
     battleSystem.update(deltaTime);
+    animator.update(battleSystem.units, deltaTime);
+    battleCamera?.update(battleSystem.units, deltaTime);
 });
 window.addEventListener("resize", () => engine.resize());

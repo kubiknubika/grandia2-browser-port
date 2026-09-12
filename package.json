@@ -3,9 +3,13 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --port 3000 --host 0.0.0.0"
+    "dev": "vite --port 3000 --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview --port 3000 --host 0.0.0.0",
+    "test": "node tests/battle.test.mjs && node tests/ui.test.mjs && node tests/models.test.mjs && node tests/integration.test.mjs"
   },
   "devDependencies": {
+    "jsdom": "^30.0.1",
     "vite": "^5.0.0"
   },
   "dependencies": {

@@ -1,0 +1,1904 @@
+/**
+ * Тесты процедурных моделей и аниматора на настоящем Babylon (NullEngine).
+ *
+ * Проверяем то, что нельзя увидеть в юнит-тестах логики: модель собирается,
+ * суставы существуют, анимация реально меняет позы и не ломается на
+ * экстремальных дельтах, а имена мешей совместимы с подсветкой урона.
+ *
+ * Запуск: npm test
+ */
+
+import assert from 'node:assert/strict';
+
+import { NullEngine } from '@babylonjs/core/Engines/nullEngine.js';
+import { Scene } from '@babylonjs/core/scene.js';
+import { Vector3 } from '@babylonjs/core/Maths/math.vector.js';
+import '@babylonjs/core/Meshes/meshBuilder.js';
+
+import { createHumanoid, createSpider, createUnitModel } from '../src/render/models.js';
+import { Animator } from '../src/render/Animator.js';
+import { makeUnitData } from '../src/data/battle_data.js';
+
+const engine = new NullEngine();
+const scene = new Scene(engine);
+
+const results = [];
+// Асинхронные проверки складываем в очередь и дожидаемся перед итогом:
+// иначе упавший await печатался уже ПОСЛЕ счётчика и не попадал в него.
+const pending = [];
+const check = (name, fn) => {
+    const ok = () => results.push(`  ok   ${name}`);
+    const fail = (error) => {
+        results.push(`  FAIL ${name}\n       ${error.message}`);
+        process.exitCode = 1;
+    };
+    try {
+        const result = fn();
+        if (result && typeof result.then === 'function') {
+            pending.push(result.then(ok, fail));
+        } else {
+            ok();
+        }
+    } catch (error) { fail(error); }
+};
+
+/** Юнит-заглушка поверх модели — как его видит BattleSystem. */
+function fakeUnit(id, model, phase = 'WAIT') {
+    return { id, phase, mesh: model.root };
+}
+
+// --- Сборка моделей -------------------------------------------------------
+
+check('гуманоид собирается с полным набором суставов', () => {
+    const model = createHumanoid(scene, { id: 'testHero', color: '#3498db' });
+    const required = [
+        'hips', 'torso', 'neck', 'head',
+        'shoulderL', 'shoulderR', 'elbowL', 'elbowR',
+        'hipL', 'hipR', 'kneeL', 'kneeR', 'weaponPivot',
+    ];
+    for (const bone of required) {
+        assert.ok(model.rig[bone], `нет сустава ${bone}`);
+    }
+    assert.ok(model.meshes.length > 15, `слишком мало деталей: ${model.meshes.length}`);
+    assert.equal(model.rig.kind, 'humanoid');
+});
+
+check('паук собирается с восемью двухсегментными ногами', () => {
+    const model = createSpider(scene, { id: 'testSpider', color: '#8e44ad' });
+    assert.equal(model.rig.legs.length, 8, 'у паука должно быть 8 ног');
+    for (const leg of model.rig.legs) {
+        assert.ok(leg.hip && leg.knee, 'нога должна состоять из бедра и колена');
+    }
+    assert.equal(model.rig.fangs.length, 2, 'должны быть жвалы');
+});
+
+check('у каждой модели есть меш *_body для подсветки урона', () => {
+    // UIController ищет именно его, когда мигает целью при попадании.
+    for (const [id, factory] of [['h', createHumanoid], ['s', createSpider]]) {
+        const model = factory(scene, { id });
+        const body = model.meshes.find((m) => m.name.includes('_body'));
+        assert.ok(body, `у модели ${id} нет меша *_body`);
+        assert.ok(body.material, 'у тела должен быть материал');
+    }
+});
+
+check('тело находится рекурсивным поиском от корня', () => {
+    // Регрессия: детали висят на суставах, поэтому getChildren() без флага
+    // (только прямые потомки) тело уже не найдёт.
+    const model = createHumanoid(scene, { id: 'depth' });
+    const direct = model.root.getChildren().filter((c) => c.name.includes('_body'));
+    const deep = model.root.getChildMeshes(false).filter((c) => c.name.includes('_body'));
+
+    assert.equal(direct.length, 0, 'тело не должно быть прямым потомком корня');
+    assert.equal(deep.length, 1, 'рекурсивный поиск обязан его находить');
+});
+
+check('createUnitModel выбирает модель по meshKind', () => {
+    const ryudo = createUnitModel(scene, makeUnitData('ryudo', { id: 'r1', position: { x: 0, z: 0 } }));
+    const spider = createUnitModel(scene, makeUnitData('mottledSpider', { id: 's1', position: { x: 0, z: 0 } }));
+    const elena = createUnitModel(scene, makeUnitData('elena', { id: 'e1', position: { x: 0, z: 0 } }));
+
+    assert.equal(ryudo.rig.kind, 'humanoid');
+    assert.equal(spider.rig.kind, 'spider');
+    assert.equal(elena.rig.kind, 'humanoid');
+});
+
+check('Рюдо получает меч, а Елена — посох', () => {
+    const ryudo = createUnitModel(scene, makeUnitData('ryudo', { id: 'r2', position: { x: 0, z: 0 } }));
+    const elena = createUnitModel(scene, makeUnitData('elena', { id: 'e2', position: { x: 0, z: 0 } }));
+
+    assert.ok(ryudo.meshes.some((m) => m.name.includes('_blade')), 'у Рюдо должен быть клинок');
+    assert.ok(elena.meshes.some((m) => m.name.includes('_orb')), 'у Елены должен быть навершие-сфера');
+    assert.ok(!elena.meshes.some((m) => m.name.includes('_blade')), 'у Елены не должно быть меча');
+});
+
+// --- Анимация -------------------------------------------------------------
+
+check('idle-анимация шевелит модель', () => {
+    const animator = new Animator();
+    const model = createHumanoid(scene, { id: 'idle' });
+    animator.register('idle', model);
+    const unit = fakeUnit('idle', model);
+
+    const before = model.rig.hips.position.y;
+    for (let i = 0; i < 40; i += 1) animator.update([unit], 1 / 60);
+    const after = model.rig.hips.position.y;
+
+    assert.notEqual(before, after, 'в покое юнит должен дышать');
+});
+
+check('бег включает мах ногами', () => {
+    const animator = new Animator();
+    const model = createHumanoid(scene, { id: 'run' });
+    animator.register('run', model);
+    const unit = fakeUnit('run', model);
+
+    // Двигаем модель, как это делает BattleSystem во время забега.
+    let maxSwing = 0;
+    for (let i = 0; i < 60; i += 1) {
+        model.root.position.x += 0.18; // ~11 ед/сек
+        animator.update([unit], 1 / 60);
+        maxSwing = Math.max(maxSwing, Math.abs(model.rig.hipL.rotation.x));
+    }
+
+    assert.ok(maxSwing > 0.2, `ноги должны заметно шагать, получили ${maxSwing.toFixed(3)}`);
+});
+
+check('удар: клинок заносится над головой и рубит вниз', () => {
+    // Проверяем ТРАЕКТОРИЮ ОСТРИЯ, а не знак поворота плеча: знак зависит от
+    // сборки рига, а видимая дуга — то, ради чего анимация существует.
+    const animator = new Animator();
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'swingArc', position: { x: 0, z: 0 },
+    }));
+    animator.register('swingArc', model);
+    const unit = fakeUnit('swingArc', model);
+
+    const tip = model.meshes.find((m) => m.name.includes('_bladeTip'));
+    assert.ok(tip, 'у меча должно быть остриё');
+
+    const tipAt = () => {
+        model.root.computeWorldMatrix(true);
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+        return tip.getBoundingInfo().boundingBox.centerWorld.clone();
+    };
+
+    for (let i = 0; i < 40; i += 1) animator.update([unit], 1 / 60);
+    const rest = tipAt();
+
+    animator.playSwing('swingArc', 0.42);
+    let highest = -Infinity;
+    let lowest = Infinity;
+    let backMost = Infinity;
+    let frontMost = -Infinity;
+    let peakStep = 0;
+    let previous = tipAt();
+
+    for (let i = 0; i < 30; i += 1) {
+        animator.update([unit], 1 / 60);
+        const now = tipAt();
+        highest = Math.max(highest, now.y);
+        lowest = Math.min(lowest, now.y);
+        backMost = Math.min(backMost, now.z);
+        frontMost = Math.max(frontMost, now.z);
+        peakStep = Math.max(peakStep, now.subtract(previous).length());
+        previous = now;
+    }
+
+    // В стойке остриё опущено к земле, поэтому замах меряем по подъёму над
+    // стойкой, а не по «провалу ниже покоя», как было в прежней позе.
+    assert.ok(
+        highest > rest.y + 1.0,
+        `замах должен высоко занести остриё (пик ${highest.toFixed(2)}, покой ${rest.y.toFixed(2)})`,
+    );
+    assert.ok(
+        highest - lowest > 1.2,
+        `дуга слишком мелкая: ${(highest - lowest).toFixed(2)}`,
+    );
+
+    // Занос уходит назад, проводка выносит клинок вперёд.
+    assert.ok(frontMost - backMost > 1.2, `дуга должна идти назад-вперёд: ${(frontMost - backMost).toFixed(2)}`);
+
+    // Удар должен быть резким, а не равномерным сползанием.
+    assert.ok(peakStep * 60 > 25, `удар слишком вялый: пик ${(peakStep * 60).toFixed(1)} ед/с`);
+
+    // После завершения поза возвращается.
+    for (let i = 0; i < 120; i += 1) animator.update([unit], 1 / 60);
+    const settled = tipAt();
+    assert.ok(
+        Math.abs(settled.y - rest.y) < 0.35,
+        `после удара клинок должен вернуться в стойку: ${settled.y.toFixed(2)} vs ${rest.y.toFixed(2)}`,
+    );
+});
+
+check('каст: руки собирают энергию вверху, затем выброс вперёд', () => {
+    const animator = new Animator();
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'castArc', position: { x: 0, z: 0 },
+    }));
+    animator.register('castArc', model);
+    const unit = fakeUnit('castArc', model);
+
+    // Следим за СВОБОДНОЙ (левой) рукой: именно она колдует. Раньше тест
+    // смотрел на рукоять меча — и требовал, чтобы вверх шла рука с оружием.
+    const fist = model.meshes.find((m) => m.name.endsWith('_fistL'));
+    const handAt = () => {
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+        return fist.getBoundingInfo().boundingBox.centerWorld.clone();
+    };
+
+    for (let i = 0; i < 40; i += 1) animator.update([unit], 1 / 60);
+    const rest = handAt();
+
+    animator.playCast('castArc', 0.8);
+    let highest = -Infinity;
+    let peakAtFrame = 0;
+    for (let i = 0; i < 52; i += 1) {
+        animator.update([unit], 1 / 60);
+        const now = handAt();
+        if (now.y > highest) { highest = now.y; peakAtFrame = i; }
+    }
+
+    assert.ok(highest > rest.y + 1.0, `руки должны подняться (${highest.toFixed(2)} vs ${rest.toFixed?.(2) ?? rest.y.toFixed(2)})`);
+
+    // Пик приходится на середину, а не на самый конец: после сбора идёт выброс.
+    assert.ok(peakAtFrame > 8 && peakAtFrame < 42, `пик сбора не на месте: кадр ${peakAtFrame}`);
+
+    for (let i = 0; i < 120; i += 1) animator.update([unit], 1 / 60);
+    assert.ok(
+        Math.abs(handAt().y - rest.y) < 0.35,
+        'после каста руки должны вернуться в стойку',
+    );
+
+    // И рука С МЕЧОМ на касте остаётся у бедра: колдуют свободной рукой,
+    // а не размахивают клинком.
+    const gripMesh = model.meshes.find((m) => m.name.endsWith('_grip'));
+    const gripY = () => {
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+        return gripMesh.getBoundingInfo().boundingBox.centerWorld.y;
+    };
+    const swordRest = gripY();
+    animator.playCast('castArc', 0.8);
+    let swordPeak = -Infinity;
+    for (let i = 0; i < 52; i += 1) {
+        animator.update([unit], 1 / 60);
+        swordPeak = Math.max(swordPeak, gripY());
+    }
+    assert.ok(
+        swordPeak - swordRest < 0.5,
+        `меч вскинулся на касте: ${(swordPeak - swordRest).toFixed(2)}`,
+    );
+});
+
+check('попадание вызывает вздрагивание', () => {
+    const animator = new Animator();
+    const model = createHumanoid(scene, { id: 'hit' });
+    animator.register('hit', model);
+    const unit = fakeUnit('hit', model);
+
+    animator.update([unit], 1 / 60);
+    animator.playHit('hit');
+
+    let maxTilt = 0;
+    for (let i = 0; i < 10; i += 1) {
+        animator.update([unit], 1 / 60);
+        maxTilt = Math.max(maxTilt, Math.abs(model.rig.torso.rotation.z));
+    }
+    assert.ok(maxTilt > 0.02, `корпус должен дёрнуться, получили ${maxTilt.toFixed(3)}`);
+});
+
+check('смерть заваливает гуманоида и переворачивает паука', () => {
+    const animator = new Animator();
+    const hero = createHumanoid(scene, { id: 'deadHero' });
+    const spider = createSpider(scene, { id: 'deadSpider' });
+    animator.register('deadHero', hero);
+    animator.register('deadSpider', spider);
+
+    const units = [fakeUnit('deadHero', hero, 'DEAD'), fakeUnit('deadSpider', spider, 'DEAD')];
+    for (let i = 0; i < 90; i += 1) animator.update(units, 1 / 60);
+
+    assert.ok(hero.root.rotation.x < -0.8, `герой должен упасть, rotation.x=${hero.root.rotation.x.toFixed(2)}`);
+    assert.ok(spider.root.rotation.z > 1.5, `паук должен перевернуться, rotation.z=${spider.root.rotation.z.toFixed(2)}`);
+});
+
+check('павший юнит не встаёт обратно сам по себе', () => {
+    const animator = new Animator();
+    const model = createSpider(scene, { id: 'stayDown' });
+    animator.register('stayDown', model);
+    const unit = fakeUnit('stayDown', model, 'DEAD');
+
+    for (let i = 0; i < 120; i += 1) animator.update([unit], 1 / 60);
+    const settled = model.root.rotation.z;
+    for (let i = 0; i < 120; i += 1) animator.update([unit], 1 / 60);
+
+    assert.ok(Math.abs(model.root.rotation.z - settled) < 0.05, 'поза смерти должна быть стабильной');
+});
+
+check('воскрешение возвращает модель в вертикаль', () => {
+    const animator = new Animator();
+    const model = createHumanoid(scene, { id: 'revive' });
+    animator.register('revive', model);
+
+    const dead = fakeUnit('revive', model, 'DEAD');
+    for (let i = 0; i < 90; i += 1) animator.update([dead], 1 / 60);
+    assert.ok(model.root.rotation.x < -0.8, 'предпосылка: юнит лежит');
+
+    const alive = fakeUnit('revive', model, 'WAIT');
+    for (let i = 0; i < 90; i += 1) animator.update([alive], 1 / 60);
+    assert.ok(model.root.rotation.x > -0.1, 'после воскрешения юнит должен встать');
+});
+
+check('анимация устойчива к огромной дельте кадра', () => {
+    const animator = new Animator();
+    const model = createSpider(scene, { id: 'bigDelta' });
+    animator.register('bigDelta', model);
+    const unit = fakeUnit('bigDelta', model);
+
+    animator.update([unit], 5); // свёрнутая вкладка
+
+    for (const leg of model.rig.legs) {
+        assert.ok(Number.isFinite(leg.hip.rotation.y), 'поворот сустава должен остаться числом');
+        assert.ok(Number.isFinite(leg.knee.rotation.z));
+    }
+    assert.ok(Number.isFinite(model.rig.body.position.y), 'позиция тела не должна стать NaN');
+});
+
+check('огромная дельта клемпится до одного шага 0.05 с', () => {
+    // Иначе после переключения вкладки поза скачком «телепортируется»:
+    // update(5) обязан дать ровно то же, что update(0.05).
+    const animator = new Animator();
+
+    const huge = createHumanoid(scene, { id: 'clampHuge' });
+    const step = createHumanoid(scene, { id: 'clampStep' });
+    animator.register('clampHuge', huge);
+    animator.register('clampStep', step);
+
+    // Уравниваем стартовую фазу: register() специально её рандомизирует.
+    animator.states.get('clampHuge').time = 1.234;
+    animator.states.get('clampStep').time = 1.234;
+
+    animator.update([fakeUnit('clampHuge', huge)], 5);
+    animator.update([fakeUnit('clampStep', step)], 0.05);
+
+    assert.equal(
+        huge.rig.hips.position.y.toFixed(6),
+        step.rig.hips.position.y.toFixed(6),
+        'дельта кадра должна быть ограничена сверху',
+    );
+});
+
+check('спрятанный кадр не заставляет юнита «пробежать» на месте', () => {
+    // moved/dt при нескольких секундах простоя не должен читаться как рывок.
+    const animator = new Animator();
+    const model = createHumanoid(scene, { id: 'teleport' });
+    animator.register('teleport', model);
+    const unit = fakeUnit('teleport', model);
+
+    model.root.position = new Vector3(12, 0, 9); // юнит «переместился», пока вкладка спала
+    animator.update([unit], 5);
+
+    assert.ok(
+        Math.abs(model.rig.hipL.rotation.x) < 0.6,
+        `ноги не должны улететь в предельный шаг, получили ${model.rig.hipL.rotation.x.toFixed(3)}`,
+    );
+});
+
+check('аниматор игнорирует незарегистрированных юнитов', () => {
+    const animator = new Animator();
+    const model = createHumanoid(scene, { id: 'ghost' });
+    // register() намеренно не вызываем.
+    assert.doesNotThrow(() => animator.update([fakeUnit('ghost', model)], 1 / 60));
+    assert.doesNotThrow(() => animator.playHit('nobody'));
+    assert.doesNotThrow(() => animator.playSwing('nobody'));
+});
+
+check('юниты не анимируются синхронно', () => {
+    const animator = new Animator();
+    const a = createHumanoid(scene, { id: 'syncA' });
+    const b = createHumanoid(scene, { id: 'syncB' });
+    animator.register('syncA', a);
+    animator.register('syncB', b);
+
+    const units = [fakeUnit('syncA', a), fakeUnit('syncB', b)];
+    for (let i = 0; i < 30; i += 1) animator.update(units, 1 / 60);
+
+    assert.notEqual(
+        a.rig.hips.position.y,
+        b.rig.hips.position.y,
+        'у юнитов должна быть разная фаза дыхания',
+    );
+});
+
+// --- Габариты и посадка на пол --------------------------------------------
+
+/** Самая нижняя точка модели в мировых координатах. */
+function lowestPoint(model) {
+    model.root.computeWorldMatrix(true);
+    model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+    let min = Infinity;
+    for (const mesh of model.meshes) {
+        min = Math.min(min, mesh.getBoundingInfo().boundingBox.minimumWorld.y);
+    }
+    return min;
+}
+
+check('модели имеют правдоподобные пропорции', () => {
+    const hero = createUnitModel(scene, makeUnitData('ryudo', { id: 'dimHero', position: { x: 0, z: 0 } }));
+    const spider = createUnitModel(scene, makeUnitData('mottledSpider', { id: 'dimSpider', position: { x: 0, z: 0 } }));
+
+    const size = (model) => {
+        model.root.computeWorldMatrix(true);
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+        let min = null; let max = null;
+        for (const mesh of model.meshes) {
+            const bb = mesh.getBoundingInfo().boundingBox;
+            if (!min) { min = bb.minimumWorld.clone(); max = bb.maximumWorld.clone(); }
+            min.minimizeInPlace(bb.minimumWorld);
+            max.maximizeInPlace(bb.maximumWorld);
+        }
+        return { h: max.y - min.y, w: max.x - min.x };
+    };
+
+    const h = size(hero);
+    const s = size(spider);
+
+    // Герой — вертикальный силуэт, паук — приземистый и широкий.
+    assert.ok(h.h > 2 && h.h < 4, `рост героя вне диапазона: ${h.h.toFixed(2)}`);
+    assert.ok(h.h > h.w, 'герой должен быть выше, чем шире');
+    assert.ok(s.w > s.h, 'паук должен быть шире, чем выше');
+
+    // Пауки стоят в 5 единицах друг от друга — не должны пересекаться.
+    assert.ok(s.w < 5, `паук слишком широкий (${s.w.toFixed(2)}), модели будут пересекаться`);
+});
+
+check('модели стоят на полу, а не парят и не тонут', () => {
+    for (const key of ['ryudo', 'elena', 'mottledSpider']) {
+        const model = createUnitModel(scene, makeUnitData(key, { id: `stand_${key}`, position: { x: 0, z: 0 } }));
+        const bottom = lowestPoint(model);
+        assert.ok(bottom > -0.05, `${key} тонет в арене: y=${bottom.toFixed(3)}`);
+        assert.ok(bottom < 0.35, `${key} парит над ареной: y=${bottom.toFixed(3)}`);
+    }
+});
+
+check('во время бега ноги не проваливаются сквозь пол', () => {
+    const animator = new Animator();
+    for (const key of ['ryudo', 'mottledSpider']) {
+        const id = `runFloor_${key}`;
+        const model = createUnitModel(scene, makeUnitData(key, { id, position: { x: 0, z: 0 } }));
+        animator.register(id, model);
+        const unit = fakeUnit(id, model);
+
+        let worst = Infinity;
+        for (let i = 0; i < 180; i += 1) {
+            model.root.position.x += 0.15;
+            animator.update([unit], 1 / 60);
+            worst = Math.min(worst, lowestPoint(model));
+        }
+        assert.ok(worst > -0.1, `${key} проваливается на бегу: y=${worst.toFixed(3)}`);
+    }
+});
+
+check('павшее тело не проваливается сквозь арену', () => {
+    // Регрессия: поза смерти вращает корень вокруг ступней, из-за чего
+    // тело уходило под пол почти на 1.6 единицы.
+    const animator = new Animator();
+    for (const key of ['ryudo', 'mottledSpider']) {
+        const id = `deadFloor_${key}`;
+        const model = createUnitModel(scene, makeUnitData(key, { id, position: { x: 0, z: 0 } }));
+        animator.register(id, model);
+        const unit = fakeUnit(id, model, 'DEAD');
+
+        for (let i = 0; i < 180; i += 1) animator.update([unit], 1 / 60);
+
+        const bottom = lowestPoint(model);
+        assert.ok(bottom > -0.15, `труп ${key} утонул в арене: y=${bottom.toFixed(3)}`);
+        assert.ok(bottom < 0.6, `труп ${key} завис в воздухе: y=${bottom.toFixed(3)}`);
+    }
+});
+
+check('голова — единая поверхность, а не стопка шаров', () => {
+    // Регрессия: голова собиралась из сфер (череп, челюсть, скулы, нос),
+    // отсюда «всё из кружочков». Теперь это один меш по сечениям.
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'headMesh', position: { x: 0, z: 0 },
+    }));
+    const names = model.meshes.map((m) => m.name);
+
+    for (const gone of ['_skull', '_jaw', '_chin', '_cheek']) {
+        assert.ok(
+            !names.some((n) => n.includes(gone)),
+            `${gone} должен был исчезнуть вместе со сборкой из шаров`,
+        );
+    }
+
+    const head = model.meshes.find((m) => m.name.endsWith('_head'));
+    assert.ok(head, 'меш головы должен существовать');
+
+    // Настоящая поверхность: сотни вершин, а не примитив на десяток граней.
+    const vertexCount = head.getTotalVertices();
+    assert.ok(vertexCount > 150, `голова слишком бедная: ${vertexCount} вершин`);
+
+    // Нормали нужны для гладкого затенения — без них будут фасетки.
+    assert.ok(head.isVerticesDataPresent('normal'), 'у головы должны быть нормали');
+});
+
+check('пропорции головы человеческие', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'headProp', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+
+    const head = model.meshes.find((m) => m.name.endsWith('_head'));
+    const box = head.getBoundingInfo().boundingBox;
+    const height = box.maximumWorld.y - box.minimumWorld.y;
+    const width = box.maximumWorld.x - box.minimumWorld.x;
+
+    // У человека голова заметно выше, чем шире.
+    const ratio = width / height;
+    assert.ok(ratio > 0.6 && ratio < 0.85, `голова круглая как мяч: ш/в = ${ratio.toFixed(2)}`);
+
+    // И укладывается в рост примерно 5-7 раз, а не 4 (карлик) и не 9.
+    const total = model.root.getHierarchyBoundingVectors();
+    const heads = (total.max.y - total.min.y) / height;
+    assert.ok(heads > 5 && heads < 7.5, `нарушены пропорции тела: ${heads.toFixed(1)} голов в росте`);
+});
+
+check('у Рюдо есть наушники, шарф и рюкзак, но нет плаща', () => {
+    // Атрибуты из оригинального дизайна. Плащ носит только Елена — вместе
+    // с рюкзаком за спиной они сливались в кашу.
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'gear_ryudo', position: { x: 0, z: 0 },
+    }));
+    const names = model.meshes.map((m) => m.name);
+
+    assert.ok(names.some((n) => n.includes('_phoneCup')), 'нет наушников');
+    assert.ok(names.some((n) => n.includes('_phoneBand')), 'нет дужки наушников');
+    assert.ok(names.some((n) => n.includes('_scarf')), 'нет шарфа');
+    assert.ok(names.some((n) => n.includes('_pack')), 'нет рюкзака');
+    assert.ok(!names.some((n) => n.endsWith('_cape')), 'у Рюдо не должно быть плаща');
+
+    // Узел плаща нужен аниматору, даже когда самого плаща нет.
+    assert.ok(model.rig.cape, 'узел cape должен существовать всегда');
+});
+
+check('у Елены остаётся плащ и нет снаряжения Рюдо', () => {
+    const model = createUnitModel(scene, makeUnitData('elena', {
+        id: 'gear_elena', position: { x: 0, z: 0 },
+    }));
+    const names = model.meshes.map((m) => m.name);
+
+    assert.ok(names.some((n) => n.endsWith('_cape')), 'плащ Елены пропал');
+    assert.ok(!names.some((n) => n.includes('_pack')), 'рюкзак только у Рюдо');
+    assert.ok(!names.some((n) => n.includes('_phoneCup')), 'наушники только у Рюдо');
+});
+
+check('подсветка попадания снимается даже при ударах внахлёст', async () => {
+    // Регрессия: вторая вспышка запоминала уже КРАСНЫЙ цвет как исходный,
+    // и модель оставалась подсвеченной навсегда.
+    const { UIController } = await import('../src/system/UIController.js');
+    const ui = Object.create(UIController.prototype);
+    ui.gaugeIcons = {};
+    ui.gaugeFlashTimers = {};
+
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'flashUnit', position: { x: 0, z: 0 },
+    }));
+    const body = model.meshes.find((m) => m.name.includes('_body'));
+    const before = body.material.emissiveColor.clone();
+
+    ui.flashMesh(model.root, '#ff0000', 40);
+    assert.ok(body.material.emissiveColor.r > 0.5, 'первая вспышка должна подсветить');
+
+    // Второй удар приходит, пока первая подсветка ещё горит.
+    ui.flashMesh(model.root, '#ff0000', 40);
+
+    await new Promise((resolve) => setTimeout(resolve, 120));
+
+    const after = body.material.emissiveColor;
+    assert.ok(
+        Math.abs(after.r - before.r) < 0.01
+        && Math.abs(after.g - before.g) < 0.01
+        && Math.abs(after.b - before.b) < 0.01,
+        `подсветка залипла: было (${before.r},${before.g},${before.b}), стало (${after.r},${after.g},${after.b})`,
+    );
+});
+
+check('меч лежит рукоятью в ладони и следует за кистью', () => {
+    // Регрессия: геометрия меча строилась от гарды, поэтому в кулаке
+    // оказывалась гарда, а рукоять с навершием торчала за кистью —
+    // меч будто висел в воздухе рядом с рукой.
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'gripTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+
+    const find = (suffix) => model.meshes.find((m) => m.name === `gripTest_${suffix}`);
+    const fist = find('fistR');
+    const grip = find('grip');
+    assert.ok(fist && grip, 'нет кулака или рукояти');
+
+    const fistPos = fist.getBoundingInfo().boundingBox.centerWorld;
+    const gripPos = grip.getBoundingInfo().boundingBox.centerWorld;
+    const gap = gripPos.subtract(fistPos).length();
+
+    assert.ok(
+        gap < 0.05,
+        `рукоять не в ладони: расстояние до кулака ${gap.toFixed(3)} (радиус кулака ~0.08)`,
+    );
+
+    // Меч должен двигаться ВМЕСТЕ с кистью: поворачиваем кисть и проверяем,
+    // что остриё сместилось. Если оружие подвешено к корпусу — не сдвинется.
+    const { rig } = model;
+    const tip = find('bladeTip');
+    const before = tip.getBoundingInfo().boundingBox.centerWorld.clone();
+
+    rig.elbowR.rotation.x -= 0.8;
+    model.root.computeWorldMatrix(true);
+    model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+    const after = tip.getBoundingInfo().boundingBox.centerWorld;
+
+    assert.ok(
+        after.subtract(before).length() > 0.2,
+        'остриё не поехало за рукой — меч не привязан к кисти',
+    );
+});
+
+check('меч направлен остриём вперёд, а не за спину', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'aimTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+
+    const find = (suffix) => model.meshes.find((m) => m.name === `aimTest_${suffix}`);
+    const grip = find('grip').getBoundingInfo().boundingBox.centerWorld;
+    const tip = find('bladeTip').getBoundingInfo().boundingBox.centerWorld;
+    const aim = tip.subtract(grip);
+
+    assert.ok(aim.z > 0.5, `клинок смотрит не вперёд: z = ${aim.z.toFixed(2)}`);
+    assert.ok(
+        Math.abs(aim.x) < 0.3,
+        `клинок развёрнут вбок вместо «вперёд»: x = ${aim.x.toFixed(2)}`,
+    );
+
+    // Под весом клинка кисть довёрнута: меч НЕ параллелен полу, остриё
+    // наклонено вниз, но не втыкается в землю.
+    assert.ok(
+        aim.y < -0.25,
+        `меч держат параллельно полу, а должен быть наклонён: y = ${aim.y.toFixed(2)}`,
+    );
+
+    const tipLow = find('bladeTip').getBoundingInfo().boundingBox.minimumWorld.y;
+    assert.ok(
+        tipLow > 0.05 && tipLow < 0.6,
+        `остриё должно быть чуть выше земли, а оно на ${tipLow.toFixed(2)}`,
+    );
+});
+
+check('меч развёрнут режущей кромкой, а не плашмя', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'edgeTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+
+    // Клинок — плоская коробка: широкая ось X, тонкая Z. Нормаль плоскости
+    // (локальная Z) должна смотреть ВБОК, тогда вперёд идёт кромка.
+    const blade = model.meshes.find((m) => m.name === 'edgeTest_blade');
+    const flat = Vector3.TransformNormal(
+        new Vector3(0, 0, 1), blade.getWorldMatrix(),
+    ).normalize();
+
+    assert.ok(
+        Math.abs(flat.x) > 0.75,
+        `меч держат плашмя: нормаль плоскости (${flat.x.toFixed(2)}, ${flat.y.toFixed(2)}, ${flat.z.toFixed(2)})`,
+    );
+});
+
+check('на бегу меч выводится параллельно полу и локоть сгибается', () => {
+    const animator = new Animator();
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'carryTest', position: { x: 0, z: 0 },
+    }));
+    animator.register('carryTest', model);
+    const unit = fakeUnit('carryTest', model);
+
+    const sync = () => {
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((m) => m.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+    };
+    const aimNow = () => {
+        sync();
+        const find = (n) => model.meshes.find((m) => m.name === `carryTest_${n}`)
+            .getBoundingInfo().boundingBox.centerWorld;
+        return find('bladeTip').subtract(find('grip')).normalize();
+    };
+
+    for (let i = 0; i < 60; i += 1) animator.update([unit], 1 / 60);
+    const standing = aimNow();
+    const standingElbow = model.rig.elbowR.rotation.x;
+
+    // Бежим с боевой скоростью (MOV 356 * WORLD_SCALE ≈ 11 ед/с).
+    for (let i = 0; i < 120; i += 1) {
+        model.root.position.z += 11.13 / 60;
+        animator.update([unit], 1 / 60);
+    }
+    const runningElbow = model.rig.elbowR.rotation.x;
+
+    // Рука машет в такт шагам, поэтому клинок колеблется около среднего.
+    // Мерять один кадр бессмысленно — усредняем по нескольким шагам.
+    let sum = 0;
+    const samples = 90;
+    for (let i = 0; i < samples; i += 1) {
+        model.root.position.z += 11.13 / 60;
+        animator.update([unit], 1 / 60);
+        sum += aimNow().y;
+    }
+    const running = { y: sum / samples };
+
+    assert.ok(
+        Math.abs(running.y) < 0.15,
+        `на бегу клинок в среднем не параллелен полу: y = ${running.y.toFixed(2)}`,
+    );
+    assert.ok(
+        running.y > standing.y + 0.3,
+        `клинок не выровнялся при переходе на бег: ${standing.y.toFixed(2)} -> ${running.y.toFixed(2)}`,
+    );
+    assert.ok(
+        runningElbow < standingElbow - 0.4,
+        `локоть не согнулся на бегу: ${standingElbow.toFixed(2)} -> ${runningElbow.toFixed(2)}`,
+    );
+
+    // Возврат в стойку: меч снова опускается остриём вниз.
+    for (let i = 0; i < 150; i += 1) animator.update([unit], 1 / 60);
+    assert.ok(
+        aimNow().y < -0.25,
+        'после остановки меч не вернулся в опущенную стойку',
+    );
+});
+
+check('приёмы не выворачивают суставы', () => {
+    // Амплитудный замах легко заводит сустав за анатомический предел —
+    // рука выгибается в обратную сторону. Проверяем каждый кадр.
+    const animator = new Animator();
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'jointTest', position: { x: 0, z: 0 },
+    }));
+    animator.register('jointTest', model);
+    const unit = fakeUnit('jointTest', model);
+    const { rig } = model;
+    const { rest } = rig;
+
+    const violations = [];
+    const watch = (label, value, min, max) => {
+        if (value < min - 1e-6 || value > max + 1e-6) {
+            violations.push(`${label} = ${value.toFixed(2)} вне [${min}, ${max}]`);
+        }
+    };
+
+    for (const play of ['playSwing', 'playCast']) {
+        animator[play]('jointTest', 0.6);
+        for (let i = 0; i < 70; i += 1) {
+            animator.update([unit], 1 / 60);
+            // Локоть не разгибается в обратную сторону.
+            watch(`${play}: локоть R`, rig.elbowR.rotation.x, -2.5, 0);
+            watch(`${play}: локоть L`, rig.elbowL.rotation.x, -2.5, 0);
+            watch(`${play}: плечо R.x`, rig.shoulderR.rotation.x, -2.7, 3.0);
+            watch(`${play}: плечо R.z`, rig.shoulderR.rotation.z, -1.5, 1.5);
+            // Кисть отсчитываем от хвата: сам хват — не вывих.
+            watch(
+                `${play}: кисть.x`,
+                rig.weaponPivot.rotation.x - rest.weaponX, -1.5, 1.5,
+            );
+            watch(
+                `${play}: кисть.z`,
+                rig.weaponPivot.rotation.z - rest.weaponZ, -1.5, 1.5,
+            );
+        }
+        for (let i = 0; i < 90; i += 1) animator.update([unit], 1 / 60);
+    }
+
+    assert.ok(violations.length === 0, `вывихи: ${violations.slice(0, 3).join('; ')}`);
+});
+
+check('причёска — оболочка на черепе, а не шар с конусами', () => {
+    // Регрессия: волосы были полусферой с воткнутыми конусами-прядями,
+    // из-за чего читались как шлем с шипами.
+    for (const preset of ['ryudo', 'elena']) {
+        const model = createUnitModel(scene, makeUnitData(preset, {
+            id: `hair_${preset}`, position: { x: 0, z: 0 },
+        }));
+        const names = model.meshes.map((m) => m.name);
+
+        for (const junk of ['bang0', 'spike0', 'lock0']) {
+            assert.ok(
+                !names.includes(`hair_${preset}_${junk}`),
+                `${preset}: остался примитив причёски ${junk}`,
+            );
+        }
+
+        const hair = model.meshes.find((m) => m.name === `hair_${preset}_hair`);
+        assert.ok(hair, `${preset}: нет меша причёски`);
+        assert.ok(
+            hair.getTotalVertices() > 200,
+            `${preset}: причёска слишком грубая (${hair.getTotalVertices()} вершин)`,
+        );
+        assert.ok(
+            hair.getVerticesData('normal'),
+            `${preset}: у причёски нет нормалей — будет гранёной`,
+        );
+    }
+});
+
+check('волосы покрывают затылок и не висят над черепом', () => {
+    for (const preset of ['ryudo', 'elena']) {
+        const model = createUnitModel(scene, makeUnitData(preset, {
+            id: `cover_${preset}`, position: { x: 0, z: 0 },
+        }));
+        model.root.computeWorldMatrix(true);
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+
+        const hair = model.meshes.find((m) => m.name === `cover_${preset}_hair`);
+        const head = model.meshes.find((m) => m.name === `cover_${preset}_head`);
+        const hairBox = hair.getBoundingInfo().boundingBox;
+        const headBox = head.getBoundingInfo().boundingBox;
+
+        // Верх причёски примерно на макушке: если она «парит», зазор большой.
+        const lift = hairBox.maximumWorld.y - headBox.maximumWorld.y;
+        assert.ok(
+            lift > -0.02 && lift < 0.12,
+            `${preset}: причёска не сидит на голове, зазор по верху ${lift.toFixed(3)}`,
+        );
+
+        // Затылок должен быть закрыт: низ волос заметно ниже макушки.
+        const drop = headBox.maximumWorld.y - hairBox.minimumWorld.y;
+        assert.ok(
+            drop > 0.3,
+            `${preset}: волосы не закрывают затылок (спуск всего ${drop.toFixed(3)})`,
+        );
+    }
+
+    // У Елены волосы длиннее, чем у Рюдо, — это разные силуэты.
+    const lengths = {};
+    for (const preset of ['ryudo', 'elena']) {
+        const model = createUnitModel(scene, makeUnitData(preset, {
+            id: `len_${preset}`, position: { x: 0, z: 0 },
+        }));
+        model.root.computeWorldMatrix(true);
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+        const hair = model.meshes.find((m) => m.name === `len_${preset}_hair`);
+        const box = hair.getBoundingInfo().boundingBox;
+        lengths[preset] = box.maximumWorld.y - box.minimumWorld.y;
+    }
+    assert.ok(
+        lengths.elena > lengths.ryudo + 0.2,
+        `у Елены волосы не длиннее: ${lengths.elena.toFixed(2)} против ${lengths.ryudo.toFixed(2)}`,
+    );
+});
+
+check('замах амплитудный: клинок заносится над головой', () => {
+    const animator = new Animator();
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'ampTest', position: { x: 0, z: 0 },
+    }));
+    animator.register('ampTest', model);
+    const unit = fakeUnit('ampTest', model);
+
+    const sync = () => {
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((m) => m.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+    };
+    const tipY = () => {
+        sync();
+        return model.meshes.find((m) => m.name === 'ampTest_bladeTip')
+            .getBoundingInfo().boundingBox.centerWorld.y;
+    };
+    const headTop = () => {
+        sync();
+        return model.meshes.find((m) => m.name === 'ampTest_head')
+            .getBoundingInfo().boundingBox.maximumWorld.y;
+    };
+
+    for (let i = 0; i < 60; i += 1) animator.update([unit], 1 / 60);
+    const crown = headTop();
+
+    animator.playSwing('ampTest', 0.42);
+    let peak = -Infinity;
+    let lowest = Infinity;
+    for (let i = 0; i < 30; i += 1) {
+        animator.update([unit], 1 / 60);
+        const y = tipY();
+        peak = Math.max(peak, y);
+        lowest = Math.min(lowest, y);
+    }
+
+    assert.ok(
+        peak > crown + 0.6,
+        `замах вялый: пик острия ${peak.toFixed(2)}, макушка ${crown.toFixed(2)}`,
+    );
+    // Проводка идёт вниз, но клинок не проваливается сквозь арену.
+    assert.ok(lowest > 0.03, `клинок ушёл под пол: ${lowest.toFixed(2)}`);
+});
+
+check('клинок режет кромкой на протяжении удара, а не шлёпает плашмя', () => {
+    const animator = new Animator();
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'cutTest', position: { x: 0, z: 0 },
+    }));
+    animator.register('cutTest', model);
+    const unit = fakeUnit('cutTest', model);
+
+    const sync = () => {
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((m) => m.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((m) => m.computeWorldMatrix(true));
+    };
+    const sample = () => {
+        sync();
+        const blade = model.meshes.find((m) => m.name === 'cutTest_blade');
+        return {
+            tip: model.meshes.find((m) => m.name === 'cutTest_bladeTip')
+                .getBoundingInfo().boundingBox.centerWorld.clone(),
+            flat: Vector3.TransformNormal(
+                new Vector3(0, 0, 1), blade.getWorldMatrix(),
+            ).normalize(),
+        };
+    };
+
+    for (let i = 0; i < 60; i += 1) animator.update([unit], 1 / 60);
+    animator.playSwing('cutTest', 0.42);
+
+    // Меч режет, если плоскость клинка перпендикулярна движению острия.
+    // Считаем с весом по скорости: медленная проводка в конце не важна.
+    let previous = sample().tip;
+    let weighted = 0;
+    let total = 0;
+    for (let i = 0; i < 24; i += 1) {
+        animator.update([unit], 1 / 60);
+        const now = sample();
+        const delta = now.tip.subtract(previous);
+        const speed = delta.length() * 60;
+        if (speed > 5) {
+            weighted += Math.abs(Vector3.Dot(now.flat, delta.normalize())) * speed;
+            total += speed;
+        }
+        previous = now.tip;
+    }
+
+    const flatness = weighted / total;
+    assert.ok(
+        flatness < 0.55,
+        `клинок идёт плашмя: взвешенная плашмя-ность ${flatness.toFixed(2)} (0 = режет)`,
+    );
+});
+
+// --- Посох Елены ----------------------------------------------------------
+
+/**
+ * Прогоняет модель Елены через аниматор и возвращает замеры посоха на
+ * кадре, где поза раскрыта полностью. Точка древка задаётся долей t:
+ * 0 — нижний конец, 1 — навершие с орбом.
+ */
+function staffProbe(id, { cast = null, swing = false, frames = 28 } = {}) {
+    const model = createUnitModel(scene, makeUnitData('elena', {
+        id, position: { x: 0, z: 0 },
+    }));
+    const animator = new Animator();
+    animator.register(id, model);
+    const unit = fakeUnit(id, model);
+
+    // Сначала успокаиваем позу покоя, иначе замер поймает переходный кадр.
+    for (let i = 0; i < 120; i += 1) animator.update([unit], 1 / 60);
+    if (swing) animator.playSwing(id, 0.6);
+    if (cast) animator.playCast(id, 0.8, { onSelf: cast === 'self' });
+    for (let i = 0; i < frames; i += 1) animator.update([unit], 1 / 60);
+
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => n.computeWorldMatrix(true));
+
+    const point = (t) => Vector3.TransformCoordinates(
+        new Vector3(0, -0.40 + t * 2.02, 0), model.rig.weaponPivot.getWorldMatrix(),
+    );
+    const orb = point(1);
+    const axis = orb.subtract(point(0)).normalize();
+
+    // Насколько левая кисть далека от древка — рвётся ли двуручный хват.
+    const handL = model.rig.handL.getAbsolutePosition();
+    let grip = Infinity;
+    for (let k = 0; k <= 80; k += 1) {
+        grip = Math.min(grip, Vector3.Distance(point(k / 80), handL));
+    }
+
+    const head = model.meshes.find((m) => m.name === `${id}_head`);
+    return {
+        orb, axis, grip, point,
+        crown: head.getBoundingInfo().boundingBox.maximumWorld.y,
+        handR: model.rig.hand.getAbsolutePosition(),
+        handL,
+    };
+}
+
+check('посох держат ДВУМЯ руками: обе кисти на древке', () => {
+    const rest = staffProbe('elenaGrip', { frames: 1 });
+    assert.ok(
+        rest.grip < 0.12,
+        `левая кисть не на древке: промах ${rest.grip.toFixed(3)}`,
+    );
+    // Локти согнуты: кисти держатся перед корпусом, а не висят плетьми.
+    assert.ok(
+        rest.handR.z > 0.25 && rest.handL.z > 0.10,
+        `кисти не вынесены вперёд: R.z=${rest.handR.z.toFixed(2)} L.z=${rest.handL.z.toFixed(2)}`,
+    );
+    // Правая ниже левой: правая у живота, левая выше на древке.
+    assert.ok(
+        rest.handR.y < rest.handL.y,
+        `правая кисть не ниже левой: R.y=${rest.handR.y.toFixed(2)} L.y=${rest.handL.y.toFixed(2)}`,
+    );
+});
+
+check('в покое посох лежит ПО ДИАГОНАЛИ и левая рука не тянется', () => {
+    const rest = staffProbe('elenaDiag', { frames: 1 });
+
+    // «Как ремень безопасности»: низ древка у правого бедра, орб над левым
+    // плечом. Значит ось посоха заметно наклонена по X, а не вертикальна.
+    const bottom = rest.point(0);
+    assert.ok(
+        rest.axis.x < -0.3,
+        `посох стоит вертикально, а не по диагонали: ось.x=${rest.axis.x.toFixed(2)}`,
+    );
+    assert.ok(
+        rest.orb.x < -0.25 && bottom.x > 0.2,
+        `диагональ не читается: орб.x=${rest.orb.x.toFixed(2)} низ.x=${bottom.x.toFixed(2)}`,
+    );
+
+    // Левая рука не должна тянуться через грудь. Длина руки Елены —
+    // плечо 0.52 + предплечье 0.52 = 1.04; прежняя поза требовала 92 %.
+    const shoulderL = new Vector3(-0.52, 2.25, 0);
+    const reach = Vector3.Distance(shoulderL, rest.handL) / 1.04;
+    assert.ok(
+        reach < 0.75,
+        `левая рука вытянута на ${(reach * 100).toFixed(0)} % длины — неудобный хват`,
+    );
+});
+
+check('хват не рвётся ни на замахе, ни на касте', () => {
+    for (const [name, opts] of [
+        ['замах', { swing: true, frames: 14 }],
+        ['каст в цель', { cast: 'target' }],
+        ['каст на себя', { cast: 'self' }],
+    ]) {
+        const probe = staffProbe(`elenaHold_${name.replace(/ /g, '')}`, opts);
+        assert.ok(
+            probe.grip < 0.16,
+            `${name}: кисть сорвалась с древка, промах ${probe.grip.toFixed(3)}`,
+        );
+    }
+});
+
+check('каст на себя поднимает посох над головой кончиком ВВЕРХ', () => {
+    const probe = staffProbe('elenaSelf', { cast: 'self' });
+    // Главное отличие от замаха: кончик смотрит вверх, а не заваливается
+    // назад за голову.
+    assert.ok(
+        probe.axis.y > 0.85,
+        `посох не вертикален: ось.y=${probe.axis.y.toFixed(2)}`,
+    );
+    assert.ok(
+        probe.orb.y > probe.crown + 0.5,
+        `орб не над головой: орб=${probe.orb.y.toFixed(2)} макушка=${probe.crown.toFixed(2)}`,
+    );
+    // Руки действительно подняты, а не держат посох у груди.
+    assert.ok(
+        probe.handL.y > 2.6,
+        `левая кисть не поднята: y=${probe.handL.y.toFixed(2)}`,
+    );
+});
+
+check('каст в цель выносит посох вперёд, а не над голову', () => {
+    const target = staffProbe('elenaAim', { cast: 'target' });
+    const self = staffProbe('elenaAimSelf', { cast: 'self' });
+    assert.ok(
+        target.orb.z > 0.6,
+        `посох не вынесен в сторону цели: орб.z=${target.orb.z.toFixed(2)}`,
+    );
+    // Две позы каста должны заметно различаться, иначе «на себя» не читается.
+    assert.ok(
+        self.orb.y - target.orb.y > 0.8,
+        `каст на себя не выше каста в цель: ${self.orb.y.toFixed(2)} vs ${target.orb.y.toFixed(2)}`,
+    );
+});
+
+check('ни древко, ни кисти не проходят перед лицом', () => {
+    for (const [name, opts] of [
+        ['замах', { swing: true, frames: 14 }],
+        ['каст на себя', { cast: 'self' }],
+    ]) {
+        const probe = staffProbe(`elenaFace_${name.replace(/ /g, '')}`, opts);
+        // Голова Елены — примерно сфера с центром (0, 2.85, 0.05).
+        for (let k = 0; k <= 20; k += 1) {
+            const p = probe.point(k / 20);
+            if (p.y < 2.6 || p.y > 3.1) continue;
+            const gap = Math.hypot(p.x, p.z - 0.05);
+            assert.ok(gap > 0.24, `${name}: древко перед лицом, зазор ${gap.toFixed(2)}`);
+        }
+    }
+});
+
+// --- Силуэт Рюдо -----------------------------------------------------------
+
+/** Мировой bounding box меша по имени. */
+function boxOf(model, name) {
+    const mesh = model.meshes.find((m) => m.name === name);
+    assert.ok(mesh, `нет меша ${name}`);
+    mesh.computeWorldMatrix(true);
+    return mesh.getBoundingInfo().boundingBox;
+}
+
+check('рюкзак Рюдо не выглядывает из-за плеч спереди', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'ryudoPack', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const body = boxOf(model, 'ryudoPack_body');
+
+    for (const part of ['pack', 'packFlap', 'bedroll', 'packStrap-1', 'packStrap1']) {
+        const box = boxOf(model, `ryudoPack_${part}`);
+        // Всё снаряжение остаётся ЗА спиной...
+        assert.ok(
+            box.maximumWorld.z < body.minimumWorld.z + 0.12,
+            `${part} вылез вперёд: z_max=${box.maximumWorld.z.toFixed(2)} при спине ${body.minimumWorld.z.toFixed(2)}`,
+        );
+        // ...и не шире корпуса.
+        assert.ok(
+            box.minimumWorld.x > body.minimumWorld.x && box.maximumWorld.x < body.maximumWorld.x,
+            `${part} шире корпуса: x ${box.minimumWorld.x.toFixed(2)}..${box.maximumWorld.x.toFixed(2)}`,
+        );
+    }
+
+    // Конец шарфа тоже не должен лежать красной плахой на груди.
+    const tail = boxOf(model, 'ryudoPack_scarfTail');
+    assert.ok(
+        tail.maximumWorld.x < body.maximumWorld.x,
+        `хвост шарфа торчит за габарит корпуса: x_max=${tail.maximumWorld.x.toFixed(2)}`,
+    );
+});
+
+check('снаряжение за спиной не видно с боевых ракурсов', async () => {
+    const { Ray } = await import('@babylonjs/core/Culling/ray.js');
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'ryudoRay', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    // Камера боя смотрит на героя СВЕРХУ под 30 градусов и вращается вокруг
+    // арены. Прежняя версия теста светила с уровня глаз и лишь с трёх
+    // фронтальных ракурсов — и пропустила случай, когда мешок выглядывал
+    // сбоку от корпуса под ~40 градусами на уровне живота.
+    //
+    // Ракурсы «со спины» (свыше 90 градусов) сюда не входят намеренно: там
+    // заплечный мешок обязан быть виден, иначе его незачем моделировать.
+    const own = new Set(model.meshes.map((m) => m.name));
+    for (const degrees of [0, -20, 20, -40, 40, -60, 60, -90, 90]) {
+        const angle = (degrees * Math.PI) / 180;
+        const eye = new Vector3(Math.sin(angle) * 9.5, 6.0, Math.cos(angle) * 9.5);
+        const seen = [];
+        for (let gx = -40; gx <= 40; gx += 4) {
+            for (let gy = -40; gy <= 40; gy += 4) {
+                const aim = new Vector3(gx * 0.012, 2.1 + gy * 0.012, 0);
+                const hit = scene.pickWithRay(
+                    new Ray(eye, aim.subtract(eye).normalize(), 12),
+                    (mesh) => own.has(mesh.name),
+                );
+                if (hit?.hit && /pack|bedroll/.test(hit.pickedMesh?.name ?? '')) {
+                    seen.push(hit.pickedMesh.name);
+                }
+            }
+        }
+        assert.equal(
+            seen.length, 0,
+            `с ракурса ${degrees}° видно снаряжение за спиной: ${[...new Set(seen)].join(', ')}`,
+        );
+    }
+});
+
+check('плечевой пояс закрывает срез корпуса, шарф и воротник видны', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'ryudoYoke', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const body = boxOf(model, 'ryudoYoke_body');
+    const yoke = boxOf(model, 'ryudoYoke_yoke');
+
+    // Скат начинается ровно от верхнего среза конуса: ниже — открытый диск
+    // у шеи, вровень — мерцание двух поверхностей.
+    assert.ok(
+        Math.abs(yoke.minimumWorld.y - body.maximumWorld.y) < 0.02,
+        `скат не садится на срез корпуса: скат ${yoke.minimumWorld.y.toFixed(3)}, срез ${body.maximumWorld.y.toFixed(3)}`,
+    );
+    assert.ok(
+        yoke.maximumWorld.y > body.maximumWorld.y,
+        'скат не поднимается над срезом — плоская «крышка» осталась',
+    );
+
+    // Шарф и воротник не должны утонуть под скатом.
+    const scarf = boxOf(model, 'ryudoYoke_scarf');
+    const collar = boxOf(model, 'ryudoYoke_collar');
+    assert.ok(
+        scarf.maximumWorld.y > yoke.maximumWorld.y,
+        `шарф скрылся под плечевым поясом: шарф ${scarf.maximumWorld.y.toFixed(2)}, скат ${yoke.maximumWorld.y.toFixed(2)}`,
+    );
+    assert.ok(
+        collar.maximumWorld.y > yoke.minimumWorld.y,
+        'воротник утонул под скатом',
+    );
+});
+
+check('плечи на линии ключиц, а руки не вжаты в бёдра', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'ryudoArms', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const body = boxOf(model, 'ryudoArms_body');
+
+    for (const side of ['L', 'R']) {
+        const arm = boxOf(model, `ryudoArms_upperArm${side}`);
+        // Плечо начинается у верхнего среза корпуса, а не из середины груди.
+        assert.ok(
+            body.maximumWorld.y - arm.maximumWorld.y < 0.08,
+            `плечо ${side} ниже линии ключиц на ${(body.maximumWorld.y - arm.maximumWorld.y).toFixed(3)}`,
+        );
+
+        // Предплечье не пересекается с бедром по горизонтали.
+        const fore = boxOf(model, `ryudoArms_foreArm${side}`);
+        const thigh = boxOf(model, `ryudoArms_thigh${side}`);
+        const overlap = Math.min(fore.maximumWorld.x, thigh.maximumWorld.x)
+            - Math.max(fore.minimumWorld.x, thigh.minimumWorld.x);
+        assert.ok(
+            overlap < 0,
+            `предплечье ${side} вжато в бедро: пересечение по X ${overlap.toFixed(3)}`,
+        );
+
+        // Наплечник едет вместе с рукой, а не висит отдельно на торсе.
+        const pad = boxOf(model, `ryudoArms_pauldron${side === 'L' ? '-1' : '1'}`);
+        const padOverArm = Math.min(pad.maximumWorld.x, arm.maximumWorld.x)
+            - Math.max(pad.minimumWorld.x, arm.minimumWorld.x);
+        assert.ok(
+            padOverArm > 0.1,
+            `наплечник ${side} оторвался от руки: перекрытие ${padOverArm.toFixed(3)}`,
+        );
+    }
+});
+
+check('рукав и предплечье соединены, локоть не разорван', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'ryudoElbow', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    // Стык закрывает не перекрытие капсул (они пересекаются и так), а шарнир
+    // elbowCap: без него на сгибе видна ступенька между рукавом и кожей.
+    for (const side of ['L', 'R']) {
+        const upper = boxOf(model, `ryudoElbow_upperArm${side}`);
+        const fore = boxOf(model, `ryudoElbow_foreArm${side}`);
+        const cap = boxOf(model, `ryudoElbow_elbowCap${side}`);
+
+        // Шарнир перекрывает ОБЕ капсулы — иначе стык остаётся открытым.
+        const overUpper = Math.min(cap.maximumWorld.y, upper.maximumWorld.y)
+            - Math.max(cap.minimumWorld.y, upper.minimumWorld.y);
+        const overFore = Math.min(cap.maximumWorld.y, fore.maximumWorld.y)
+            - Math.max(cap.minimumWorld.y, fore.minimumWorld.y);
+        assert.ok(
+            overUpper > 0.05 && overFore > 0.05,
+            `шарнир локтя ${side} не сшивает рукав и предплечье: `
+            + `перекрытие ${overUpper.toFixed(3)} / ${overFore.toFixed(3)}`,
+        );
+
+        // И он не сползает целиком на голое предплечье ниже сустава.
+        const joint = model.rig[`elbow${side}`].getAbsolutePosition();
+        assert.ok(
+            cap.maximumWorld.y > joint.y,
+            `шарнир локтя ${side} сполз ниже сустава`,
+        );
+    }
+});
+
+check('поясные сумки — на внешней стороне бёдер и небольшие', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'ryudoPouch', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    for (const side of ['L', 'R']) {
+        const pouch = boxOf(model, `ryudoPouch_tasset${side}`);
+        const thigh = boxOf(model, `ryudoPouch_thigh${side}`);
+
+        // Сумка висит СНАРУЖИ бедра, а не спереди на животе.
+        const outward = side === 'L'
+            ? pouch.minimumWorld.x < thigh.minimumWorld.x
+            : pouch.maximumWorld.x > thigh.maximumWorld.x;
+        assert.ok(outward, `сумка ${side} не на внешней стороне бедра`);
+
+        // И она заметно меньше самого бедра — это карман, а не коробка.
+        const width = pouch.maximumWorld.x - pouch.minimumWorld.x;
+        const thighWidth = thigh.maximumWorld.x - thigh.minimumWorld.x;
+        assert.ok(
+            width < thighWidth * 0.75,
+            `сумка ${side} слишком крупная: ${width.toFixed(2)} при бедре ${thighWidth.toFixed(2)}`,
+        );
+    }
+});
+
+check('правый локоть Елены отведён от корпуса', () => {
+    const model = createUnitModel(scene, makeUnitData('elena', {
+        id: 'elenaElbow', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const body = boxOf(model, 'elenaElbow_body');
+    const elbow = model.rig.elbowR.getAbsolutePosition();
+    assert.ok(
+        elbow.x - body.maximumWorld.x > 0.06,
+        `локоть прижат к корпусу: отступ ${(elbow.x - body.maximumWorld.x).toFixed(3)}`,
+    );
+});
+
+check('на бегу стопа стоит на земле, а не проскальзывает', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'gaitTest', position: { x: 0, z: 0 },
+    }));
+    const animator = new Animator();
+    animator.register('gaitTest', model);
+    const unit = fakeUnit('gaitTest', model);
+
+    const SPEED = 11.13;   // боевая скорость Рюдо (MOV 356 * WORLD_SCALE)
+    for (let i = 0; i < 60; i += 1) animator.update([unit], 1 / 60);
+
+    // Длина шага: путь, пройденный телом за один цикл маха ноги.
+    let previous = 0;
+    let steps = 0;
+    let firstZ = null;
+    let lastZ = 0;
+    for (let i = 0; i < 240; i += 1) {
+        model.root.position.z += SPEED / 60;
+        animator.update([unit], 1 / 60);
+        const swing = model.rig.hipL.rotation.x;
+        if (previous < 0 && swing >= 0) {
+            steps += 1;
+            if (firstZ === null) firstZ = model.root.position.z;
+            lastZ = model.root.position.z;
+        }
+        previous = swing;
+    }
+    assert.ok(steps > 2, `шаги не считаются: ${steps}`);
+    const stepLength = (lastZ - firstZ) / (steps - 1);
+
+    // Размах стопы относительно тела — сколько нога реально отрабатывает.
+    let minLocal = Infinity;
+    let maxLocal = -Infinity;
+    for (let i = 0; i < 120; i += 1) {
+        model.root.position.z += SPEED / 60;
+        animator.update([unit], 1 / 60);
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+        const foot = model.meshes.find((m) => m.name === 'gaitTest_footL');
+        foot.computeWorldMatrix(true);
+        const local = foot.getBoundingInfo().boundingBox.centerWorld.z - model.root.position.z;
+        minLocal = Math.min(minLocal, local);
+        maxLocal = Math.max(maxLocal, local);
+    }
+    const footTravel = maxLocal - minLocal;
+
+    // Если тело проезжает за шаг сильно больше, чем отрабатывает нога,
+    // персонаж «дрыгает ножками», а не отталкивается от земли.
+    const slip = stepLength / footTravel;
+    assert.ok(
+        slip < 1.6,
+        `стопа проскальзывает в ${slip.toFixed(1)} раза: шаг ${stepLength.toFixed(2)}, ход ноги ${footTravel.toFixed(2)}`,
+    );
+
+    // Шаг должен быть соразмерен росту: 38 % — это семенящая походка.
+    const height = 3.09;
+    assert.ok(
+        stepLength / height > 0.45,
+        `шаг мелкий: ${(stepLength / height * 100).toFixed(0)} % роста`,
+    );
+
+    // И колено заносимой ноги обязано подбираться, иначе она волочится
+    // по земле прямой палкой.
+    let maxKnee = 0;
+    for (let i = 0; i < 120; i += 1) {
+        model.root.position.z += SPEED / 60;
+        animator.update([unit], 1 / 60);
+        maxKnee = Math.max(maxKnee, Math.abs(model.rig.kneeL.rotation.x));
+    }
+    assert.ok(
+        maxKnee > 0.45,
+        `колено почти не сгибается на бегу: ${maxKnee.toFixed(2)} рад`,
+    );
+});
+
+check('шарф лежит на плечах, а не парит красным кольцом вокруг шеи', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'scarfTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const scarf = boxOf(model, 'scarfTest_scarf');
+    const yoke = boxOf(model, 'scarfTest_yoke');
+    const head = boxOf(model, 'scarfTest_head');
+
+    // Шарф опирается на плечевой пояс...
+    assert.ok(
+        scarf.minimumWorld.y < yoke.maximumWorld.y,
+        `шарф оторвался от плеч: низ ${scarf.minimumWorld.y.toFixed(2)}, скат ${yoke.maximumWorld.y.toFixed(2)}`,
+    );
+    // ...и не задирается к подбородку, где торчал двумя красными пятнами.
+    const chin = head.minimumWorld.y + (head.maximumWorld.y - head.minimumWorld.y) * 0.25;
+    assert.ok(
+        scarf.maximumWorld.y < chin,
+        `шарф задран к лицу: верх ${scarf.maximumWorld.y.toFixed(2)}, подбородок ${chin.toFixed(2)}`,
+    );
+});
+
+check('ножны висят снаружи бедра, а не врезаются в поясницу', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'scabTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const scabbard = model.meshes.find((m) => m.name === 'scabTest_scabbard');
+    const SCABBARD_RADIUS = 0.06;
+
+    // Радиус корпуса на высоте y: конус тела 1.70..2.52 и талия 1.44..1.74.
+    // Проверяем не bounding box (у наклонённого цилиндра он врёт), а точки
+    // самой оси ножен против поверхности корпуса.
+    const bodyRadius = (y) => {
+        if (y >= 1.70) {
+            const t = (y - 1.70) / 0.82;
+            const rx = 0.25 + 0.14 * t;
+            return { rx, rz: rx * 0.72 };
+        }
+        if (y >= 1.44) {
+            const t = (y - 1.44) / 0.30;
+            const rx = 0.28 - 0.03 * t;
+            return { rx, rz: rx * 0.72 };
+        }
+        return null;
+    };
+
+    let worst = Infinity;
+    for (let k = 0; k <= 20; k += 1) {
+        const point = Vector3.TransformCoordinates(
+            new Vector3(0, -0.43 + k * 0.043, 0), scabbard.getWorldMatrix(),
+        );
+        const radius = bodyRadius(point.y);
+        if (!radius) continue;
+        const normalized = Math.sqrt(
+            (point.x / radius.rx) ** 2 + (point.z / radius.rz) ** 2,
+        );
+        const gap = (normalized - 1) * Math.min(radius.rx, radius.rz) - SCABBARD_RADIUS;
+        worst = Math.min(worst, gap);
+    }
+
+    assert.ok(
+        worst > 0,
+        `ножны утоплены в корпус на ${(-worst).toFixed(3)}`,
+    );
+});
+
+check('голенище закрывает голень, штанина не просвечивает сзади', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'bootTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    for (const side of ['L', 'R']) {
+        const boot = boxOf(model, `bootTest_foot${side}_boot`);
+        const shin = boxOf(model, `bootTest_shin${side}`);
+
+        // Голенище должно быть ШИРЕ голени с запасом: при зазоре в пару
+        // сотых синяя штанина просвечивала сквозь кромку сзади.
+        const bootWidth = boot.maximumWorld.x - boot.minimumWorld.x;
+        const shinWidth = shin.maximumWorld.x - shin.minimumWorld.x;
+        assert.ok(
+            bootWidth - shinWidth > 0.05,
+            `голенище ${side} почти впритык к голени: ${bootWidth.toFixed(3)} против ${shinWidth.toFixed(3)}`,
+        );
+
+        // И глубже по Z — сзади зазор был самым узким.
+        const bootDepth = boot.maximumWorld.z - boot.minimumWorld.z;
+        const shinDepth = shin.maximumWorld.z - shin.minimumWorld.z;
+        assert.ok(
+            bootDepth - shinDepth > 0.05,
+            `голенище ${side} узкое по глубине: ${bootDepth.toFixed(3)} против ${shinDepth.toFixed(3)}`,
+        );
+    }
+});
+
+check('у Елены женский силуэт, а не копия Рюдо', () => {
+    const ryudo = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'propR', position: { x: 0, z: 0 },
+    }));
+    const elena = createUnitModel(scene, makeUnitData('elena', {
+        id: 'propE', position: { x: 0, z: 0 },
+    }));
+    for (const model of [ryudo, elena]) {
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+    }
+    const width = (model, name) => {
+        const box = boxOf(model, name);
+        return box.maximumWorld.x - box.minimumWorld.x;
+    };
+
+    // Плечи у Елены уже, таз шире — иначе это просто перекрашенный Рюдо.
+    assert.ok(
+        width(elena, 'propE_body') < width(ryudo, 'propR_body') - 0.03,
+        `плечи Елены не уже: ${width(elena, 'propE_body').toFixed(2)} vs ${width(ryudo, 'propR_body').toFixed(2)}`,
+    );
+    assert.ok(
+        width(elena, 'propE_waist') > width(ryudo, 'propR_waist') + 0.02,
+        `таз Елены не шире: ${width(elena, 'propE_waist').toFixed(2)} vs ${width(ryudo, 'propR_waist').toFixed(2)}`,
+    );
+    // И таз шире плеч — характерная женская пропорция.
+    assert.ok(
+        width(elena, 'propE_waist') / width(elena, 'propE_body') > 0.8,
+        'таз Елены слишком узок относительно плеч',
+    );
+});
+
+check('колено — читаемый сустав, а не стык в ноль пикселей', () => {
+    for (const [preset, id] of [['ryudo', 'kneeR'], ['elena', 'kneeE']]) {
+        const model = createUnitModel(scene, makeUnitData(preset, {
+            id, position: { x: 0, z: 0 },
+        }));
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+        const thigh = boxOf(model, `${id}_thighL`);
+        const shin = boxOf(model, `${id}_shinL`);
+        const cap = boxOf(model, `${id}_kneeCapL`);
+
+        // Бедро и голень должны ПЕРЕКРЫВАТЬСЯ, а не сходиться встык.
+        const overlap = shin.maximumWorld.y - thigh.minimumWorld.y;
+        assert.ok(
+            overlap > 0.04,
+            `${preset}: бедро и голень сходятся встык, перекрытие ${overlap.toFixed(3)}`,
+        );
+
+        // Шарнир колена перекрывает обе кости.
+        assert.ok(
+            cap.maximumWorld.y > thigh.minimumWorld.y && cap.minimumWorld.y < shin.maximumWorld.y,
+            `${preset}: шарнир колена не сшивает бедро с голенью`,
+        );
+    }
+});
+
+check('глаза моргают, и партия не моргает синхронно', () => {
+    const animator = new Animator();
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'blinkTest', position: { x: 0, z: 0 },
+    }));
+    animator.register('blinkTest', model);
+    const unit = fakeUnit('blinkTest', model);
+
+    assert.ok(model.rig.eyelids?.length === 2, 'веки не попали в риг');
+    const lid = model.rig.eyelids[0].mesh;
+
+    let blinks = 0;
+    let open = true;
+    for (let i = 0; i < 900; i += 1) {
+        animator.update([unit], 1 / 60);
+        const closed = lid.scaling.y > 2;
+        if (closed && open) { blinks += 1; open = false; }
+        if (!closed) open = true;
+    }
+    assert.ok(blinks >= 2, `за 15 секунд моргнул ${blinks} раз`);
+
+    // Второй юнит должен моргать в своём ритме, иначе партия «кукольная».
+    // Сравнивать две случайные величины напрямую нельзя: они совпадают
+    // ближе 0.05 примерно в 3 % случаев, и тест падал раз на 30 прогонов.
+    // Проверяем сам механизм — что интервал вообще случайный и лежит
+    // в разумных пределах, — собирая выборку.
+    const intervals = new Set();
+    for (let i = 0; i < 12; i += 1) {
+        const extra = createUnitModel(scene, makeUnitData('elena', {
+            id: `blinkSpread${i}`, position: { x: 0, z: 0 },
+        }));
+        animator.register(`blinkSpread${i}`, extra);
+        const value = animator.states.get(`blinkSpread${i}`).blinkIn;
+        assert.ok(
+            value > 0.5 && value < 8,
+            `интервал моргания вне разумных пределов: ${value.toFixed(2)}`,
+        );
+        intervals.add(value.toFixed(3));
+    }
+    assert.ok(
+        intervals.size >= 10,
+        `интервалы почти не различаются: ${intervals.size} уникальных из 12`,
+    );
+});
+
+check('наплечник не крупнее плеча в разы', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'padTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const pad = boxOf(model, 'padTest_pauldron1');
+    const arm = boxOf(model, 'padTest_upperArmR');
+    const padWidth = pad.maximumWorld.x - pad.minimumWorld.x;
+    const armWidth = arm.maximumWorld.x - arm.minimumWorld.x;
+    assert.ok(
+        padWidth < armWidth * 1.35,
+        `наплечник шире плеча в ${(padWidth / armWidth).toFixed(2)} раза`,
+    );
+});
+
+check('наконечник ножен состыкован с коробом', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'tipTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const scabbard = model.meshes.find((m) => m.name === 'tipTest_scabbard');
+    const tip = model.meshes.find((m) => m.name === 'tipTest_scabbardTip');
+
+    // Низ короба (локально -0.43) и верх наконечника (локально +0.07)
+    // должны совпасть: раньше их позиции задавались независимо и разошлись.
+    const bottom = Vector3.TransformCoordinates(new Vector3(0, -0.43, 0), scabbard.getWorldMatrix());
+    const top = Vector3.TransformCoordinates(new Vector3(0, 0.07, 0), tip.getWorldMatrix());
+    assert.ok(
+        Vector3.Distance(bottom, top) < 0.04,
+        `наконечник оторван от короба на ${Vector3.Distance(bottom, top).toFixed(3)}`,
+    );
+});
+
+check('рюкзак крупный, а не сумочка', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'packSize', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const pack = boxOf(model, 'packSize_pack');
+    const body = boxOf(model, 'packSize_body');
+    const packWidth = pack.maximumWorld.x - pack.minimumWorld.x;
+    const backWidth = body.maximumWorld.x - body.minimumWorld.x;
+
+    // Заплечный мешок должен занимать заметную часть спины: при 33 % он
+    // читался как поясная сумочка, случайно надетая на спину.
+    assert.ok(
+        packWidth / backWidth > 0.45,
+        `рюкзак мелкий: ${(packWidth / backWidth * 100).toFixed(0)} % ширины спины`,
+    );
+    // И клапан не шире самого мешка, иначе торчит углами из-за силуэта.
+    const flap = boxOf(model, 'packSize_packFlap');
+    assert.ok(
+        (flap.maximumWorld.x - flap.minimumWorld.x) <= packWidth,
+        'клапан шире мешка',
+    );
+});
+
+check('красный хвост шарфа не выглядывает сбоку из-за корпуса', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'tailTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const tail = boxOf(model, 'tailTest_scarfTail');
+    const body = boxOf(model, 'tailTest_body');
+
+    // Хвост прижат к спине и не выходит за габарит корпуса вбок: иначе
+    // он проступает справа красным пятном «сквозь тело».
+    assert.ok(
+        tail.maximumWorld.x < body.maximumWorld.x - 0.13,
+        `хвост шарфа торчит вбок: ${tail.maximumWorld.x.toFixed(2)} при корпусе ${body.maximumWorld.x.toFixed(2)}`,
+    );
+});
+
+check('портупея соединяет плечо с поясом, а не висит на животе', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'strapTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const strap = boxOf(model, 'strapTest_strap');
+    const belt = boxOf(model, 'strapTest_belt');
+    const body = boxOf(model, 'strapTest_body');
+
+    // Низ портупеи доходит до пояса...
+    assert.ok(
+        strap.minimumWorld.y < belt.maximumWorld.y + 0.05,
+        `портупея не достаёт до пояса: низ ${strap.minimumWorld.y.toFixed(2)}, пояс ${belt.maximumWorld.y.toFixed(2)}`,
+    );
+    // ...а сам ремень перекрывает большую часть высоты корпуса: короткий
+    // огрызок висел серединой на животе, не касаясь ни плеча, ни пояса.
+    const strapSpan = strap.maximumWorld.y - strap.minimumWorld.y;
+    const bodySpan = body.maximumWorld.y - body.minimumWorld.y;
+    assert.ok(
+        strapSpan / bodySpan > 1.2,
+        `портупея короткая: ${strapSpan.toFixed(2)} при корпусе ${bodySpan.toFixed(2)}`,
+    );
+});
+
+check('у Елены поясная накидка, а не плащ за спиной', () => {
+    const model = createUnitModel(scene, makeUnitData('elena', {
+        id: 'capeTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const skirt = boxOf(model, 'capeTest_cape');
+    const body = boxOf(model, 'capeTest_body');
+    const waist = boxOf(model, 'capeTest_waist');
+
+    // Накидка сидит НА БЁДРАХ: её верх ниже груди, а низ — ниже пояса.
+    assert.ok(
+        skirt.maximumWorld.y < body.maximumWorld.y - 0.4,
+        `накидка задрана к плечам: верх ${skirt.maximumWorld.y.toFixed(2)}`,
+    );
+    assert.ok(
+        skirt.minimumWorld.y < waist.minimumWorld.y,
+        'накидка не закрывает бёдра',
+    );
+    // И она объёмная, а не плоский лист: глубина сопоставима с шириной.
+    const depth = skirt.maximumWorld.z - skirt.minimumWorld.z;
+    const width = skirt.maximumWorld.x - skirt.minimumWorld.x;
+    assert.ok(
+        depth / width > 0.6,
+        `накидка плоская: глубина ${depth.toFixed(2)} при ширине ${width.toFixed(2)}`,
+    );
+});
+
+check('шея видна: её не съедают скат, воротник и шарф', () => {
+    for (const [preset, id] of [['ryudo', 'neckR'], ['elena', 'neckE']]) {
+        const model = createUnitModel(scene, makeUnitData(preset, {
+            id, position: { x: 0, z: 0 },
+        }));
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+        const head = boxOf(model, `${id}_head`);
+        const yoke = boxOf(model, `${id}_yoke`);
+
+        // Всё, что обнимает шею, должно кончаться НИЖЕ подбородка, иначе
+        // голова садится прямо на плечи и шеи не видно вовсе.
+        let highest = yoke.maximumWorld.y;
+        for (const part of ['collar', 'scarf']) {
+            const mesh = model.meshes.find((m) => m.name === `${id}_${part}`);
+            if (mesh) highest = Math.max(highest, mesh.getBoundingInfo().boundingBox.maximumWorld.y);
+        }
+        const visible = head.minimumWorld.y - highest;
+        assert.ok(
+            visible > 0.02,
+            `${preset}: шея скрыта, просвет ${visible.toFixed(3)}`,
+        );
+    }
+});
+
+check('сзади есть объём ниже пояса, а не плоский срез', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'seatTest', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const seat = boxOf(model, 'seatTest_seat');
+    const waist = boxOf(model, 'seatTest_waist');
+
+    // Таз должен выступать назад дальше талии: иначе фигура сзади
+    // обрывается плоско — «попы нет».
+    assert.ok(
+        seat.minimumWorld.z < waist.minimumWorld.z - 0.02,
+        `нет объёма сзади: таз ${seat.minimumWorld.z.toFixed(3)}, талия ${waist.minimumWorld.z.toFixed(3)}`,
+    );
+    // И он ниже пояса, а не на уровне груди.
+    assert.ok(
+        seat.maximumWorld.y < waist.maximumWorld.y + 0.05,
+        'объём таза задран к груди',
+    );
+});
+
+// --- Зона поражения линейного приёма ---------------------------------------
+
+check('полоса удара ложится между концами и смотрит вдоль них', async () => {
+    const { UIController } = await import('../src/system/UIController.js');
+    // UIController тянет DOM в конструкторе, поэтому берём только геометрию:
+    // вызываем метод на «пустом» объекте с одной лишь сценой.
+    const ui = Object.create(UIController.prototype);
+    ui.scene = scene;
+
+    const origin = new Vector3(-6, 0, 0);
+    const end = new Vector3(2, 0, 0);
+    ui.showStrikeZone(origin, end, 1.6);
+
+    const zone = ui.strikeZone;
+    assert.ok(zone, 'полоса не создана');
+    assert.ok(zone.isEnabled(), 'полоса создана, но выключена');
+
+    // Центр полосы — середина отрезка, и она лежит НА полу, а не парит.
+    assert.ok(Math.abs(zone.position.x - (-2)) < 1e-6, `центр по x: ${zone.position.x}`);
+    assert.ok(Math.abs(zone.position.z - 0) < 1e-6, `центр по z: ${zone.position.z}`);
+    assert.ok(zone.position.y > 0 && zone.position.y < 0.1, `полоса не у пола: y=${zone.position.y}`);
+
+    // Длина полосы равна расстоянию между концами, ширина — заданной.
+    assert.ok(Math.abs(zone.scaling.y - 8) < 1e-6, `длина полосы ${zone.scaling.y}, ожидалось 8`);
+    assert.ok(Math.abs(zone.scaling.x - 1.6) < 1e-6, `ширина полосы ${zone.scaling.x}`);
+
+    // Полоса развёрнута ВДОЛЬ удара: её локальная ось Y после поворота
+    // должна смотреть от origin к end.
+    zone.computeWorldMatrix(true);
+    const along = Vector3.TransformNormal(new Vector3(0, 1, 0), zone.getWorldMatrix()).normalize();
+    const expected = end.subtract(origin).normalize();
+    assert.ok(
+        Math.abs(Math.abs(Vector3.Dot(along, expected)) - 1) < 1e-3,
+        `полоса не вдоль удара: ось=(${along.x.toFixed(2)}, ${along.y.toFixed(2)}, ${along.z.toFixed(2)})`,
+    );
+
+    // Повторный вызов переиспользует меш, а не плодит плашки на арене.
+    const before = scene.meshes.length;
+    ui.showStrikeZone(new Vector3(0, 0, -3), new Vector3(0, 0, 5), 2);
+    assert.equal(scene.meshes.length, before, 'повторный показ создал новый меш');
+    assert.equal(ui.strikeZone, zone, 'меш полосы подменён');
+
+    ui.hideStrikeZone();
+    assert.equal(zone.isEnabled(), false, 'полоса не скрылась');
+});
+
+// --- Итог -----------------------------------------------------------------
+
+await Promise.all(pending);
+
+console.log(results.join('\n'));
+const passed = results.filter((r) => r.includes(' ok ')).length;
+const failed = results.filter((r) => r.includes('FAIL')).length;
+console.log(`\n${passed} passed, ${failed} failed`);
+
+engine.dispose();
