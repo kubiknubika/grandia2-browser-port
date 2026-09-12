@@ -45,16 +45,16 @@ const SWING_SECONDS = 0.42;
  */
 const STAFF_POSES = {
     castTarget: {
-        shoulderRX: 0.70, shoulderRZ: -0.30, elbowR: 0.00, wrist: 0.23,
-        shoulderLX: 0.90, shoulderLZ: 0.00, elbowL: 0.33,
+        shoulderRX: 0.10, shoulderRZ: -0.30, elbowR: 0.53, wrist: 0.40,
+        shoulderLX: 0.10, shoulderLZ: 0.00, elbowL: 1.00,
     },
     castSelf: {
         shoulderRX: 0.47, shoulderRZ: -1.00, elbowR: -1.07, wrist: 0.53,
         shoulderLX: -0.73, shoulderLZ: 0.00, elbowL: 0.70,
     },
     windup: {
-        shoulderRX: 0.80, shoulderRZ: -0.50, elbowR: -0.60, wrist: 0.30,
-        shoulderLX: 0.30, shoulderLZ: 0.00, elbowL: 1.60,
+        shoulderRX: 0.20, shoulderRZ: -0.50, elbowR: -1.00, wrist: 0.80,
+        shoulderLX: -0.40, shoulderLZ: 0.00, elbowL: 0.20,
     },
 };
 

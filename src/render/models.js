@@ -59,7 +59,8 @@ export function createHumanoid(scene, {
     // плечами, широким тазом и более тонкими конечностями.
     const female = build === 'female';
     const B = {
-        shoulderX: female ? 0.44 : 0.5,      // разнос плеч
+        shoulderX: 0.5,                      // разнос плеч: одинаков —
+                                             // от него зависит хват посоха
         chestTop: female ? 0.70 : 0.78,      // ширина груди сверху
         chestBottom: female ? 0.46 : 0.5,
         waistTop: female ? 0.46 : 0.5,
@@ -825,13 +826,17 @@ export function createHumanoid(scene, {
         // был прижат к рёбрам и «врастал» в бок. Одним углом плеча это не
         // правится — разворот рвал двуручный хват, поэтому стойка
         // пересчитана целиком.
+        // ВАЖНО: углы привязаны к РАЗНОСУ ПЛЕЧ. Когда я сузил его до 0.44
+        // ради женского силуэта, стойка развалилась: левый локоть уезжал
+        // через грудь на x=-0.05, и руки читались обрубками. Разнос плеч
+        // возвращён к 0.5 для обоих, женственность даёт талия и таз.
         shoulderR.rotation.x = 0.23;
         shoulderR.rotation.z = 0.05;
         elbowR.rotation.x = -1.14;
         weaponPivot.rotation.set(1.10, -0.80, -0.10);
 
-        shoulderL.rotation.set(-0.35, 0.50, 0.80);
-        elbowL.rotation.x = -1.98;
+        shoulderL.rotation.set(-0.54, 1.00, 0.05);
+        elbowL.rotation.x = -1.44;
     }
 
     return {
