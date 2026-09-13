@@ -660,6 +660,35 @@ export class BattleSystem {
      * позиций). Это и есть «точка между всеми участниками»: сумма квадратов
      * расстояний до неё минимальна.
      */
+    /**
+     * Охват группового приёма: центр целей и радиус, накрывающий их всех.
+     *
+     * Радиус — расстояние до самой дальней цели плюс её хитбокс, чтобы круг
+     * не обрезал крайнего противника. Нужен только для подсветки: сам урон
+     * по-прежнему считает `resolveTargets`.
+     */
+    blastZone(unit, definition) {
+        const group = definition.targeting === 'all-enemies'
+            || definition.targeting === 'all-allies';
+        if (!group) return null;
+
+        const targets = this.resolveTargets(unit, definition);
+        if (targets.length === 0) return null;
+
+        const center = new Vector3(0, 0, 0);
+        for (const target of targets) center.addInPlace(target.mesh.position);
+        center.scaleInPlace(1 / targets.length);
+
+        let radius = 0;
+        for (const target of targets) {
+            const reach = Vector3.Distance(center, target.mesh.position)
+                + (target.radius ?? 18) * WORLD_SCALE;
+            radius = Math.max(radius, reach);
+        }
+
+        return { center, radius };
+    }
+
     castAim(unit, definition) {
         const targets = this.resolveTargets(unit, definition);
         if (targets.length === 0) return { position: null, onSelf: false };
@@ -887,6 +916,11 @@ export class BattleSystem {
                 }
             }
 
+            // Групповой приём бьёт по площади — показываем её охват так же,
+            // как полосу линейного.
+            const blast = this.blastZone(unit, definition);
+            if (blast) this.ui.showBlastZone?.(blast.center, blast.radius);
+
             if (definition.kind === 'magic') {
                 // Кастующий поворачивается к тому, на кого направлено
                 // заклинание. Для групповых — в общий центр целей.
@@ -921,8 +955,9 @@ export class BattleSystem {
             unit.castStarted = false; // следующий удар — новый замах
         } else {
             unit.actionState = 'RUN_BACK';
-            // Полоса больше не нужна: иначе она висит на арене до конца боя.
+            // Подсветка больше не нужна: иначе висит на арене до конца боя.
             if (definition.targeting === 'line') this.ui.hideStrikeZone?.();
+            this.ui.hideBlastZone?.();
         }
     }
 
@@ -1140,8 +1175,9 @@ export class BattleSystem {
             // Юнит, стоявший в очереди на приказ, больше в ней не нужен.
             this.commandQueue = this.commandQueue.filter((queued) => queued !== target);
 
-            // Отменённый линейный приём не должен оставлять полосу на арене.
+            // Отменённый приём не должен оставлять подсветку на арене.
             this.ui.hideStrikeZone?.();
+            this.ui.hideBlastZone?.();
 
             this.ui.showFloatingText(target.mesh, 'CANCEL!', 'cancel');
             return;

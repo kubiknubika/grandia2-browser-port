@@ -1953,6 +1953,36 @@ check('посох не входит в тело ни в одной позе', ()
     }
 });
 
+check('круг охвата лежит на полу и переиспользует меш', async () => {
+    const { UIController } = await import('../src/system/UIController.js');
+    const ui = Object.create(UIController.prototype);
+    ui.scene = scene;
+
+    ui.showBlastZone(new Vector3(4.5, 0, 0.5), 3.1);
+    const zone = ui.blastZone;
+    assert.ok(zone, 'круг не создан');
+    assert.ok(zone.isEnabled(), 'круг создан, но выключен');
+
+    // Диск единичного радиуса масштабируется под охват приёма.
+    assert.ok(Math.abs(zone.scaling.x - 3.1) < 1e-6, `масштаб ${zone.scaling.x}`);
+    assert.ok(
+        Math.abs(zone.position.x - 4.5) < 1e-6 && Math.abs(zone.position.z - 0.5) < 1e-6,
+        `центр (${zone.position.x}, ${zone.position.z})`,
+    );
+    // Лежит на полу, но выше него — иначе спорит с землёй за глубину.
+    assert.ok(zone.position.y > 0 && zone.position.y < 0.1, `y=${zone.position.y}`);
+    assert.ok(Math.abs(zone.rotation.x - Math.PI / 2) < 1e-6, 'круг не лежит горизонтально');
+    assert.ok(zone.material.alpha > 0 && zone.material.alpha < 1, 'круг непрозрачный');
+
+    // Повторный показ не плодит плашки на арене.
+    const before = scene.meshes.length;
+    ui.showBlastZone(new Vector3(0, 0, 0), 2);
+    assert.equal(scene.meshes.length, before, 'повторный показ создал новый меш');
+
+    ui.hideBlastZone();
+    assert.equal(zone.isEnabled(), false, 'круг не скрылся');
+});
+
 // --- Зона поражения линейного приёма ---------------------------------------
 
 check('полоса удара ложится между концами и смотрит вдоль них', async () => {

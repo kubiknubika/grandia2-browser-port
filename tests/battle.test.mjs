@@ -1065,6 +1065,33 @@ test('у каждой команды есть описание, а Combo и Crit
 let passed = 0;
 let failed = 0;
 
+test('круг охвата накрывает всех целей группового приёма', () => {
+    const { system } = buildBattle();
+    const hero = system.units.find((u) => u.isPlayer);
+    const enemies = system.units.filter((u) => !u.isPlayer);
+
+    const zone = system.blastZone(hero, { targeting: 'all-enemies' });
+    assert.ok(zone, 'групповой приём не дал зоны охвата');
+
+    // Ни одна цель не должна оказаться за границей круга: иначе подсветка
+    // врёт игроку о том, кого заденет.
+    for (const enemy of enemies) {
+        const distance = Vector3.Distance(zone.center, enemy.mesh.position);
+        assert.ok(
+            distance <= zone.radius,
+            `${enemy.id} вне круга: ${distance.toFixed(2)} при радиусе ${zone.radius.toFixed(2)}`,
+        );
+    }
+
+    // Центр — среднее позиций, а не позиция первой цели.
+    const expectedX = enemies.reduce((sum, u) => sum + u.mesh.position.x, 0) / enemies.length;
+    assert.ok(Math.abs(zone.center.x - expectedX) < 1e-6, 'центр круга смещён');
+
+    // Одиночные и линейные приёмы круга не рисуют — у них своя подсветка.
+    assert.equal(system.blastZone(hero, { targeting: 'single' }), null);
+    assert.equal(system.blastZone(hero, { targeting: 'line' }), null);
+});
+
 test('линейный приём бьёт полосой, а не по всей команде', () => {
     const { system } = buildBattle();
     const hero = system.units.find((u) => u.isPlayer);

@@ -239,6 +239,45 @@ export class UIController {
         if (this.strikeZone) this.strikeZone.setEnabled(false);
     }
 
+    /**
+     * Подсвечивает КРУГ вокруг центра групповых целей: игрок должен видеть
+     * охват приёма по площади так же, как видит полосу линейного.
+     *
+     * `center` — точка на арене, `radius` — охват в единицах сцены. Как и
+     * полоса, круг переиспользует один меш и живёт до `hideBlastZone()`.
+     */
+    showBlastZone(center, radius) {
+        if (!this.scene) return;
+        if (!(radius > 1e-3)) return;
+
+        if (!this.blastZone) {
+            // Диск строим единичного радиуса и масштабируем: так один меш
+            // обслуживает приёмы с любым охватом.
+            this.blastZone = MeshBuilder.CreateDisc(
+                'blastZone', { radius: 1, tessellation: 32 }, this.scene,
+            );
+            this.blastZone.rotation.x = Math.PI / 2;
+            this.blastZone.isPickable = false;
+            this.blastZone.receiveShadows = false;
+
+            const material = new StandardMaterial('blastZoneMat', this.scene);
+            // Другой цвет, чем у полосы: площадь и линия — разные приёмы.
+            material.emissiveColor = Color3.FromHexString('#55aaff');
+            material.disableLighting = true;
+            material.alpha = 0.22;
+            this.blastZone.material = material;
+        }
+
+        this.blastZone.scaling.set(radius, radius, 1);
+        // Чуть выше пола и выше полосы, иначе они спорят за глубину.
+        this.blastZone.position.set(center.x, 0.03, center.z);
+        this.blastZone.setEnabled(true);
+    }
+
+    hideBlastZone() {
+        if (this.blastZone) this.blastZone.setEnabled(false);
+    }
+
     // --- Регистрация юнита в интерфейсе ------------------------------------
 
     addUnit(unit) {
