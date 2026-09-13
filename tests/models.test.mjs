@@ -1983,6 +1983,51 @@ check('круг охвата лежит на полу и переиспольз�
     assert.equal(zone.isEnabled(), false, 'круг не скрылся');
 });
 
+check('крупный враг действительно крупнее рядового и стоит на полу', () => {
+    const sizeOf = (presetKey) => {
+        const model = createUnitModel(scene, makeUnitData(presetKey, {
+            id: `size_${presetKey}`, position: { x: 0, z: 0 },
+        }));
+        const animator = new Animator();
+        animator.register(`size_${presetKey}`, model);
+        const unit = fakeUnit(`size_${presetKey}`, model);
+        for (let i = 0; i < 120; i += 1) animator.update([unit], 1 / 60);
+
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+        let low = Infinity;
+        let high = -Infinity;
+        for (const mesh of model.meshes) {
+            const box = mesh.getBoundingInfo().boundingBox;
+            low = Math.min(low, box.minimumWorld.y);
+            high = Math.max(high, box.maximumWorld.y);
+        }
+        return { height: high - low, low };
+    };
+
+    const grunt = sizeOf('mottledSpider');
+    const big = sizeOf('tarantula');
+
+    // Мини-босс не должен быть перекрашенной копией рядового.
+    assert.ok(
+        big.height > grunt.height * 1.15,
+        `тарантул не крупнее: ${big.height.toFixed(2)} против ${grunt.height.toFixed(2)}`,
+    );
+    // И масштабирование не должно утопить его в полу или подвесить.
+    //
+    // Замечание: эта проверка слабая — аниматор ставит лапы на пол при
+    // любом масштабе, и мутация «увеличить втрое» её не роняет. Оставлена
+    // как страховка на случай, если посадку будут менять руками.
+    for (const [name, m] of [['паук', grunt], ['тарантул', big]]) {
+        assert.ok(
+            m.low > -0.12 && m.low < 0.25,
+            `${name} не стоит на полу: нижняя точка ${m.low.toFixed(3)}`,
+        );
+    }
+});
+
 // --- Зона поражения линейного приёма ---------------------------------------
 
 check('полоса удара ложится между концами и смотрит вдоль них', async () => {

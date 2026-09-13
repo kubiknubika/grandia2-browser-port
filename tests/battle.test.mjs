@@ -13,7 +13,7 @@ import assert from 'node:assert/strict';
 import { Vector3 } from '@babylonjs/core/Maths/math.vector.js';
 
 import { BattleSystem } from '../src/system/BattleSystem.js';
-import { makeUnitData, DEFAULT_ENCOUNTER, PARTY_ENCOUNTER } from '../src/data/battle_data.js';
+import { makeUnitData, DEFAULT_ENCOUNTER, PARTY_ENCOUNTER, ENCOUNTERS } from '../src/data/battle_data.js';
 import { COM_START, IP_MAX, PRESETS, ACTION_LIBRARY, getBattleStat } from '../src/entities/combat.js';
 import { describeAction, describeNumbers } from '../src/data/action_text.js';
 
@@ -1064,6 +1064,59 @@ test('у каждой команды есть описание, а Combo и Crit
 
 let passed = 0;
 let failed = 0;
+
+test('каждый состав боя играбелен и заканчивается', () => {
+    for (const [key, encounter] of Object.entries(ENCOUNTERS)) {
+        // Состав должен быть осмысленным: есть кому драться с обеих сторон.
+        assert.ok(encounter.players.length > 0, `${key}: нет героев`);
+        assert.ok(encounter.enemies.length > 0, `${key}: нет врагов`);
+
+        // Уникальные id: иначе юниты затирают друг друга в сцене и в UI.
+        const ids = [...encounter.players, ...encounter.enemies].map((u) => u.id);
+        assert.equal(new Set(ids).size, ids.length, `${key}: повторяющиеся id`);
+
+        // Бой доходит до исхода, а не зависает.
+        const { system, ui } = buildBattle({
+            encounter,
+            autoCommand: (unit, actions) => {
+                const combo = actions.find((a) => a.id === 'combo');
+                return { actionId: 'combo', target: combo?.targets?.[0] ?? null };
+            },
+            rng: makeRng(4242),
+        });
+        runBattle(system, ui, { maxSeconds: 240 });
+        assert.ok(system.outcome, `${key}: бой не завершился за 240 с`);
+
+        // Состав должен быть ПРОХОДИМЫМ. Раньше тест довольствовался любым
+        // исходом, и неубиваемый противник (поражение за 33 с) считался
+        // нормой — мутация проходила молча.
+        assert.equal(
+            system.outcome, 'victory',
+            `${key}: состав непроходим — бой закончился как ${system.outcome}`,
+        );
+
+        // И HP нигде не ушло в минус.
+        for (const unit of system.units) {
+            assert.ok(unit.hp >= 0, `${key}: у ${unit.id} отрицательное HP`);
+        }
+    }
+});
+
+test('новые составы отличаются от стартового, а не копируют его', () => {
+    const count = (e) => e.enemies.length;
+    assert.equal(count(ENCOUNTERS.default), 2, 'стартовый бой изменился');
+    assert.equal(count(ENCOUNTERS.swarm), 3, 'стая должна быть больше пары');
+    assert.equal(count(ENCOUNTERS.tarantula), 1, 'тарантул должен быть один');
+
+    // Одиночный противник обязан быть заметно крепче рядового: иначе это
+    // не мини-босс, а тот же бой с меньшим числом врагов.
+    const solo = ENCOUNTERS.tarantula.enemies[0];
+    const grunt = ENCOUNTERS.default.enemies[0];
+    assert.ok(
+        solo.maxHp > grunt.maxHp * 3,
+        `тарантул слишком слаб: ${solo.maxHp} против ${grunt.maxHp}`,
+    );
+});
 
 test('круг охвата накрывает всех целей группового приёма', () => {
     const { system } = buildBattle();

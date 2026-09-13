@@ -1,6 +1,6 @@
 import { Engine, Scene, ArcRotateCamera, Vector3, HemisphericLight, DirectionalLight, MeshBuilder, StandardMaterial, Color3, ShadowGenerator, SceneLoader } from '@babylonjs/core';
 import '@babylonjs/loaders';
-import { DEFAULT_ENCOUNTER, DEFAULT_INVENTORY, makeUnitData } from './data/battle_data.js';
+import { ENCOUNTERS, DEFAULT_ENCOUNTER, DEFAULT_INVENTORY, makeUnitData } from './data/battle_data.js';
 import { createUnitModel } from './render/models.js';
 import { Animator } from './render/Animator.js';
 import { BattleCamera } from './render/BattleCamera.js';
@@ -13,6 +13,14 @@ const engine = new Engine(canvas, true);
 // URL parameters
 const urlParams = new URLSearchParams(window.location.search);
 const useModels = urlParams.get('models') === 'true';
+
+// Состав боя выбирается через ?encounter=swarm|tarantula|party.
+// Неизвестный ключ молча откатывается на стартовый бой, а не роняет сцену.
+const encounterKey = urlParams.get('encounter') ?? 'default';
+const encounter = ENCOUNTERS[encounterKey] ?? DEFAULT_ENCOUNTER;
+if (!ENCOUNTERS[encounterKey]) {
+    console.warn(`Unknown encounter "${encounterKey}". Available: ${Object.keys(ENCOUNTERS).join(', ')}.`);
+}
 
 const toggle = document.getElementById('toggle-models');
 toggle.checked = useModels;
@@ -186,8 +194,8 @@ function createScene() {
         const build = ({ presetKey, ...overrides }) => makeUnitData(presetKey, overrides);
 
         await Promise.all([
-            ...DEFAULT_ENCOUNTER.players.map((entry) => createUnit(build(entry), true)),
-            ...DEFAULT_ENCOUNTER.enemies.map((entry) => createUnit(build(entry), false)),
+            ...encounter.players.map((entry) => createUnit(build(entry), true)),
+            ...encounter.enemies.map((entry) => createUnit(build(entry), false)),
         ]);
     }
 

@@ -73,6 +73,41 @@ export const DEFAULT_ENCOUNTER = {
     ],
 };
 
+// --- Другие составы боя -----------------------------------------------------
+// Все три энкаунтера подобраны одним и тем же замером: 200 боёв на вариант,
+// две политики игрока. Ориентир взят от стартового боя — внимательная игра
+// побеждает всегда, небрежная (только Combo, без лечения и без Critical по
+// заряженной цели) заметно проседает. Канонические PRESETS не трогаем:
+// правки живут только в энкаунтерах.
+
+// СТАЯ: трое слабых, но бьют больно и берут числом. Проверяет групповые
+// приёмы и подсветку охвата. Замер: внимательно 100 % (52 с, 43 % HP),
+// небрежно 72 %.
+const SWARM_TUNING = { maxHp: 54, str: 46 };
+
+export const SWARM_ENCOUNTER = {
+    players: [
+        { presetKey: 'ryudo', id: 'ryudo', position: { x: -6, z: 0 } },
+    ],
+    enemies: [
+        { presetKey: 'mottledSpider', id: 'spider1', name: 'Mottled Spider A', position: { x: 4, z: 4 }, ...SWARM_TUNING },
+        { presetKey: 'mottledSpider', id: 'spider2', name: 'Mottled Spider B', position: { x: 6, z: 0 }, ...SWARM_TUNING },
+        { presetKey: 'mottledSpider', id: 'spider3', name: 'Mottled Spider C', position: { x: 4, z: -4 }, ...SWARM_TUNING },
+    ],
+};
+
+// ОДИНОЧНЫЙ КРУПНЫЙ: тарантул как мини-босс — долгий бой на выносливость.
+// Сырой пресет (1050 HP) превратил бы это в получасовую пилёжку, поэтому
+// ослаблен. Замер: внимательно 100 % (71 с, 46 % HP), небрежно 67 %.
+export const TARANTULA_ENCOUNTER = {
+    players: [
+        { presetKey: 'ryudo', id: 'ryudo', position: { x: -6, z: 0 } },
+    ],
+    enemies: [
+        { presetKey: 'tarantula', id: 'tarantula', name: 'Tarantula', position: { x: 5, z: 0 }, maxHp: 210, str: 56 },
+    ],
+};
+
 // Состав с напарником. В самой игре не используется, но нужен, чтобы
 // групповые механики не остались без покрытия тестами.
 export const PARTY_ENCOUNTER = {
@@ -84,6 +119,14 @@ export const PARTY_ENCOUNTER = {
         { presetKey: 'mottledSpider', id: 'spider1', name: 'Mottled Spider A', position: { x: 4, z: 3 } },
         { presetKey: 'mottledSpider', id: 'spider2', name: 'Mottled Spider B', position: { x: 5, z: -2 } },
     ],
+};
+
+/** Все доступные составы боя — по ключу для выбора из UI или по URL. */
+export const ENCOUNTERS = {
+    default: DEFAULT_ENCOUNTER,
+    swarm: SWARM_ENCOUNTER,
+    tarantula: TARANTULA_ENCOUNTER,
+    party: PARTY_ENCOUNTER,
 };
 
 // Стартовый инвентарь партии (общий, как в оригинале).

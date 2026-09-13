@@ -42,6 +42,7 @@ const LINEUP = [
     ['ryudo', 'ryudo', -3.4],
     ['mottledSpider', 'spiderA', 1.4],
     ['mottledSpider', 'spiderB', 5.6],
+    ['tarantula', 'tarantulaA', 10.5],
 ];
 
 const actors = [];
@@ -150,6 +151,7 @@ const VIEWS = {
     // Елена сбоку и в три четверти — проверка женского силуэта.
     elenaside2: { eye: new Vector3(-10.8, 1.9, 0.4), target: new Vector3(-7.2, 1.7, 0) },
     elena34b: { eye: new Vector3(-4.4, 2.0, 3.6), target: new Vector3(-7.2, 1.7, 0) },
+    bestiary: { eye: new Vector3(2.0, 4.6, 14.5), target: new Vector3(2.0, 1.1, 0) },
     elenafull: { eye: new Vector3(-7.2, 1.9, 4.2), target: new Vector3(-7.2, 1.7, 0) },
     elena34: { eye: new Vector3(-5.1, 2.2, 3.4), target: new Vector3(-7.2, 1.7, 0) },
     elenaside: { eye: new Vector3(-3.9, 2.0, 0.2), target: new Vector3(-7.2, 1.7, 0) },

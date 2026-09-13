@@ -873,7 +873,7 @@ export function createHumanoid(scene, {
 const BODY_HEIGHT = 0.78;
 const FOOT_Y = 0.04;
 
-export function createSpider(scene, { id, color = '#8e44ad' } = {}) {
+export function createSpider(scene, { id, color = '#8e44ad', scale = 1 } = {}) {
     const meshes = [];
     const track = (mesh) => { meshes.push(mesh); return mesh; };
 
@@ -993,6 +993,10 @@ export function createSpider(scene, { id, color = '#8e44ad' } = {}) {
         }
     }
 
+    // Масштабируем весь риг целиком: ноги, лапы и анимация остаются
+    // согласованными, меняется только габарит.
+    if (scale !== 1) root.scaling.setAll(scale);
+
     return {
         root,
         meshes,
@@ -1003,7 +1007,14 @@ export function createSpider(scene, { id, color = '#8e44ad' } = {}) {
 /** Единая точка входа: выбирает фабрику по meshKind юнита. */
 export function createUnitModel(scene, data) {
     if (data.meshKind === 'spider') {
-        return createSpider(scene, { id: data.id, color: data.color });
+        // Размер берём из хитбокса движка: рядовой паук 18, тарантул 24 —
+        // мини-босс должен и выглядеть крупнее, а не быть перекрашенной
+        // копией рядового.
+        return createSpider(scene, {
+            id: data.id,
+            color: data.color,
+            scale: (data.radius ?? 18) / 18,
+        });
     }
     return createHumanoid(scene, {
         id: data.id,
