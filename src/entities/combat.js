@@ -1880,7 +1880,7 @@ function mergeScale(base = {}, extra = {}) {
   };
 }
 
-function randomVariance(rng = Math.random) {
+export function randomVariance(rng = Math.random) {
   return 0.94 + rng() * 0.12;
 }
 
@@ -1893,7 +1893,7 @@ function getScaleForTeam(balance, team) {
   return mergeScale({}, teamScale);
 }
 
-function scaleActionDefinitionForLevel(definition, level) {
+export function scaleActionDefinitionForLevel(definition, level) {
   const lv = Math.max(1, Math.min(5, Number(level) || 1));
   if (lv <= 1) {
     return definition;
@@ -1951,14 +1951,14 @@ function estimatePhysicalDamage(attacker, defender, power) {
   return Math.max(1, Math.round(base));
 }
 
-function calcPhysicalDamage(attacker, defender, power, rng = Math.random) {
+export function calcPhysicalDamage(attacker, defender, power, rng = Math.random) {
   const attackValue = getBattleStat(attacker, 'ATK');
   const defenseValue = getBattleStat(defender, 'DEF');
   const base = attackValue * power - defenseValue * 0.45;
   return Math.max(1, Math.round(base * randomVariance(rng)));
 }
 
-function elementalMultiplier(target, element) {
+export function elementalMultiplier(target, element) {
   if (!element) {
     return 1;
   }
@@ -1966,12 +1966,12 @@ function elementalMultiplier(target, element) {
   return target.resistances?.[element] ?? 1;
 }
 
-function calcMagicDamage(attacker, defender, spellPower, spellBase = 0, rng = Math.random, element = null) {
+export function calcMagicDamage(attacker, defender, spellPower, spellBase = 0, rng = Math.random, element = null) {
   const base = attacker.mag * spellPower - defender.men * 0.35 + spellBase;
   return Math.max(1, Math.round(base * elementalMultiplier(defender, element) * randomVariance(rng)));
 }
 
-function calcHealAmount(caster, spellBase) {
+export function calcHealAmount(caster, spellBase) {
   return Math.max(1, Math.round(caster.mag * 0.55 + caster.men * 0.3 + spellBase));
 }
 
@@ -2062,7 +2062,7 @@ function activeStatusLabels(fighter) {
   return [...statusFlags, ...buffFlags];
 }
 
-function applyStatus(target, effect, rng = Math.random) {
+export function applyStatus(target, effect, rng = Math.random) {
   if (!effect) {
     return false;
   }
@@ -2077,7 +2077,7 @@ function applyStatus(target, effect, rng = Math.random) {
   return true;
 }
 
-function applyStatShift(target, shift) {
+export function applyStatShift(target, shift) {
   if (!shift?.stat || !shift.amount) {
     return false;
   }
@@ -2090,7 +2090,7 @@ function applyStatShift(target, shift) {
   return true;
 }
 
-function processTimedModifiers(fighter) {
+export function processTimedModifiers(fighter) {
   const expired = [];
   for (const stat of ['atk', 'def', 'act', 'mov']) {
     if ((fighter.buffTimers?.[stat] ?? 0) > 0) {
@@ -2283,11 +2283,11 @@ function chooseEvadePointHeuristic(battle, fighter) {
   return clonePoint(scored.sort((left, right) => right.score - left.score)[0].anchor);
 }
 
-function lineHitsFromPoint(origin, endPoint, width, targets) {
+export function lineHitsFromPoint(origin, endPoint, width, targets) {
   return listLiving(targets).filter((target) => distancePointToSegment(target.position, origin, endPoint) <= width / 2 + target.radius);
 }
 
-function chooseBestLineAttackForTargets(attackerPosition, targets, definition) {
+export function chooseBestLineAttackForTargets(attackerPosition, targets, definition) {
   if (targets.length === 0) {
     return null;
   }
