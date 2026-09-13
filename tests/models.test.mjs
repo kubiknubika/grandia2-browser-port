@@ -1846,6 +1846,113 @@ check('сзади есть объём ниже пояса, а не плоски�
     );
 });
 
+/**
+ * Радиус корпуса на высоте y. Корпус — конус (грудь) плюс талия; обе
+ * сплющены по Z в 0.72. Нужен, чтобы проверять, не залезает ли что-то
+ * внутрь тела.
+ */
+function torsoRadius(y, chestTop, waistBottom) {
+    if (y >= 1.70) {
+        const t = Math.min(1, (y - 1.70) / 0.82);
+        const rx = (0.5 + (chestTop - 0.5) * t) / 2;
+        return { rx, rz: rx * 0.72 };
+    }
+    if (y >= 1.30) {
+        const t = Math.max(0, (y - 1.44) / 0.30);
+        const rx = (waistBottom + (0.5 - waistBottom) * t) / 2;
+        return { rx, rz: rx * 0.72 };
+    }
+    return null;
+}
+
+check('правый локоть отведён от корпуса во всех позах', () => {
+    const cases = [
+        ['ryudo', 0.78, 0.56, 'покой', null],
+        ['ryudo', 0.78, 0.56, 'замах', (a, id) => a.playSwing(id, 0.42)],
+        ['ryudo', 0.78, 0.56, 'каст', (a, id) => a.playCast(id, 0.8)],
+        ['elena', 0.70, 0.60, 'покой', null],
+        ['elena', 0.70, 0.60, 'замах', (a, id) => a.playSwing(id, 0.6)],
+        ['elena', 0.70, 0.60, 'каст в цель', (a, id) => a.playCast(id, 0.8, { onSelf: false })],
+        ['elena', 0.70, 0.60, 'каст на себя', (a, id) => a.playCast(id, 0.8, { onSelf: true })],
+    ];
+
+    for (const [preset, chestTop, waistBottom, label, start] of cases) {
+        const id = `elbow_${preset}_${label.replace(/ /g, '')}`;
+        const model = createUnitModel(scene, makeUnitData(preset, { id, position: { x: 0, z: 0 } }));
+        const animator = new Animator();
+        animator.register(id, model);
+        const unit = fakeUnit(id, model);
+
+        for (let i = 0; i < 90; i += 1) animator.update([unit], 1 / 60);
+        if (start) start(animator, id);
+
+        // Худший кадр за всю фазу, а не один замер.
+        let worst = Infinity;
+        for (let i = 0; i < (start ? 48 : 1); i += 1) {
+            animator.update([unit], 1 / 60);
+            model.root.computeWorldMatrix(true);
+            model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+            const elbow = model.rig.elbowR.getAbsolutePosition();
+            const radius = torsoRadius(elbow.y, chestTop, waistBottom);
+            if (!radius) continue;
+            worst = Math.min(worst, Math.abs(elbow.x) - radius.rx);
+        }
+
+        // Локоть не должен «врастать» в бок: он всегда снаружи корпуса.
+        assert.ok(
+            worst > 0.02,
+            `${preset}/${label}: локоть вжат в туловище, зазор ${worst.toFixed(3)}`,
+        );
+    }
+});
+
+check('посох не входит в тело ни в одной позе', () => {
+    const cases = [
+        ['покой', null],
+        ['замах', (a, id) => a.playSwing(id, 0.6)],
+        ['каст в цель', (a, id) => a.playCast(id, 0.8, { onSelf: false })],
+        ['каст на себя', (a, id) => a.playCast(id, 0.8, { onSelf: true })],
+    ];
+    const STAFF_RADIUS = 0.045;
+
+    for (const [label, start] of cases) {
+        const id = `staffBody_${label.replace(/ /g, '')}`;
+        const model = createUnitModel(scene, makeUnitData('elena', { id, position: { x: 0, z: 0 } }));
+        const animator = new Animator();
+        animator.register(id, model);
+        const unit = fakeUnit(id, model);
+
+        for (let i = 0; i < 90; i += 1) animator.update([unit], 1 / 60);
+        if (start) start(animator, id);
+
+        // 48 кадров: окно должно накрывать и занос, и ПРОВОДКУ. При 36
+        // хвост проводки оставался непроверенным, и мутация «проводка
+        // зеркалом заноса» (траектория сквозь тело) проходила незамеченной.
+        let worst = Infinity;
+        for (let i = 0; i < (start ? 48 : 1); i += 1) {
+            animator.update([unit], 1 / 60);
+            model.root.computeWorldMatrix(true);
+            model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+            const point = (t) => Vector3.TransformCoordinates(
+                new Vector3(0, -0.40 + t * 2.02, 0), model.rig.weaponPivot.getWorldMatrix(),
+            );
+            for (let k = 0; k <= 40; k += 1) {
+                const p = point(k / 40);
+                const radius = torsoRadius(p.y, 0.70, 0.60);
+                if (!radius) continue;
+                // Нормированное расстояние до поверхности эллипса корпуса.
+                const d = Math.sqrt((p.x / radius.rx) ** 2 + (p.z / radius.rz) ** 2);
+                worst = Math.min(worst, (d - 1) * Math.min(radius.rx, radius.rz) - STAFF_RADIUS);
+            }
+        }
+
+        assert.ok(
+            worst > 0,
+            `${label}: древко входит в тело на ${(-worst).toFixed(3)}`,
+        );
+    }
+});
+
 // --- Зона поражения линейного приёма ---------------------------------------
 
 check('полоса удара ложится между концами и смотрит вдоль них', async () => {

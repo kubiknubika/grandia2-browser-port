@@ -43,18 +43,23 @@ const SWING_SECONDS = 0.42;
  *                удар сверху вниз. Занос за спину или вбок недостижим —
  *                хват рвётся, а древко проходит перед лицом.
  */
-const STAFF_POSES = {
+export const STAFF_POSES = {
     castTarget: {
-        shoulderRX: 0.10, shoulderRZ: -0.30, elbowR: 0.53, wrist: 0.40,
-        shoulderLX: 0.10, shoulderLZ: 0.00, elbowL: 1.00,
+        shoulderRX: 0.08, shoulderRZ: -0.10, elbowR: 0.07, wrist: 0.40,
+        shoulderLX: 0.07, shoulderLZ: 0.00, elbowL: 0.67,
     },
     castSelf: {
-        shoulderRX: 0.47, shoulderRZ: -1.00, elbowR: -1.07, wrist: 0.53,
-        shoulderLX: -0.73, shoulderLZ: 0.00, elbowL: 0.70,
+        shoulderRX: -0.40, shoulderRZ: -0.20, elbowR: -1.05, wrist: 1.45,
+        shoulderLX: -1.30, shoulderLZ: 0.00, elbowL: 1.30,
     },
     windup: {
-        shoulderRX: 0.20, shoulderRZ: -0.50, elbowR: -1.00, wrist: 0.80,
-        shoulderLX: -0.40, shoulderLZ: 0.00, elbowL: 0.20,
+        shoulderRX: -0.60, shoulderRZ: 0.45, elbowR: -0.33, wrist: 0.55,
+        shoulderLX: -0.93, shoulderLZ: 0.00, elbowL: 1.70,
+    },
+    // Проводка: посох выносится ВПЕРЁД от корпуса.
+    strike: {
+        shoulderRX: 0.55, shoulderRZ: 0.10, elbowR: 0.45, wrist: -0.30,
+        shoulderLX: 0.50, shoulderLZ: 0.00, elbowL: 0.40,
     },
 };
 
@@ -401,10 +406,20 @@ export class Animator {
         // Добавка к позе покоя: замах (занос, затем пронос в обратную сторону)
         // и каст (в цель или на себя). Обе берутся из STAFF_POSES целиком,
         // чтобы суставы двигались согласованно и хват не рвался.
-        const swingAmt = attacking ? (windup - strike * 1.25) * (1 - recover) : 0;
+        // Занос и проводка — РАЗНЫЕ позы: проводка выносит посох вперёд,
+        // а не отражает занос с обратным знаком.
+        //
+        // Замечание по чистоте: само пересечение с телом на кадрах 11-15
+        // чинил не этот раздел, а пересчёт позы windup. Проверено явно —
+        // с зеркальной проводкой зазор 0.045, с отдельной 0.043. Разделение
+        // оставлено ради осмысленной траектории, не как фикс коллизии.
+        const windupAmt = attacking ? windup * (1 - recover) : 0;
+        const strikeAmt = attacking ? strike * (1 - recover) : 0;
         const staffAdd = (key) => {
             const castPose = lerp(STAFF_POSES.castTarget[key], STAFF_POSES.castSelf[key], selfCast);
-            return swingAmt * STAFF_POSES.windup[key] + castP * castPose;
+            return windupAmt * STAFF_POSES.windup[key]
+                + strikeAmt * STAFF_POSES.strike[key]
+                + castP * castPose;
         };
 
         if (twoHanded) {
