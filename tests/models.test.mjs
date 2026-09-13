@@ -9,6 +9,7 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import { NullEngine } from '@babylonjs/core/Engines/nullEngine.js';
 import { Scene } from '@babylonjs/core/scene.js';
@@ -1422,11 +1423,20 @@ check('на бегу стопа стоит на земле, а не проска
         `стопа проскальзывает в ${slip.toFixed(1)} раза: шаг ${stepLength.toFixed(2)}, ход ноги ${footTravel.toFixed(2)}`,
     );
 
-    // Шаг должен быть соразмерен росту: 38 % — это семенящая походка.
+    // Шаг должен быть соразмерен росту. Порог 0.45 был слишком мягким:
+    // при 58 % персонаж семенил вдвое чаще человека (6.2 шага/с против ~3)
+    // и бег выглядел ускоренным.
     const height = 3.09;
     assert.ok(
-        stepLength / height > 0.45,
+        stepLength / height > 0.7,
         `шаг мелкий: ${(stepLength / height * 100).toFixed(0)} % роста`,
+    );
+
+    // И частота шага должна быть правдоподобной, а не «в припрыжку».
+    const stepsPerSecond = SPEED / stepLength;
+    assert.ok(
+        stepsPerSecond < 5.2,
+        `слишком частый шаг: ${stepsPerSecond.toFixed(1)}/с`,
     );
 
     // И колено заносимой ноги обязано подбираться, иначе она волочится
@@ -1757,11 +1767,23 @@ check('портупея соединяет плечо с поясом, а не �
     );
     // ...а сам ремень перекрывает большую часть высоты корпуса: короткий
     // огрызок висел серединой на животе, не касаясь ни плеча, ни пояса.
+    //
+    // Порог 1.2 был ошибкой: он ТРЕБОВАЛ, чтобы ремень торчал за пределы
+    // торса, и портупея вылезала на 0.12 ниже пояса отдельной палкой.
+    // Правильное требование — ремень идёт от груди к поясу, не выходя
+    // за них.
     const strapSpan = strap.maximumWorld.y - strap.minimumWorld.y;
     const bodySpan = body.maximumWorld.y - body.minimumWorld.y;
     assert.ok(
-        strapSpan / bodySpan > 1.2,
+        strapSpan / bodySpan > 0.9,
         `портупея короткая: ${strapSpan.toFixed(2)} при корпусе ${bodySpan.toFixed(2)}`,
+    );
+
+    // И НЕ торчит ниже пояса: именно так он читался коричневой палкой,
+    // висящей в теле отдельно от всего.
+    assert.ok(
+        strap.minimumWorld.y > belt.minimumWorld.y - 0.02,
+        `портупея торчит ниже пояса на ${(belt.minimumWorld.y - strap.minimumWorld.y).toFixed(3)}`,
     );
 });
 
@@ -2111,6 +2133,53 @@ check('поясная сумка объёмная, а не плоская пол
             `сумка ${side} плоская: ${w.toFixed(2)} x ${h.toFixed(2)} x ${d.toFixed(2)}`,
         );
     }
+});
+
+check('замах успевает отыграться до момента попадания', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'swingTiming', position: { x: 0, z: 0 },
+    }));
+    const animator = new Animator();
+    animator.register('swingTiming', model);
+    const unit = fakeUnit('swingTiming', model);
+    for (let i = 0; i < 60; i += 1) animator.update([unit], 1 / 60);
+
+    const SWING = 0.42;
+    animator.playSwing('swingTiming', SWING);
+
+    let peakAt = 0;
+    let peakY = -Infinity;
+    for (let i = 0; i < 40; i += 1) {
+        animator.update([unit], 1 / 60);
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+        const tip = model.meshes.find((m) => m.name === 'swingTiming_bladeTip');
+        tip.computeWorldMatrix(true);
+        const y = tip.getBoundingInfo().boundingBox.centerWorld.y;
+        if (y > peakY) { peakY = y; peakAt = (i + 1) / 60; }
+    }
+
+    // Боевая система засчитывает попадание на WINDUP_SECONDS. Клинок
+    // обязан дойти до верхней точки РАНЬШЕ, иначе удар случается, пока
+    // рука ещё поднимается.
+    //
+    // Значение читаем ИЗ ИСХОДНИКА, а не дублируем: при жёстко вписанных
+    // 0.62 тест не замечал, что боевая система бьёт втрое раньше.
+    const battleSource = readFileSync(
+        new URL('../src/system/BattleSystem.js', import.meta.url), 'utf8',
+    );
+    const windupMatch = battleSource.match(
+        /const WINDUP_SECONDS = (?:SWING_ANIM_SECONDS \* )?([\d.]+);/,
+    );
+    assert.ok(windupMatch, 'не нашёл WINDUP_SECONDS в BattleSystem.js');
+    const usesAnimSpan = /SWING_ANIM_SECONDS/.test(windupMatch[0]);
+    const hitAt = usesAnimSpan
+        ? SWING * Number(windupMatch[1])
+        : Number(windupMatch[1]);
+    assert.ok(
+        peakAt < hitAt,
+        `замах опаздывает: пик на ${peakAt.toFixed(3)} с, удар на ${hitAt.toFixed(3)} с`,
+    );
 });
 
 // --- Зона поражения линейного приёма ---------------------------------------

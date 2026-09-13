@@ -49,12 +49,12 @@ export const STAFF_POSES = {
         shoulderLX: -0.07, shoulderLZ: 0.00, elbowL: 1.29,
     },
     castSelf: {
-        shoulderRX: -0.44, shoulderRZ: -0.30, elbowR: -0.60, wrist: 0.82,
-        shoulderLX: -0.70, shoulderLZ: 0.00, elbowL: 1.29,
+        shoulderRX: -0.22, shoulderRZ: -0.33, elbowR: -0.93, wrist: 1.16,
+        shoulderLX: -0.97, shoulderLZ: 0.00, elbowL: 1.63,
     },
     windup: {
-        shoulderRX: -0.70, shoulderRZ: 0.50, elbowR: -0.30, wrist: 0.47,
-        shoulderLX: -0.38, shoulderLZ: 0.00, elbowL: 0.67,
+        shoulderRX: -0.34, shoulderRZ: 0.70, elbowR: -0.53, wrist: 0.60,
+        shoulderLX: -0.25, shoulderLZ: 0.00, elbowL: 0.60,
     },
     // Проводка: посох выносится ВПЕРЁД от корпуса.
     strike: {
@@ -71,15 +71,15 @@ const BLINK_SECONDS = 0.13;
 const BLINK_STRETCH = 5.5;
 const BLINK_DROP = 0.035;
 
-const STEP_LENGTH = 1.8;
+const STEP_LENGTH = 2.4;
 
 // Размах бедра и подъём колена на бегу. Подобраны замером: шаг 1.74 при
 // росте 3.09 (56 %), проскальзывание стопы 0.94. Прежние 0.85/0.9 давали
 // семенящий шаг в 38 % роста — «ножками дрыгает, а не отталкивается».
 // Выше 1.2 рад мах превращается в прыжок в шпагате: обе ноги отрываются
 // от земли одновременно.
-const LEG_SWING = 1.0;
-const KNEE_LIFT = 0.8;
+const LEG_SWING = 1.15;
+const KNEE_LIFT = 0.7;
 
 // Предел прироста пути за секунду: чуть выше боевой скорости (11.13 ед/с).
 const MAX_STEP_ADVANCE = 14;
@@ -304,8 +304,12 @@ export class Animator {
         // замах (anticipation) -> резкий рубящий удар -> возврат. Раньше
         // «удар» линейно растягивался на 65% времени и выглядел вялым.
         const swingP = 1 - state.swing;                       // 0 -> 1
-        const WINDUP_END = 0.42;   // занос: долгий, чтобы читался
-        const STRIKE_END = 0.62;   // сам удар: короткий и быстрый
+        // Занос должен ЗАКОНЧИТЬСЯ раньше, чем боевая система засчитает
+        // попадание (WINDUP_SECONDS = 0.62 * длительности). При прежних
+        // 0.42/0.62 клинок доходил до верхней точки ровно в момент удара —
+        // замах не успевал прочитаться.
+        const WINDUP_END = 0.34;   // занос: быстрее, чтобы успеть
+        const STRIKE_END = 0.56;   // сам удар: короткий и быстрый
 
         // Занос замедляется к концу — оружие «зависает» перед ударом.
         const windupRaw = Math.min(1, swingP / WINDUP_END);

@@ -44,7 +44,12 @@ const PARALYSIS_SKIP_CHANCE = 0.5;
 
 const AI_THINK_SECONDS = 0.45;
 const HIT_RECOVERY_SECONDS = 0.35; // пауза между ударами комбо
-const WINDUP_SECONDS = 0.12;       // замах перед первым ударом
+// Замах перед первым ударом. Должен совпадать с САМОЙ АНИМАЦИЕЙ: занос
+// в аниматоре занимает 42 % длительности (WINDUP_END), а удар приходится
+// на 62 % (STRIKE_END). При 0.12 с клинок не успевал подняться — попадание
+// случалось раньше, чем рука доходила до верхней точки.
+const SWING_ANIM_SECONDS = 0.42;   // должно совпадать с Animator.SWING_SECONDS
+const WINDUP_SECONDS = SWING_ANIM_SECONDS * 0.62;
 
 // Порядок команд в кольце — как в оригинале.
 const COMMAND_CATEGORIES = ['basic', 'move', 'magic', 'item', 'defense'];
