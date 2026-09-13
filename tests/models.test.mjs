@@ -2028,6 +2028,91 @@ check('крупный враг действительно крупнее ряд�
     }
 });
 
+check('руки прилегают к корпусу у обоих телосложений', () => {
+    for (const [preset, id] of [['ryudo', 'armFitR'], ['elena', 'armFitE']]) {
+        const model = createUnitModel(scene, makeUnitData(preset, { id, position: { x: 0, z: 0 } }));
+        model.root.computeWorldMatrix(true);
+        model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+        model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+        const body = boxOf(model, `${id}_body`);
+        const armR = boxOf(model, `${id}_upperArmR`);
+        const padR = boxOf(model, `${id}_pauldron1`);
+
+        // Рука должна ПЕРЕКРЫВАТЬ корпус, а не висеть рядом. У узкой фигуры
+        // грудь 0.70 при суставе на 0.50 давала щель в 0.045.
+        assert.ok(
+            armR.minimumWorld.x <= body.maximumWorld.x,
+            `${preset}: плечо оторвано от корпуса на ${(armR.minimumWorld.x - body.maximumWorld.x).toFixed(3)}`,
+        );
+        // Наплечник едет вместе с рукой, иначе щель появляется под ним.
+        assert.ok(
+            padR.minimumWorld.x <= body.maximumWorld.x + 0.01,
+            `${preset}: наплечник оторван на ${(padR.minimumWorld.x - body.maximumWorld.x).toFixed(3)}`,
+        );
+    }
+});
+
+check('кисть ЛЕЖИТ на древке, а не висит рядом', () => {
+    const rest = staffProbe('gripTight', { frames: 1 });
+    const STAFF_RADIUS = 0.045;
+    // Промах меряется до ОСИ древка: чтобы ладонь касалась поверхности,
+    // он должен быть не больше радиуса. При 0.060 была видна щель.
+    assert.ok(
+        rest.grip <= STAFF_RADIUS,
+        `кисть висит в стороне: промах ${rest.grip.toFixed(3)} при радиусе ${STAFF_RADIUS}`,
+    );
+});
+
+check('каст в цель направляет кончик посоха НА цель', () => {
+    const probe = staffProbe('castAim', { cast: 'target' });
+    // Цель по +Z. Недостаточно вынести посох вперёд — он должен ещё и
+    // смотреть туда кончиком, иначе жест не читается как «в цель».
+    assert.ok(
+        probe.axis.z > 0.55,
+        `кончик не смотрит на цель: ось.z=${probe.axis.z.toFixed(2)}`,
+    );
+});
+
+check('пояс огибает таз сзади и не тонет под ягодицами', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'beltFit', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    const belt = boxOf(model, 'beltFit_belt');
+    const seat = boxOf(model, 'beltFit_seat');
+    assert.ok(
+        belt.minimumWorld.z < seat.minimumWorld.z,
+        `пояс тонет под ягодицами: пояс ${belt.minimumWorld.z.toFixed(3)}, таз ${seat.minimumWorld.z.toFixed(3)}`,
+    );
+});
+
+check('поясная сумка объёмная, а не плоская полоска', () => {
+    const model = createUnitModel(scene, makeUnitData('ryudo', {
+        id: 'pouchFit', position: { x: 0, z: 0 },
+    }));
+    model.root.computeWorldMatrix(true);
+    model.root.getChildTransformNodes(false).forEach((n) => n.computeWorldMatrix(true));
+    model.root.getChildMeshes(false).forEach((n) => { n.computeWorldMatrix(true); n.refreshBoundingInfo(); });
+
+    for (const side of ['L', 'R']) {
+        const box = boxOf(model, `pouchFit_tasset${side}`);
+        const w = box.maximumWorld.x - box.minimumWorld.x;
+        const h = box.maximumWorld.y - box.minimumWorld.y;
+        const d = box.maximumWorld.z - box.minimumWorld.z;
+        // Ни одно измерение не должно быть заметно тоньше остальных:
+        // при 0.12 x 0.18 x 0.14 сзади был виден только торец.
+        const ratio = Math.min(w, h, d) / Math.max(w, h, d);
+        assert.ok(
+            ratio > 0.8,
+            `сумка ${side} плоская: ${w.toFixed(2)} x ${h.toFixed(2)} x ${d.toFixed(2)}`,
+        );
+    }
+});
+
 // --- Зона поражения линейного приёма ---------------------------------------
 
 check('полоса удара ложится между концами и смотрит вдоль них', async () => {

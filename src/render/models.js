@@ -59,8 +59,13 @@ export function createHumanoid(scene, {
     // плечами, широким тазом и более тонкими конечностями.
     const female = build === 'female';
     const B = {
-        shoulderX: 0.5,                      // разнос плеч: одинаков —
-                                             // от него зависит хват посоха
+        // Разнос плеч одинаков у обоих: от него зависит геометрия хвата
+        // посоха, и сужение уже один раз разваливало стойку.
+        shoulderX: 0.5,
+        // Зато плечо СДВИГАЕТСЯ К ТЕЛУ ровно настолько, насколько уже
+        // грудь. Иначе у узкой фигуры рука отрывается от корпуса: край
+        // груди 0.35, левый край руки 0.395 — зазор 0.045.
+        armInset: female ? 0.05 : 0,
         chestTop: female ? 0.70 : 0.78,      // ширина груди сверху
         chestBottom: female ? 0.46 : 0.5,
         waistTop: female ? 0.46 : 0.5,
@@ -151,7 +156,9 @@ export function createHumanoid(scene, {
         // вместе с рукой. На торсе он оставался на месте, и после разворота
         // рук наружу между ним и рукавом открывалась щель.
         pad.parent = side < 0 ? shoulderL : shoulderR;
-        pad.position.set(0.02 * side, 0.04, 0);
+        // Наплечник едет вместе с мешем руки: иначе у узкой фигуры между
+        // ним и корпусом остаётся щель.
+        pad.position.set((0.02 - B.armInset) * side, 0.04, 0);
         pad.rotation.z = side * 0.35;
         pad.material = weapon === 'staff' ? trim : steel;
     }
@@ -176,12 +183,15 @@ export function createHumanoid(scene, {
     seat.position.set(0, 0.02, -0.06);
     seat.material = clothDark;
 
+    // Пояс должен огибать и ягодицы: при глубине 0.23 против 0.25 у seat
+    // он сзади уходил ПОД них и терялся.
     const belt = track(MeshBuilder.CreateCylinder(`${id}_belt`, {
-        height: 0.13, diameter: 0.6, tessellation: 16,
+        height: 0.13, diameter: 0.62, tessellation: 16,
     }, scene));
     belt.parent = torso;
     belt.position.y = 0.02;
-    belt.scaling.z = 0.78;
+    belt.position.z = -0.02;
+    belt.scaling.z = 0.9;
     belt.material = leather;
 
     const buckle = track(MeshBuilder.CreateBox(`${id}_buckle`, {
@@ -322,11 +332,14 @@ export function createHumanoid(scene, {
             // Поясная сумка висит на ВНЕШНЕЙ стороне бедра. Прежний щиток
             // был вдвое крупнее и сидел спереди — читался как коричневая
             // коробка на животе, а не как карман.
+            // Сумка должна читаться объёмной с ЛЮБОГО ракурса. При
+            // 0.12 x 0.18 x 0.14 сзади был виден только торец — узкая
+            // коричневая полоска, похожая на плоский спрайт.
             const tasset = track(MeshBuilder.CreateBox(name, {
-                width: 0.12, height: 0.18, depth: 0.14,
+                width: 0.15, height: 0.17, depth: 0.17,
             }, scene));
             tasset.parent = parent;
-            tasset.position.set(0.15 * side, -0.12, 0.0);
+            tasset.position.set(0.16 * side, -0.12, 0.02);
             tasset.rotation.z = side * 0.1;
             tasset.material = leatherLight;
         }
@@ -603,8 +616,14 @@ export function createHumanoid(scene, {
     // Плечо чуть длиннее расстояния до локтя (0.52), чтобы капсулы
     // ПЕРЕКРЫВАЛИСЬ: иначе на сгибе видна ступенька между рукавом и
     // предплечьем — сустав ничем не закрыт.
-    limb(`${id}_upperArmL`, shoulderL, 0.6, B.armR, cloth);
-    limb(`${id}_upperArmR`, shoulderR, 0.6, B.armR, cloth);
+    // Меши плеч чуть подобраны к телу у узкой фигуры. Двигаем именно меш,
+    // а не сустав: сустав задаёт хват посоха и трогать его нельзя.
+    const armL = limb(`${id}_upperArmL`, shoulderL, 0.6, B.armR, cloth);
+    const armR = limb(`${id}_upperArmR`, shoulderR, 0.6, B.armR, cloth);
+    if (B.armInset) {
+        armL.position.x += B.armInset;
+        armR.position.x -= B.armInset;
+    }
     const foreArmL = limb(`${id}_foreArmL`, elbowL, 0.5, B.foreR, skin);
     const foreArmR = limb(`${id}_foreArmR`, elbowR, 0.5, B.foreR, skin);
 
@@ -835,8 +854,10 @@ export function createHumanoid(scene, {
         elbowR.rotation.x = -1.14;
         weaponPivot.rotation.set(1.10, -0.80, -0.10);
 
-        shoulderL.rotation.set(-0.54, 1.00, 0.05);
-        elbowL.rotation.x = -1.44;
+        // Кисть должна КАСАТЬСЯ древка: при промахе 0.060 и радиусе древка
+        // 0.045 между ладонью и посохом оставалась видимая щель.
+        shoulderL.rotation.set(-0.50, 0.90, 0.00);
+        elbowL.rotation.x = -2.00;
     }
 
     return {

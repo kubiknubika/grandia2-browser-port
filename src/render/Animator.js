@@ -45,16 +45,16 @@ const SWING_SECONDS = 0.42;
  */
 export const STAFF_POSES = {
     castTarget: {
-        shoulderRX: 0.08, shoulderRZ: -0.10, elbowR: 0.07, wrist: 0.40,
-        shoulderLX: 0.07, shoulderLZ: 0.00, elbowL: 0.67,
+        shoulderRX: 0.30, shoulderRZ: -0.30, elbowR: -0.40, wrist: 1.00,
+        shoulderLX: -0.07, shoulderLZ: 0.00, elbowL: 1.29,
     },
     castSelf: {
-        shoulderRX: -0.40, shoulderRZ: -0.20, elbowR: -1.05, wrist: 1.45,
-        shoulderLX: -1.30, shoulderLZ: 0.00, elbowL: 1.30,
+        shoulderRX: -0.44, shoulderRZ: -0.30, elbowR: -0.60, wrist: 0.82,
+        shoulderLX: -0.70, shoulderLZ: 0.00, elbowL: 1.29,
     },
     windup: {
-        shoulderRX: -0.60, shoulderRZ: 0.45, elbowR: -0.33, wrist: 0.55,
-        shoulderLX: -0.93, shoulderLZ: 0.00, elbowL: 1.70,
+        shoulderRX: -0.70, shoulderRZ: 0.50, elbowR: -0.30, wrist: 0.47,
+        shoulderLX: -0.38, shoulderLZ: 0.00, elbowL: 0.67,
     },
     // Проводка: посох выносится ВПЕРЁД от корпуса.
     strike: {

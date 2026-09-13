@@ -145,6 +145,8 @@ const VIEWS = {
     battleelena: { eye: new Vector3(-7.2, 6.0, 9.5), target: new Vector3(-7.2, 1.6, 0) },
     // Кадр замаха: клинок уходит на высоту ~4.2, обычные виды его срезают.
     ryudoswing: { eye: new Vector3(-1.2, 3.2, 6.4), target: new Vector3(-3.4, 2.6, 0) },
+    ryudoseat: { eye: new Vector3(-3.4, 2.2, -3.6), target: new Vector3(-3.4, 1.4, 0) },
+    ryudohip: { eye: new Vector3(-1.0, 2.0, -2.8), target: new Vector3(-3.4, 1.4, 0) },
     ryudofull: { eye: new Vector3(-3.4, 1.9, 4.2), target: new Vector3(-3.4, 1.7, 0) },
     ryudochest: { eye: new Vector3(-3.4, 2.3, 2.4), target: new Vector3(-3.4, 2.1, 0) },
     ryudoclav: { eye: new Vector3(-2.6, 2.7, 1.9), target: new Vector3(-3.4, 2.35, 0) },
